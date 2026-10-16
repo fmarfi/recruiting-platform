@@ -17,10 +17,11 @@
 3. **Audit purge rule.** Each table on the purge list in `contracts/schema.md` has a match condition on person id. The purge runs after the live rows have been scrubbed or deleted, and it is idempotent:
    - Delete the matching `_aud` rows with `revend IS NOT NULL` (old revisions).
    - In the matching rows with `revend IS NULL` (the current revision), overwrite the personal columns with the same placeholders as the live row. This keeps `ValidityAuditStrategy` working when the live row is edited later.
-   - DELETE mode: the live rows are gone, so all matching `_aud` rows are deleted. Two kinds of rows stay: `person_aud` rows with `revtype = 2` (the deletion revision, id only, because `store_data_at_delete` stays false) and the current `data_subject_request_aud` row (already minimised, see 4).
+   - DELETE mode: `accounts` must remove the person **through JPA** (`PersonRepository.delete`/`EntityManager.remove`, never a native `DELETE`). Envers then writes the deletion revision: a `person_aud` row with `revtype = 2` that holds only the id, because `org.hibernate.envers.store_data_at_delete` stays false. The database cascades the other tables. The purge deletes every matching `_aud` row except this `revtype = 2` row (the NFR-03 per-person deletion record) and the current `data_subject_request_aud` row. In that DSR row the purge also sets `person_id` to null, because the database's SET NULL is not audited.
+   - `import_job.file_content` and `errors` hold raw CSV rows. They are set to null as soon as an import ends (COMPLETED, FAILED or DISCARDED), and the retention purge also nulls any that remain. Uploaded files never outlive the import.
 4. **DSRs are kept as minimised evidence**, for as long as the firm keeps other compliance records (no automatic purge in Phase 1). Before a person is anonymised or deleted, `privacy` minimises every DSR with that `person_id`, through JPA so that Envers records it:
    - `requester_name = 'Anonymised person'`
-   - `requester_email = 'sha256:' || hex(sha256(lower(trim(email))))`, so a later complaint can still be matched to this DSR
+   - `requester_email = 'hmac:v<k>:' || hex(HMAC-SHA256(key_k, lower(trim(email))))`, so a later complaint can be matched to this DSR by recomputing the value from the address the complainant gives. The key comes from the env var `PRIVACY_HMAC_KEY` (at least 32 random bytes, kept outside the database and its backups). `<k>` is the key version (`PRIVACY_HMAC_KEY_VERSION`, starting at 1). Rotation: add a new version and keep old keys read-only (`PRIVACY_HMAC_KEY_V<k>`) to check old values. Existing values are never re-hashed, because the plain address is gone. A plain sha256 would be rejected: a dictionary of e-mail addresses can reverse it.
    - `description = '[removed]'`
    - Kept: `id, type, status, received_at, due_on, resolved_at, resolution, handled_by` and the audit columns. Handlers must write `resolution` without personal data.
 
@@ -28,8 +29,9 @@
 
 ## Consequences
 
-- `DELETE FROM person WHERE id = ?` always succeeds. `PersonDeleteIT` checks this and checks the FK rule against `pg_constraint`, so a new FK to `person` that breaks the rule fails the build.
-- Rows removed by a database cascade get no Envers DEL revision. The purge in rule 3 removes their history. `retention_run.deleted_count` and the person's deletion revision log the deletion (NFR-03).
+- Deleting a person always succeeds. `PersonDeleteIT` checks this through JPA, including the `revtype = 2` row, and checks the FK rule against `pg_constraint`, so a new FK to `person` that breaks the rule fails the build.
+- Rows removed by a database cascade get no Envers DEL revision. The purge in rule 3 removes their history. `retention_run.deleted_count` and the person's `revtype = 2` revision log the deletion (NFR-03).
+- Ops must provision and back up `PRIVACY_HMAC_KEY` separately from the database. If the key is lost, DSR e-mails can no longer be matched. The records themselves stay valid.
 - security-privacy implements the order: minimise DSRs → `PersonDataApi.anonymise` or `delete` → `PersonAnonymised(deleted)` listeners scrub → `_aud` purge.
 
 ## Alternatives considered
