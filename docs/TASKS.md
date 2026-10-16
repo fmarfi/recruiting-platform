@@ -31,10 +31,10 @@ Runs in two parts so builders never guess shared foundations. Endpoints are list
 
 | ID | Task | Owner | Status | Blocked by |
 | --- | --- | --- | --- | --- |
-| W1-01 | Flyway migrations for every table in `contracts/schema.md` (extensions unaccent, pg_trgm; vector deferred to Phase 2), `immutable_unaccent` function, CHECK constraints from enums, indexes incl. trigram search, Spring Modulith `event_publication` table, `account_open_job` projection | db-engineer | todo | Gate 0 |
-| W1-02 | JPA entities + Envers + repositories per module in `<module>/.../<module>/domain/`; repository tests on embedded PostgreSQL (no Docker locally) | db-engineer | todo | Gate 0 |
-| W1-03 | `frontend/` scaffold: Vite + React + TS strict + Mantine theme from design tokens, `openapi-typescript` client, React Router with placeholder routes per screen, i18next TR/EN, Vitest, `npm run mock` (Prism) | devops | todo | Gate 0 |
-| W1-04 | CI: frontend job, Prism mock-server smoke job; app Dockerfile; add `spring-modulith-starter-jpa` (and exclude its auto-config in the test profile); contracts sources via build-helper `add-source` instead of `sourceDirectory=${project.basedir}`; update devops hand-off | devops | todo | Gate 0 |
+| W1-01 | Flyway migrations for every table in `contracts/schema.md` (extensions unaccent, pg_trgm; vector deferred to Phase 2), `immutable_unaccent` function, CHECK constraints from enums, indexes incl. trigram search, Spring Modulith `event_publication` table, `account_open_job` projection | db-engineer | in progress | Gate 0 |
+| W1-02 | JPA entities + Envers + repositories per module in `<module>/.../<module>/domain/`; repository tests on embedded PostgreSQL (no Docker locally) | db-engineer | in progress | Gate 0 |
+| W1-03 | `frontend/` scaffold: Vite + React + TS strict + Mantine theme from design tokens, `openapi-typescript` client, React Router with placeholder routes per screen, i18next TR/EN, Vitest, `npm run mock` (Prism) | devops | in progress | Gate 0 |
+| W1-04 | CI: frontend job, Prism mock-server smoke job; app Dockerfile; add `spring-modulith-starter-jpa` (and exclude its auto-config in the test profile); contracts sources via build-helper `add-source` instead of `sourceDirectory=${project.basedir}`; update devops hand-off | devops | in progress | Gate 0 |
 
 ### Wave 1b: features (parallel, after 1a merges)
 
