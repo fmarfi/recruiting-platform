@@ -1,0 +1,9 @@
+target/
+node_modules/
+dist/
+.env
+*.log
+.idea/
+.vscode/
+.claude/worktrees/
+.claude/settings.local.json
