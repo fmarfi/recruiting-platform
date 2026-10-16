@@ -1,0 +1,3488 @@
+openapi: 3.1.0
+info:
+  title: Recruiting Platform API
+  version: 1.0.0
+  summary: Phase 1 (Module A, CRM) REST contract plus users, roles, KVKK consent and audit.
+  description: |
+    Contract owned by the architect (Wave 0). Backends implement it, frontends build against the
+    mock server generated from it, QA writes contract tests from it. Changes go through the architect.
+
+    **Conventions (ADR 0006)**
+    - Base path `/api/v1`, JSON only (`application/json`), except CSV templates, file upload and errors
+      (`application/problem+json`).
+    - IDs are UUIDs (v7, time-ordered) as strings (ADR 0004).
+    - `date` is `YYYY-MM-DD`; `date-time` is RFC 3339 in UTC with `Z`, e.g. `2026-10-16T09:30:00Z`.
+    - Enum values are the Java enum names in `contracts/enums/` (e.g. `PROPOSAL_SENT`). Labels, tones and
+      allowed transitions come from `GET /reference-data`.
+    - Lists that can grow are paged: `page` (0-based, default 0), `size` (default 20, max 100) and
+      `sort=field,asc|desc` (repeatable). The response is `{ content: [...], page: { size, number,
+      totalElements, totalPages } }` (Spring Data `PagedModel`). Small, bounded sub-lists (contacts of an
+      account, candidates on a board, links of a person) are plain arrays.
+    - Updates use `PATCH` with only the fields to change. Every mutable resource has a `version`; send it
+      back to get optimistic locking (409 `VERSION_CONFLICT` on mismatch); omitting it skips the check.
+    - Status changes are separate `PATCH .../status` (or `/stage`) calls with an optional `reason`. The
+      reason is required for: account to ON_HOLD, to CLOSED, CLOSED to LEAD; proposal to REJECTED; job
+      order to CANCELLED; stage to REJECTED; data-subject request to REJECTED (400 `REASON_REQUIRED`).
+      Moves outside the transition table give 409 `ILLEGAL_TRANSITION`; data guards give 409
+      `TRANSITION_GUARD_FAILED`; manager-only moves (account to CLOSED, CLOSED to LEAD, job order
+      CANCELLED to OPEN) give 403 `FORBIDDEN` for consultants.
+    - Errors are RFC 9457 problem details with a machine-readable `code` (see `ProblemDetail`).
+
+    **Security (ADR 0007)**: session cookie after `POST /auth/login`. State-changing requests send the
+    CSRF token from the `XSRF-TOKEN` cookie in the `X-XSRF-TOKEN` header. Every operation needs a logged-in
+    user unless it has `security: []`. `x-roles` lists the roles allowed; `x-owner` names the module and
+    agent that implement the endpoint.
+  contact:
+    name: architect agent
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/v1
+    description: Same origin as the web app
+security:
+  - sessionCookie: []
+tags:
+  - name: Auth
+    description: Login, logout, current user. Module `security` (security-privacy).
+  - name: Users
+    description: Users and roles (Settings screen). Module `security` (security-privacy).
+  - name: Reference data
+    description: Status lifecycles, vocabularies and sectors for badges and pickers. Module `accounts` (backend-accounts); lifecycles are read from `contracts/enums`.
+  - name: Accounts
+    description: Client accounts, account status, account connections (A-01, A-02, A-13). Module `accounts` (backend-accounts).
+  - name: Contacts
+    description: People linked to an account with their role (A-03). Module `accounts` (backend-accounts).
+  - name: People
+    description: The network of people (A-12). Module `accounts` (backend-accounts).
+  - name: Network links
+    description: Who knows whom, who introduced whom (A-13). Module `accounts` (backend-accounts).
+  - name: Import
+    description: One-off CSV/Excel migration (A-11). Module `accounts` (backend-accounts).
+  - name: Search
+    description: One search box across accounts, people and job orders (A-14). Module `accounts` (backend-accounts), job orders contributed by `pipeline`.
+  - name: Job orders
+    description: Job orders inside an account and their status (A-06). Module `pipeline` (backend-pipeline).
+  - name: Pipeline
+    description: Candidates per job order and their stage (A-07, UX-04). Module `pipeline` (backend-pipeline).
+  - name: Proposals
+    description: Commercial proposals and their status (A-05). Module `pipeline` (backend-pipeline).
+  - name: Activities
+    description: Calls, visits, meetings, e-mails, notes per account and person (A-04, UX-06). Module `pipeline` (backend-pipeline).
+  - name: Next actions
+    description: Follow-ups with owner and due date (A-10). Module `pipeline` (backend-pipeline).
+  - name: Account overview
+    description: Timeline and dashboard of an account (A-08, A-09). Module `pipeline` (backend-pipeline).
+  - name: Home
+    description: My day (UX-01). Module `pipeline` (backend-pipeline).
+  - name: Consent
+    description: KVKK information notice, consent requests and consent records per person (S-01, NFR-01, NFR-02). Module `privacy` (security-privacy).
+  - name: Public consent
+    description: Pages the person opens from the consent e-mail; no login (S-01). Module `privacy` (security-privacy).
+  - name: Privacy notices
+    description: Versioned KVKK information and consent texts (NFR-02). Module `privacy` (security-privacy).
+  - name: Retention
+    description: Retention settings, flagged people and retention runs (S-03, NFR-03). Module `privacy` (security-privacy).
+  - name: Data-subject requests
+    description: Access, correction and deletion requests and the person export (S-04, NFR-11). Module `privacy` (security-privacy).
+  - name: Audit
+    description: Access log and change history (NFR-05, A-02). Module `security` (security-privacy).
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Log in with e-mail and password
+      description: Starts a session (sets the session cookie and the `XSRF-TOKEN` cookie).
+      security: []
+      x-roles: [PUBLIC]
+      x-owner: security / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentUser' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Log out and end the session
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      responses:
+        '204': { description: Logged out }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: The logged-in user
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentUser' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Auth]
+      operationId: updateCurrentUser
+      summary: Change own display name or language
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CurrentUserUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentUser' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/password:
+    post:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Change own password
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordChangeRequest' }
+      responses:
+        '204': { description: Password changed }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: List users (owner pickers, Settings)
+      description: All roles may read the list (needed for owner pickers); only admins see inactive users unless `active=true`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - name: role
+          in: query
+          schema: { $ref: '#/components/schemas/Role' }
+        - name: active
+          in: query
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of users
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: Create a user
+      x-roles: [ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: Get a user
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Users]
+      operationId: updateUser
+      summary: Change name, role, language or deactivate a user
+      description: Users are never deleted (they are referenced as owners and in the audit trail); set `active=false`.
+      x-roles: [ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users/{id}/password-reset:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Users]
+      operationId: resetUserPassword
+      summary: Set a new initial password for a user
+      x-roles: [ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordResetRequest' }
+      responses:
+        '204': { description: Password reset; the user must change it at next login }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /reference-data:
+    get:
+      tags: [Reference data]
+      operationId: getReferenceData
+      summary: Lifecycles, vocabularies and sectors
+      description: |
+        Everything the UI needs to draw badges, status menus and pickers: every lifecycle with labels,
+        tone, allowed next statuses and which moves need a reason or a manager; the vocabularies; the
+        sectors in use; the board column order; today's date on the server. Cacheable for the session.
+        Status lists are closed sets in Phase 1 (ADR 0002), so the Settings screen shows them read-only.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Reference data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReferenceData' }
+              example:
+                today: '2026-10-16'
+                lifecycles:
+                  account:
+                    initial: LEAD
+                    statuses:
+                      - { value: LEAD, labelEn: "Lead", labelTr: "Aday müşteri", tone: NEUTRAL, terminal: false, next: [{ to: PROPOSAL_SENT, reasonRequired: false, managerOnly: false }, { to: CLOSED, reasonRequired: true, managerOnly: true }] }
+                      - { value: PROPOSAL_SENT, labelEn: "Proposal sent", labelTr: "Teklif gönderildi", tone: INFO, terminal: false, next: [{ to: LEAD, reasonRequired: false, managerOnly: false }, { to: ACTIVE, reasonRequired: false, managerOnly: false }, { to: ON_HOLD, reasonRequired: true, managerOnly: false }, { to: CLOSED, reasonRequired: true, managerOnly: true }] }
+                      - { value: ACTIVE, labelEn: "Active", labelTr: "Aktif", tone: GOOD, terminal: false, next: [{ to: ON_HOLD, reasonRequired: true, managerOnly: false }, { to: CLOSED, reasonRequired: true, managerOnly: true }] }
+                      - { value: ON_HOLD, labelEn: "On hold", labelTr: "Beklemede", tone: WARN, terminal: false, next: [{ to: ACTIVE, reasonRequired: false, managerOnly: false }, { to: CLOSED, reasonRequired: true, managerOnly: true }] }
+                      - { value: CLOSED, labelEn: "Closed", labelTr: "Kapalı", tone: MUTED, terminal: false, next: [{ to: LEAD, reasonRequired: true, managerOnly: true }] }
+                  proposal:
+                    initial: DRAFT
+                    statuses:
+                      - { value: DRAFT, labelEn: "Draft", labelTr: "Taslak", tone: NEUTRAL, terminal: false, next: [{ to: SENT, reasonRequired: false, managerOnly: false }] }
+                      - { value: SENT, labelEn: "Sent", labelTr: "Gönderildi", tone: INFO, terminal: false, next: [{ to: DRAFT, reasonRequired: false, managerOnly: false }, { to: ACCEPTED, reasonRequired: false, managerOnly: false }, { to: REJECTED, reasonRequired: true, managerOnly: false }] }
+                      - { value: ACCEPTED, labelEn: "Accepted", labelTr: "Kabul edildi", tone: GOOD, terminal: true, next: [] }
+                      - { value: REJECTED, labelEn: "Rejected", labelTr: "Reddedildi", tone: BAD, terminal: false, next: [{ to: DRAFT, reasonRequired: false, managerOnly: false }] }
+                  jobOrder:
+                    initial: OPEN
+                    statuses:
+                      - { value: OPEN, labelEn: "Open", labelTr: "Açık", tone: NEUTRAL, terminal: false, next: [{ to: SOURCING, reasonRequired: false, managerOnly: false }, { to: CANCELLED, reasonRequired: true, managerOnly: false }] }
+                      - { value: SOURCING, labelEn: "Sourcing", labelTr: "Aday arama", tone: INFO, terminal: false, next: [{ to: SHORTLIST_SENT, reasonRequired: false, managerOnly: false }, { to: CANCELLED, reasonRequired: true, managerOnly: false }] }
+                      - { value: SHORTLIST_SENT, labelEn: "Shortlist sent", labelTr: "Kısa liste gönderildi", tone: PROGRESS, terminal: false, next: [{ to: SOURCING, reasonRequired: false, managerOnly: false }, { to: INTERVIEWING, reasonRequired: false, managerOnly: false }, { to: CANCELLED, reasonRequired: true, managerOnly: false }] }
+                      - { value: INTERVIEWING, labelEn: "Interviewing", labelTr: "Mülakatlar", tone: PROGRESS, terminal: false, next: [{ to: SOURCING, reasonRequired: false, managerOnly: false }, { to: OFFER, reasonRequired: false, managerOnly: false }, { to: CANCELLED, reasonRequired: true, managerOnly: false }] }
+                      - { value: OFFER, labelEn: "Offer", labelTr: "Teklif", tone: PROGRESS, terminal: false, next: [{ to: INTERVIEWING, reasonRequired: false, managerOnly: false }, { to: FILLED, reasonRequired: false, managerOnly: false }, { to: CANCELLED, reasonRequired: true, managerOnly: false }] }
+                      - { value: FILLED, labelEn: "Filled", labelTr: "Kapatıldı", tone: GOOD, terminal: true, next: [] }
+                      - { value: CANCELLED, labelEn: "Cancelled", labelTr: "İptal", tone: MUTED, terminal: false, next: [{ to: OPEN, reasonRequired: false, managerOnly: true }] }
+                  pipelineStage:
+                    initial: SOURCED
+                    statuses:
+                      - { value: SOURCED, labelEn: "Sourced", labelTr: "Bulundu", tone: NEUTRAL, terminal: false, next: [{ to: SCREENED, reasonRequired: false, managerOnly: false }, { to: PRESENTED, reasonRequired: false, managerOnly: false }, { to: CLIENT_INTERVIEW, reasonRequired: false, managerOnly: false }, { to: OFFER, reasonRequired: false, managerOnly: false }, { to: REJECTED, reasonRequired: true, managerOnly: false }] }
+                      - { value: SCREENED, labelEn: "Screened", labelTr: "Ön görüşme", tone: INFO, terminal: false, next: [{ to: SOURCED, reasonRequired: false, managerOnly: false }, { to: PRESENTED, reasonRequired: false, managerOnly: false }, { to: CLIENT_INTERVIEW, reasonRequired: false, managerOnly: false }, { to: OFFER, reasonRequired: false, managerOnly: false }, { to: REJECTED, reasonRequired: true, managerOnly: false }] }
+                      - { value: PRESENTED, labelEn: "Presented", labelTr: "Müşteriye sunuldu", tone: PROGRESS, terminal: false, next: [{ to: SCREENED, reasonRequired: false, managerOnly: false }, { to: CLIENT_INTERVIEW, reasonRequired: false, managerOnly: false }, { to: OFFER, reasonRequired: false, managerOnly: false }, { to: REJECTED, reasonRequired: true, managerOnly: false }] }
+                      - { value: CLIENT_INTERVIEW, labelEn: "Client interview", labelTr: "Müşteri mülakatı", tone: PROGRESS, terminal: false, next: [{ to: PRESENTED, reasonRequired: false, managerOnly: false }, { to: OFFER, reasonRequired: false, managerOnly: false }, { to: REJECTED, reasonRequired: true, managerOnly: false }] }
+                      - { value: OFFER, labelEn: "Offer", labelTr: "Teklif", tone: PROGRESS, terminal: false, next: [{ to: CLIENT_INTERVIEW, reasonRequired: false, managerOnly: false }, { to: PLACED, reasonRequired: false, managerOnly: false }, { to: REJECTED, reasonRequired: true, managerOnly: false }] }
+                      - { value: PLACED, labelEn: "Placed", labelTr: "Yerleşti", tone: GOOD, terminal: true, next: [] }
+                      - { value: REJECTED, labelEn: "Rejected", labelTr: "Elendi", tone: BAD, terminal: false, next: [{ to: SOURCED, reasonRequired: false, managerOnly: false }, { to: SCREENED, reasonRequired: false, managerOnly: false }] }
+                  consent:
+                    initial: NOT_SENT
+                    statuses:
+                      - { value: NOT_SENT, labelEn: "Not requested", labelTr: "İstenmedi", tone: NEUTRAL, terminal: false, next: [{ to: SENT, reasonRequired: false, managerOnly: false }, { to: GIVEN, reasonRequired: false, managerOnly: false }, { to: REFUSED, reasonRequired: false, managerOnly: false }] }
+                      - { value: SENT, labelEn: "Requested", labelTr: "İstendi", tone: INFO, terminal: false, next: [{ to: SENT, reasonRequired: false, managerOnly: false }, { to: GIVEN, reasonRequired: false, managerOnly: false }, { to: REFUSED, reasonRequired: false, managerOnly: false }] }
+                      - { value: GIVEN, labelEn: "Given", labelTr: "Onay verdi", tone: GOOD, terminal: false, next: [{ to: GIVEN, reasonRequired: false, managerOnly: false }, { to: WITHDRAWN, reasonRequired: false, managerOnly: false }] }
+                      - { value: REFUSED, labelEn: "Refused", labelTr: "Reddetti", tone: BAD, terminal: false, next: [{ to: SENT, reasonRequired: false, managerOnly: false }, { to: GIVEN, reasonRequired: false, managerOnly: false }] }
+                      - { value: WITHDRAWN, labelEn: "Withdrawn", labelTr: "Geri çekti", tone: WARN, terminal: false, next: [{ to: SENT, reasonRequired: false, managerOnly: false }, { to: GIVEN, reasonRequired: false, managerOnly: false }] }
+                  dataSubjectRequest:
+                    initial: RECEIVED
+                    statuses:
+                      - { value: RECEIVED, labelEn: "Received", labelTr: "Alındı", tone: NEUTRAL, terminal: false, next: [{ to: IN_PROGRESS, reasonRequired: false, managerOnly: false }, { to: REJECTED, reasonRequired: true, managerOnly: false }] }
+                      - { value: IN_PROGRESS, labelEn: "In progress", labelTr: "İşlemde", tone: PROGRESS, terminal: false, next: [{ to: COMPLETED, reasonRequired: false, managerOnly: false }, { to: REJECTED, reasonRequired: true, managerOnly: false }] }
+                      - { value: COMPLETED, labelEn: "Completed", labelTr: "Tamamlandı", tone: GOOD, terminal: true, next: [] }
+                      - { value: REJECTED, labelEn: "Rejected", labelTr: "Reddedildi", tone: BAD, terminal: true, next: [] }
+                stageOrder: [SOURCED, SCREENED, PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED, REJECTED]
+                vocabularies:
+                  personType: [EXECUTIVE, CLIENT_CONTACT, REFERRER, CANDIDATE]
+                  activityType: [CALL, VISIT, MEETING, EMAIL, NOTE]
+                  linkType: [KNOWS, WORKED_WITH, INTRODUCED, REFERRED, REPORTS_TO]
+                  role: [CONSULTANT, MANAGER, ADMIN]
+                  consentChannel: [EMAIL_LINK, WEBSITE_FORM, IN_PERSON, PHONE, IMPORT]
+                  dataSubjectRequestType: [ACCESS, CORRECTION, DELETION, OTHER]
+                  language: [TR, EN]
+                sectors: [Construction, Energy, Finance, FMCG, Retail, Technology]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /accounts:
+    get:
+      tags: [Accounts]
+      operationId: listAccounts
+      summary: Accounts overview, filterable by status, sector and owner (A-01)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - name: status
+          in: query
+          description: One or more statuses (repeat the parameter).
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/AccountStatus' }
+          style: form
+          explode: true
+        - name: sector
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: sort
+          in: query
+          description: 'Sortable: `name`, `status`, `openedOn`, `lastActivityAt`, `openJobCount`. Default `name,asc`.'
+          schema:
+            type: array
+            items: { type: string }
+            examples: [['lastActivityAt,desc']]
+      responses:
+        '200':
+          description: Page of accounts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Accounts]
+      operationId: createAccount
+      summary: Add a client account (status LEAD)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Accounts]
+      operationId: getAccount
+      summary: Account header (UX-05)
+      description: Tabs load separately — contacts, job orders (`GET /job-orders?accountId=`), proposals (`GET /proposals?accountId=`), timeline, dashboard, next actions (`GET /next-actions?accountId=`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Accounts]
+      operationId: updateAccount
+      summary: Change account details (not the status)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Accounts]
+      operationId: changeAccountStatus
+      summary: Move the account to another status (A-02)
+      description: |
+        Reason required for ON_HOLD, CLOSED and CLOSED to LEAD (400 `REASON_REQUIRED`). CLOSED and
+        CLOSED to LEAD are manager/admin only (403). Guard: an account with open job orders cannot be
+        closed (409 `TRANSITION_GUARD_FAILED`). Logged with date and user (timeline, Envers).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountStatusChangeRequest' }
+      responses:
+        '200':
+          description: Status changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/{id}/connections:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Accounts]
+      operationId: listAccountConnections
+      summary: People connected to the account's contacts (A-13 company view)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Connections, one per (contact, linked person)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AccountConnection' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /accounts/{id}/contacts:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Contacts]
+      operationId: listAccountContacts
+      summary: Contacts of an account, primary first (A-03)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Contact' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Contacts]
+      operationId: addAccountContact
+      summary: Link an existing person or create a new one as contact
+      description: Give exactly one of `personId` and `person`. Setting `primary=true` clears the flag on the other contacts.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactCreateRequest' }
+      responses:
+        '201':
+          description: Contact added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contact' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/{id}/contacts/{contactId}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+      - name: contactId
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/Id' }
+    patch:
+      tags: [Contacts]
+      operationId: updateAccountContact
+      summary: Change a contact's role or primary flag
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contact' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Contacts]
+      operationId: removeAccountContact
+      summary: Remove the contact link (the person stays in the network)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /people:
+    get:
+      tags: [People]
+      operationId: listPeople
+      summary: Network list with filters (A-12, UX-06)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - name: type
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/PersonType' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/OwnerId'
+        - name: consentStatus
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ConsentStatus' }
+          style: form
+          explode: true
+        - name: lastContactBefore
+          in: query
+          description: Last contact on or before this date (or never).
+          schema: { type: string, format: date }
+        - name: lastContactAfter
+          in: query
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: sort
+          in: query
+          description: 'Sortable: `name`, `company`, `lastContactAt`, `createdAt`. Default `name,asc`.'
+          schema:
+            type: array
+            items: { type: string }
+      responses:
+        '200':
+          description: Page of people
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonSummaryPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [People]
+      operationId: createPerson
+      summary: Add a person to the network
+      description: Consent status starts at NOT_SENT. The privacy module may queue the KVKK notice e-mail (S-01) per retention settings. A second person with the same e-mail gives 409 `DUPLICATE` with `existingId`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [People]
+      operationId: getPerson
+      summary: Person page header and details
+      description: Recorded in the access log (VIEW). Related lists load separately — contact roles, links, applications (`GET /people/{id}/applications`), activities (`GET /activities?personId=`), next actions, consent.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Person
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [People]
+      operationId: updatePerson
+      summary: Change person details
+      description: '`employments`, when sent, replaces the whole company history. Anonymised people cannot be edited (409 `STATE_CONFLICT`).'
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/contact-roles:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Contacts]
+      operationId: listPersonContactRoles
+      summary: Accounts where the person is a contact, with role
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Contact roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Contact' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /people/{id}/links:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Network links]
+      operationId: listPersonLinks
+      summary: A person's connections, both directions (A-13)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Connections
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PersonConnection' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /network-links:
+    post:
+      tags: [Network links]
+      operationId: createNetworkLink
+      summary: Record who knows or introduced whom
+      description: '`fromPersonId` must differ from `toPersonId`. The same (from, to, type) twice gives 409 `DUPLICATE`; for symmetric types (KNOWS, WORKED_WITH) the reverse direction counts as the same link.'
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NetworkLinkCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NetworkLink' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /network-links/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Network links]
+      operationId: getNetworkLink
+      summary: Get a link
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NetworkLink' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Network links]
+      operationId: updateNetworkLink
+      summary: Change a link's type or note
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NetworkLinkUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NetworkLink' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Network links]
+      operationId: deleteNetworkLink
+      summary: Delete a link
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /imports:
+    get:
+      tags: [Import]
+      operationId: listImports
+      summary: Past and pending imports
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of import jobs
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJobPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Import]
+      operationId: uploadImport
+      summary: Upload a CSV or XLSX file and validate it (dry run, A-11)
+      description: |
+        Nothing is written yet. The response lists row errors; commit with `POST /imports/{id}/commit`.
+        Max 10 MB, max 10,000 rows. CSV is UTF-8 with a header row (see the template). Rows match
+        existing records by e-mail (people) or exact name (accounts) and are skipped as duplicates.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [kind, file]
+              properties:
+                kind: { $ref: '#/components/schemas/ImportKind' }
+                file:
+                  type: string
+                  contentMediaType: application/octet-stream
+                  description: .csv or .xlsx
+            encoding:
+              file:
+                contentType: text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        '201':
+          description: Validated (status VALIDATED, or FAILED if unreadable)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+  /import-templates/{kind}:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/ImportKind' }
+    get:
+      tags: [Import]
+      operationId: getImportTemplate
+      summary: Empty CSV template with the expected header row
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: CSV template
+          content:
+            text/csv:
+              schema: { type: string }
+              example: "name,sector,city,website,ownerEmail\n"
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /imports/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Import]
+      operationId: getImport
+      summary: Import job with row errors
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Import job
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Import]
+      operationId: discardImport
+      summary: Discard a validated import (status DISCARDED)
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '204': { description: Discarded }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /imports/{id}/commit:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Import]
+      operationId: commitImport
+      summary: Write the valid rows of a validated import
+      description: Rows with errors are skipped. Every imported person starts with consent NOT_SENT and enters the consent campaign (S-01).
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Import completed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /search:
+    get:
+      tags: [Search]
+      operationId: search
+      summary: One search box across accounts, people and job orders (A-14)
+      description: Accent- and case-insensitive (`ozturk` finds `Öztürk`). Returns up to `limit` hits per type plus total counts; use the list endpoints for the full result.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 200 }
+        - name: types
+          in: query
+          description: Types to search; default all.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/SearchType' }
+          style: form
+          explode: true
+        - name: sector
+          in: query
+          description: Accounts and job orders of accounts in this sector.
+          schema: { type: string }
+        - name: accountStatus
+          in: query
+          schema: { $ref: '#/components/schemas/AccountStatus' }
+        - name: jobOrderStatus
+          in: query
+          schema: { $ref: '#/components/schemas/JobOrderStatus' }
+        - $ref: '#/components/parameters/OwnerId'
+        - name: lastContactBefore
+          in: query
+          description: People only.
+          schema: { type: string, format: date }
+        - name: lastContactAfter
+          in: query
+          description: People only.
+          schema: { type: string, format: date }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+      responses:
+        '200':
+          description: Grouped results
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchResults' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /job-orders:
+    get:
+      tags: [Job orders]
+      operationId: listJobOrders
+      summary: Job orders, e.g. of one account or my open jobs
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/JobOrderStatus' }
+          style: form
+          explode: true
+        - name: open
+          in: query
+          description: '`true` = not FILLED or CANCELLED; `false` = FILLED or CANCELLED.'
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: sort
+          in: query
+          description: 'Sortable: `title`, `status`, `openedOn`, `daysOpen`. Default `openedOn,desc`.'
+          schema:
+            type: array
+            items: { type: string }
+      responses:
+        '200':
+          description: Page of job orders
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrderPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Job orders]
+      operationId: createJobOrder
+      summary: Open a job order inside an account (status OPEN)
+      description: A CLOSED account accepts no new job orders (409 `TRANSITION_GUARD_FAILED`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobOrderCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrder' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Job orders]
+      operationId: getJobOrder
+      summary: Job order header with stage counts
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Job order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrder' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Job orders]
+      operationId: updateJobOrder
+      summary: Change job order details (not the status)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobOrderUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrder' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Job orders]
+      operationId: changeJobOrderStatus
+      summary: Move the job order to another status (A-06)
+      description: |
+        Reason required for CANCELLED. CANCELLED to OPEN is manager/admin only (403). Guard: OFFER to
+        FILLED needs a PLACED application (409 `TRANSITION_GUARD_FAILED`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobOrderStatusChangeRequest' }
+      responses:
+        '200':
+          description: Status changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrder' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/applications:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Pipeline]
+      operationId: listJobOrderApplications
+      summary: Candidates on the board of a job order (UX-04)
+      description: All applications of the job order, including rejected ones; the board groups them by `stage` in the order of `ReferenceData.stageOrder`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - name: stage
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/PipelineStage' }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Pipeline]
+      operationId: addCandidateToJobOrder
+      summary: Put a person on the job order (stage SOURCED)
+      description: 'Guards: the job order must be open and its account not CLOSED (409 `TRANSITION_GUARD_FAILED`); the same person twice gives 409 `DUPLICATE`.'
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationCreateRequest' }
+      responses:
+        '201':
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/candidate-suggestions:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Pipeline]
+      operationId: listCandidateSuggestions
+      summary: People not yet on this job order (picker for adding by hand)
+      description: Phase 1 is a plain filter over the network (candidates and executives first); Phase 2 adds AI ranking behind the same endpoint.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Page of people
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonSummaryPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /applications/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Pipeline]
+      operationId: getApplication
+      summary: One candidate on one job order
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Application
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Pipeline]
+      operationId: removeApplication
+      summary: Remove a candidate added by mistake
+      description: Only while the stage is SOURCED (else 409 `STATE_CONFLICT`; use REJECTED instead).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /applications/{id}/stage:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Pipeline]
+      operationId: changeApplicationStage
+      summary: Move a candidate to another stage (drag on the board, A-07)
+      description: 'Reason required for REJECTED. PLACED only from OFFER. PLACED is final. A job order that is FILLED or CANCELLED accepts no stage moves (409 `TRANSITION_GUARD_FAILED`).'
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StageChangeRequest' }
+      responses:
+        '200':
+          description: Stage changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/applications:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Pipeline]
+      operationId: listPersonApplications
+      summary: Every pipeline the person is in, across accounts (B-05 preview)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Applications, most recently changed first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /proposals:
+    get:
+      tags: [Proposals]
+      operationId: listProposals
+      summary: Proposals, e.g. of one account (A-05)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ProposalStatus' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of proposals
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProposalPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Proposals]
+      operationId: createProposal
+      summary: Draft a proposal for an account (status DRAFT)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposalCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /proposals/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Proposals]
+      operationId: getProposal
+      summary: Get a proposal
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Proposal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Proposals]
+      operationId: updateProposal
+      summary: Change title, terms or fee (DRAFT only)
+      description: Title, terms and fee are read-only once the proposal is SENT (409 `STATE_CONFLICT`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposalUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /proposals/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Proposals]
+      operationId: changeProposalStatus
+      summary: Move the proposal to another status
+      description: Reason required for REJECTED. ACCEPTED is final.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposalStatusChangeRequest' }
+      responses:
+        '200':
+          description: Status changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /activities:
+    get:
+      tags: [Activities]
+      operationId: listActivities
+      summary: Activities per account, person or job order, newest first (A-04)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/PersonIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - name: type
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ActivityType' }
+          style: form
+          explode: true
+        - name: userId
+          in: query
+          description: Logged by this user.
+          schema: { $ref: '#/components/schemas/Id' }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of activities
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActivityPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Activities]
+      operationId: logActivity
+      summary: Quick add a call, visit, meeting, e-mail or note (UX-06)
+      description: At least one of `accountId` and `personId`. Updates the account's last activity and, except for NOTE, the person's last contact date.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActivityCreateRequest' }
+      responses:
+        '201':
+          description: Logged
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activity' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /activities/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Activities]
+      operationId: getActivity
+      summary: Get an activity
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Activity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activity' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Activities]
+      operationId: updateActivity
+      summary: Correct an activity (author, manager or admin)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActivityUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activity' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Activities]
+      operationId: deleteActivity
+      summary: Delete an activity (author, manager or admin)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /next-actions:
+    get:
+      tags: [Next actions]
+      operationId: listNextActions
+      summary: Follow-ups, e.g. mine and open, or of one account or person (A-10)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - name: mine
+          in: query
+          description: Only the current user's actions (same as `ownerId=<me>`).
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/PersonIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - name: done
+          in: query
+          schema: { type: boolean }
+        - name: dueBefore
+          in: query
+          description: Due on or before this date.
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: sort
+          in: query
+          description: Default `dueOn,asc`.
+          schema:
+            type: array
+            items: { type: string }
+      responses:
+        '200':
+          description: Page of next actions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NextActionPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Next actions]
+      operationId: createNextAction
+      summary: Add a follow-up (owner defaults to the current user)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NextActionCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NextAction' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /next-actions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Next actions]
+      operationId: updateNextAction
+      summary: Change, reassign, complete (`done=true`) or reopen a follow-up
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NextActionUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NextAction' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Next actions]
+      operationId: deleteNextAction
+      summary: Delete a follow-up
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /accounts/{id}/timeline:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Account overview]
+      operationId: getAccountTimeline
+      summary: Every status change, activity, proposal and candidate move, newest first (A-08)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - name: kind
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/TimelineKind' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Page of timeline entries
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimelineEntryPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /accounts/{id}/dashboard:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Account overview]
+      operationId: getAccountDashboard
+      summary: Open jobs, candidates per stage, days open, next action (A-09)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Dashboard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountDashboard' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /home:
+    get:
+      tags: [Home]
+      operationId: getMyDay
+      summary: My day — next actions, overdue follow-ups, recent accounts, open jobs (UX-01)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: My day
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MyDay' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /people/{id}/consent:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Consent]
+      operationId: getPersonConsent
+      summary: Consent status, notice date, last e-mail, retention and all consent records
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      responses:
+        '200':
+          description: Consent overview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentOverview' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /people/{id}/consent/requests:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Consent]
+      operationId: sendConsentRequest
+      summary: Send (or resend) the KVKK information notice and consent request e-mail (S-01)
+      description: |
+        Queues one e-mail with the current notice for the chosen language and a one-time link
+        (valid 30 days). Consent status moves to SENT unless it is GIVEN. The person needs an e-mail
+        address (else 409 `STATE_CONFLICT`). Delivery is asynchronous: watch `deliveryStatus`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentRequestCreateRequest' }
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/consent/records:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Consent]
+      operationId: recordConsentDecision
+      summary: Record a decision collected in person, by phone or from the old system
+      description: Stores text version, timestamp, channel and evidence (NFR-02). Records are append-only; a withdrawal is a new record.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentRecordCreateRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /consent-requests:
+    get:
+      tags: [Consent]
+      operationId: listConsentRequests
+      summary: Consent e-mails, e.g. failed deliveries to fix
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      parameters:
+        - $ref: '#/components/parameters/PersonIdQuery'
+        - name: deliveryStatus
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/EmailDeliveryStatus' }
+          style: form
+          explode: true
+        - name: answered
+          in: query
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of consent requests
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /consent-requests/bulk:
+    post:
+      tags: [Consent]
+      operationId: sendConsentRequestsBulk
+      summary: Consent campaign — queue requests for many people (e.g. after import)
+      description: Skips people without e-mail, with consent GIVEN, or with an unanswered request younger than 7 days.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentRequestBulkRequest' }
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentRequestBulkResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /public/consent/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        description: One-time token from the e-mail link (opaque, 43 chars base64url).
+        schema: { type: string, minLength: 20, maxLength: 100 }
+    get:
+      tags: [Public consent]
+      operationId: getPublicConsent
+      summary: Show the information notice and consent text to the person
+      security: []
+      x-roles: [PUBLIC]
+      x-owner: privacy / security-privacy
+      responses:
+        '200':
+          description: Notice and current status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicConsentView' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/Gone' }
+    post:
+      tags: [Public consent]
+      operationId: submitPublicConsent
+      summary: The person gives, refuses or withdraws consent
+      description: Creates a consent record with channel EMAIL_LINK. The token stays usable until expiry so the person can withdraw later.
+      security: []
+      x-roles: [PUBLIC]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PublicConsentDecisionRequest' }
+      responses:
+        '200':
+          description: Decision recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicConsentView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/Gone' }
+  /privacy-notices:
+    get:
+      tags: [Privacy notices]
+      operationId: listPrivacyNotices
+      summary: All notice versions, newest first
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      parameters:
+        - name: language
+          in: query
+          schema: { $ref: '#/components/schemas/Language' }
+        - name: current
+          in: query
+          description: Only the version in force per language.
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Notices
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PrivacyNotice' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Privacy notices]
+      operationId: createPrivacyNotice
+      summary: Publish a new notice version (immutable once created)
+      x-roles: [ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrivacyNoticeCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrivacyNotice' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /privacy-notices/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Privacy notices]
+      operationId: getPrivacyNotice
+      summary: Get one notice version
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      responses:
+        '200':
+          description: Notice
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrivacyNotice' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /retention/settings:
+    get:
+      tags: [Retention]
+      operationId: getRetentionSettings
+      summary: Retention period, basis, action and notice automation
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionSettings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Retention]
+      operationId: updateRetentionSettings
+      summary: Change retention settings (NFR-03)
+      x-roles: [ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RetentionSettings' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionSettings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /retention/flagged:
+    get:
+      tags: [Retention]
+      operationId: listRetentionFlagged
+      summary: People whose retention period ends soon or has ended (S-03)
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      parameters:
+        - name: retainUntilBefore
+          in: query
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of flagged people
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionItemPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /retention/runs:
+    get:
+      tags: [Retention]
+      operationId: listRetentionRuns
+      summary: Past retention runs (nightly and manual), newest first
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Page of runs
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRunPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Retention]
+      operationId: startRetentionRun
+      summary: Run the retention job now (dry run shows what would happen)
+      x-roles: [ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RetentionRunRequest' }
+      responses:
+        '201':
+          description: Run finished
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRun' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /data-subject-requests:
+    get:
+      tags: [Data-subject requests]
+      operationId: listDataSubjectRequests
+      summary: Logged data-subject requests (S-04)
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/DataSubjectRequestStatus' }
+          style: form
+          explode: true
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/DataSubjectRequestType' }
+        - $ref: '#/components/parameters/PersonIdQuery'
+        - name: overdue
+          in: query
+          description: Past `dueOn` and not final.
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of requests
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataSubjectRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Data-subject requests]
+      operationId: createDataSubjectRequest
+      summary: Log a request received by e-mail, letter or phone
+      description: Any user may log a request they received; `dueOn` = received date + 30 days.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DataSubjectRequestCreateRequest' }
+      responses:
+        '201':
+          description: Logged
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataSubjectRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /data-subject-requests/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Data-subject requests]
+      operationId: getDataSubjectRequest
+      summary: Get a request
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      responses:
+        '200':
+          description: Request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataSubjectRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Data-subject requests]
+      operationId: updateDataSubjectRequest
+      summary: Link the person, change status, record the resolution
+      description: Status follows the DataSubjectRequestStatus lifecycle; REJECTED needs a `reason`. Completing a DELETION request anonymises the linked person.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DataSubjectRequestUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataSubjectRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/export:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Data-subject requests]
+      operationId: exportPersonData
+      summary: Everything stored about a person, as JSON (S-04 access, NFR-11)
+      description: Recorded in the access log (EXPORT).
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      responses:
+        '200':
+          description: Export
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename="person-<id>.json"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonDataExport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /people/{id}/anonymise:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Data-subject requests]
+      operationId: anonymisePerson
+      summary: Anonymise a person now (deletion request or manual retention action)
+      description: Irreversible. Replaces name, e-mail, phone, notes and history with placeholders and scrubs free text in related records.
+      x-roles: [ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnonymiseRequest' }
+      responses:
+        '204': { description: Anonymised }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /audit/access-log:
+    get:
+      tags: [Audit]
+      operationId: listAccessLog
+      summary: Who viewed or exported a person's data (NFR-05)
+      x-roles: [ADMIN]
+      x-owner: security / security-privacy
+      parameters:
+        - name: userId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+        - name: entityType
+          in: query
+          schema: { $ref: '#/components/schemas/EntityType' }
+        - name: entityId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+        - name: action
+          in: query
+          schema: { $ref: '#/components/schemas/AccessAction' }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Page of access log entries, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccessLogEntryPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /audit/revisions:
+    get:
+      tags: [Audit]
+      operationId: listRevisions
+      summary: Change history of one record from Envers (who changed what, when)
+      x-roles: [MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      parameters:
+        - name: entityType
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/EntityType' }
+        - name: entityId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Id' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Page of revisions, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RevisionPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+      description: Session cookie set by `POST /auth/login`. With the mock server any value works (e.g. `JSESSIONID=mock`).
+  headers:
+    Location:
+      description: URL of the created resource
+      schema: { type: string, format: uri-reference }
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Id' }
+    Q:
+      name: q
+      in: query
+      description: Free-text filter (accent- and case-insensitive).
+      schema: { type: string, maxLength: 200 }
+    Page:
+      name: page
+      in: query
+      description: Page number, 0-based.
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      description: Page size.
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Sort:
+      name: sort
+      in: query
+      description: '`property,asc|desc`; repeat for several keys.'
+      schema:
+        type: array
+        items: { type: string, pattern: '^[A-Za-z]+(,(asc|desc))?$' }
+      style: form
+      explode: true
+    OwnerId:
+      name: ownerId
+      in: query
+      description: Responsible user.
+      schema: { $ref: '#/components/schemas/Id' }
+    AccountIdQuery:
+      name: accountId
+      in: query
+      schema: { $ref: '#/components/schemas/Id' }
+    PersonIdQuery:
+      name: personId
+      in: query
+      schema: { $ref: '#/components/schemas/Id' }
+    JobOrderIdQuery:
+      name: jobOrderId
+      in: query
+      schema: { $ref: '#/components/schemas/Id' }
+  responses:
+    BadRequest:
+      description: Validation failed (`VALIDATION_FAILED`) or a reason is missing (`REASON_REQUIRED`)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+          example:
+            type: urn:recruiting:problem:reason-required
+            title: Reason required
+            status: 400
+            detail: A reason is required to move to Rejected.
+            code: REASON_REQUIRED
+            requestedStatus: REJECTED
+            errors:
+              - { field: reason, code: REQUIRED, message: A reason is required. }
+    Unauthorized:
+      description: Not logged in, session expired (`UNAUTHENTICATED`) or wrong credentials (`BAD_CREDENTIALS`)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+          example:
+            type: urn:recruiting:problem:unauthenticated
+            title: Not logged in
+            status: 401
+            code: UNAUTHENTICATED
+    Forbidden:
+      description: The role does not allow this action (`FORBIDDEN`)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+          example:
+            type: urn:recruiting:problem:forbidden
+            title: Not allowed
+            status: 403
+            detail: Only managers and admins can close an account.
+            code: FORBIDDEN
+    NotFound:
+      description: No such record (`NOT_FOUND`)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+          example:
+            type: urn:recruiting:problem:not-found
+            title: Not found
+            status: 404
+            detail: Account 0192a5b8-0000-7000-8000-000000000001 does not exist.
+            code: NOT_FOUND
+    Conflict:
+      description: |
+        `ILLEGAL_TRANSITION` (with `currentStatus`, `requestedStatus`, `allowed`),
+        `TRANSITION_GUARD_FAILED`, `VERSION_CONFLICT`, `DUPLICATE` (with `existingId`) or `STATE_CONFLICT`
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+          example:
+            type: urn:recruiting:problem:illegal-transition
+            title: Illegal status change
+            status: 409
+            detail: Cannot move from Filled to Sourcing.
+            code: ILLEGAL_TRANSITION
+            currentStatus: FILLED
+            requestedStatus: SOURCING
+            allowed: []
+    Gone:
+      description: The consent link has expired (`GONE`)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+    Problem:
+      description: Other error (see `code`)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+  schemas:
+    # ---------- common ----------
+    Id:
+      type: string
+      format: uuid
+      description: UUID v7 (ADR 0004)
+      examples: [0192a5b8-6f1e-7c3a-9b2d-3f4e5a6b7c8d]
+    Version:
+      type: integer
+      format: int64
+      minimum: 0
+      description: Optimistic-lock version; send it back on updates.
+    Reason:
+      type: [string, 'null']
+      maxLength: 1000
+      description: Why the status changes. Required for some moves (see API description).
+    PageMeta:
+      type: object
+      required: [size, number, totalElements, totalPages]
+      properties:
+        size: { type: integer, examples: [20] }
+        number: { type: integer, description: 0-based page number, examples: [0] }
+        totalElements: { type: integer, format: int64, examples: [42] }
+        totalPages: { type: integer, examples: [3] }
+    ProblemDetail:
+      type: object
+      description: RFC 9457 problem details with extension members.
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri-reference, examples: [urn:recruiting:problem:validation-failed] }
+        title: { type: string, examples: [Validation failed] }
+        status: { type: integer, examples: [400] }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference, description: Request path }
+        code: { $ref: '#/components/schemas/ErrorCode' }
+        errors:
+          type: array
+          description: Field errors for VALIDATION_FAILED and REASON_REQUIRED.
+          items: { $ref: '#/components/schemas/FieldError' }
+        currentStatus: { type: string, description: ILLEGAL_TRANSITION and TRANSITION_GUARD_FAILED }
+        requestedStatus: { type: string, description: 'ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED and REASON_REQUIRED' }
+        allowed:
+          type: array
+          items: { type: string }
+          description: ILLEGAL_TRANSITION — the statuses the record may move to.
+        existingId:
+          $ref: '#/components/schemas/Id'
+          description: DUPLICATE — the record that already exists.
+    FieldError:
+      type: object
+      required: [field, code, message]
+      properties:
+        field: { type: string, examples: [name] }
+        code: { type: string, description: 'Bean Validation constraint, e.g. REQUIRED, SIZE, EMAIL, PATTERN', examples: [REQUIRED] }
+        message: { type: string, examples: [must not be blank] }
+    UserRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        name: { type: string, examples: [Deniz Aksoy] }
+    AccountRef:
+      type: object
+      required: [id, name, status]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        name: { type: string, examples: [Anadolu Gıda A.Ş.] }
+        status: { $ref: '#/components/schemas/AccountStatus' }
+    PersonRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        name: { type: string, examples: [Elif Yıldırım] }
+    JobOrderRef:
+      type: object
+      required: [id, title, status]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        title: { type: string, examples: [Chief Financial Officer] }
+        status: { $ref: '#/components/schemas/JobOrderStatus' }
+    # ---------- enums (contracts/enums) ----------
+    AccountStatus:
+      type: string
+      enum: [LEAD, PROPOSAL_SENT, ACTIVE, ON_HOLD, CLOSED]
+    ProposalStatus:
+      type: string
+      enum: [DRAFT, SENT, ACCEPTED, REJECTED]
+    JobOrderStatus:
+      type: string
+      enum: [OPEN, SOURCING, SHORTLIST_SENT, INTERVIEWING, OFFER, FILLED, CANCELLED]
+    PipelineStage:
+      type: string
+      enum: [SOURCED, SCREENED, PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED, REJECTED]
+    ConsentStatus:
+      type: string
+      enum: [NOT_SENT, SENT, GIVEN, REFUSED, WITHDRAWN]
+    DataSubjectRequestStatus:
+      type: string
+      enum: [RECEIVED, IN_PROGRESS, COMPLETED, REJECTED]
+    DataSubjectRequestType:
+      type: string
+      enum: [ACCESS, CORRECTION, DELETION, OTHER]
+    PersonType:
+      type: string
+      enum: [EXECUTIVE, CLIENT_CONTACT, REFERRER, CANDIDATE]
+    ActivityType:
+      type: string
+      enum: [CALL, VISIT, MEETING, EMAIL, NOTE]
+    LinkType:
+      type: string
+      enum: [KNOWS, WORKED_WITH, INTRODUCED, REFERRED, REPORTS_TO]
+    Role:
+      type: string
+      enum: [CONSULTANT, MANAGER, ADMIN]
+    ConsentDecision:
+      type: string
+      enum: [GIVEN, REFUSED, WITHDRAWN]
+    ConsentChannel:
+      type: string
+      enum: [EMAIL_LINK, WEBSITE_FORM, IN_PERSON, PHONE, IMPORT]
+    EmailDeliveryStatus:
+      type: string
+      enum: [QUEUED, SENT, FAILED]
+    RetentionStatus:
+      type: string
+      enum: [ACTIVE, FLAGGED, ANONYMISED]
+    RetentionBasis:
+      type: string
+      enum: [FROM_CREATED, FROM_LAST_CONTACT]
+    RetentionAction:
+      type: string
+      enum: [ANONYMISE, DELETE]
+    ImportKind:
+      type: string
+      enum: [ACCOUNTS, CONTACTS, PEOPLE]
+    ImportStatus:
+      type: string
+      enum: [VALIDATED, IMPORTING, COMPLETED, FAILED, DISCARDED]
+    TimelineKind:
+      type: string
+      enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE]
+    EntityType:
+      type: string
+      enum: [ACCOUNT, PERSON, CONTACT, NETWORK_LINK, JOB_ORDER, APPLICATION, PROPOSAL, ACTIVITY, NEXT_ACTION, USER, CONSENT_RECORD, CONSENT_REQUEST, PRIVACY_NOTICE, DATA_SUBJECT_REQUEST, IMPORT_JOB]
+    AccessAction:
+      type: string
+      enum: [VIEW, EXPORT, DOWNLOAD]
+    RevisionType:
+      type: string
+      enum: [ADD, MOD, DEL]
+    Language:
+      type: string
+      enum: [TR, EN]
+    SearchType:
+      type: string
+      enum: [ACCOUNT, PERSON, JOB_ORDER]
+    Tone:
+      type: string
+      enum: [NEUTRAL, INFO, PROGRESS, GOOD, WARN, BAD, MUTED]
+    ErrorCode:
+      type: string
+      enum: [VALIDATION_FAILED, REASON_REQUIRED, UNAUTHENTICATED, BAD_CREDENTIALS, FORBIDDEN, NOT_FOUND, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, VERSION_CONFLICT, DUPLICATE, STATE_CONFLICT, GONE, PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE, INTERNAL_ERROR]
+    # ---------- auth and users ----------
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, examples: [deniz.aksoy@example.com] }
+        password: { type: string, format: password, minLength: 1, maxLength: 200 }
+    CurrentUser:
+      type: object
+      required: [id, email, name, role, language, mustChangePassword]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        email: { type: string, format: email, examples: [deniz.aksoy@example.com] }
+        name: { type: string, examples: [Deniz Aksoy] }
+        role: { $ref: '#/components/schemas/Role' }
+        language: { $ref: '#/components/schemas/Language' }
+        mustChangePassword: { type: boolean, examples: [false] }
+    CurrentUserUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        language: { $ref: '#/components/schemas/Language' }
+    PasswordChangeRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, format: password }
+        newPassword: { type: string, format: password, minLength: 12, maxLength: 200 }
+    PasswordResetRequest:
+      type: object
+      required: [initialPassword]
+      properties:
+        initialPassword: { type: string, format: password, minLength: 12, maxLength: 200 }
+    User:
+      type: object
+      required: [id, email, name, role, active, language, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        email: { type: string, format: email }
+        name: { type: string, examples: [Deniz Aksoy] }
+        role: { $ref: '#/components/schemas/Role' }
+        active: { type: boolean, examples: [true] }
+        language: { $ref: '#/components/schemas/Language' }
+        lastLoginAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    UserPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/User' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    UserCreateRequest:
+      type: object
+      required: [email, name, role, initialPassword]
+      properties:
+        email: { type: string, format: email }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        role: { $ref: '#/components/schemas/Role' }
+        language: { $ref: '#/components/schemas/Language' }
+        initialPassword: { type: string, format: password, minLength: 12, maxLength: 200 }
+    UserUpdateRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        role: { $ref: '#/components/schemas/Role' }
+        active: { type: boolean }
+        language: { $ref: '#/components/schemas/Language' }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- reference data ----------
+    StatusDefinition:
+      type: object
+      required: [value, labelEn, labelTr, tone, terminal, next]
+      properties:
+        value: { type: string, examples: [ON_HOLD] }
+        labelEn: { type: string, examples: [On hold] }
+        labelTr: { type: string, examples: [Beklemede] }
+        tone: { $ref: '#/components/schemas/Tone' }
+        terminal: { type: boolean }
+        next:
+          type: array
+          description: Allowed next statuses with their rules.
+          items: { $ref: '#/components/schemas/TransitionDefinition' }
+    TransitionDefinition:
+      type: object
+      required: [to, reasonRequired, managerOnly]
+      properties:
+        to: { type: string, examples: [CLOSED] }
+        reasonRequired: { type: boolean, examples: [true] }
+        managerOnly: { type: boolean, description: Only MANAGER and ADMIN may make this move., examples: [true] }
+    LifecycleDefinition:
+      type: object
+      required: [initial, statuses]
+      properties:
+        initial: { type: string, examples: [LEAD] }
+        statuses:
+          type: array
+          description: In display order.
+          items: { $ref: '#/components/schemas/StatusDefinition' }
+    ReferenceData:
+      type: object
+      required: [today, lifecycles, stageOrder, vocabularies, sectors]
+      properties:
+        today: { type: string, format: date, description: Server date (Europe/Istanbul). }
+        lifecycles:
+          type: object
+          required: [account, proposal, jobOrder, pipelineStage, consent, dataSubjectRequest]
+          properties:
+            account: { $ref: '#/components/schemas/LifecycleDefinition' }
+            proposal: { $ref: '#/components/schemas/LifecycleDefinition' }
+            jobOrder: { $ref: '#/components/schemas/LifecycleDefinition' }
+            pipelineStage: { $ref: '#/components/schemas/LifecycleDefinition' }
+            consent: { $ref: '#/components/schemas/LifecycleDefinition' }
+            dataSubjectRequest: { $ref: '#/components/schemas/LifecycleDefinition' }
+        stageOrder:
+          type: array
+          description: Board columns, left to right (REJECTED last).
+          items: { $ref: '#/components/schemas/PipelineStage' }
+        vocabularies:
+          type: object
+          description: Values of the plain enums; labels come from the frontend i18n files.
+          required: [personType, activityType, linkType, role, consentChannel, dataSubjectRequestType, language]
+          properties:
+            personType: { type: array, items: { $ref: '#/components/schemas/PersonType' } }
+            activityType: { type: array, items: { $ref: '#/components/schemas/ActivityType' } }
+            linkType: { type: array, items: { $ref: '#/components/schemas/LinkType' } }
+            role: { type: array, items: { $ref: '#/components/schemas/Role' } }
+            consentChannel: { type: array, items: { $ref: '#/components/schemas/ConsentChannel' } }
+            dataSubjectRequestType: { type: array, items: { $ref: '#/components/schemas/DataSubjectRequestType' } }
+            language: { type: array, items: { $ref: '#/components/schemas/Language' } }
+        sectors:
+          type: array
+          description: Distinct sectors in use, sorted (free text on the account, suggested in pickers).
+          items: { type: string }
+          examples: [[Finance, FMCG, Retail, Technology]]
+    # ---------- accounts ----------
+    Account:
+      type: object
+      required: [id, name, sector, owner, status, statusChangedAt, openedOn, openJobCount, createdAt, updatedAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        name: { type: string, examples: [Anadolu Gıda A.Ş.] }
+        sector: { type: string, examples: [FMCG] }
+        city: { type: [string, 'null'], examples: [İstanbul] }
+        website: { type: [string, 'null'], format: uri }
+        notes: { type: [string, 'null'] }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        status: { $ref: '#/components/schemas/AccountStatus' }
+        statusChangedAt: { type: string, format: date-time }
+        openedOn: { type: string, format: date }
+        openJobCount: { type: integer, minimum: 0, description: Job orders not FILLED or CANCELLED., examples: [2] }
+        lastActivityAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    AccountPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Account' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    AccountCreateRequest:
+      type: object
+      required: [name, sector]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        sector: { type: string, minLength: 1, maxLength: 100 }
+        city: { type: [string, 'null'], maxLength: 100 }
+        website: { type: [string, 'null'], format: uri, maxLength: 300 }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        ownerId:
+          $ref: '#/components/schemas/Id'
+          description: Defaults to the current user.
+    AccountUpdateRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        sector: { type: string, minLength: 1, maxLength: 100 }
+        city: { type: [string, 'null'], maxLength: 100 }
+        website: { type: [string, 'null'], format: uri, maxLength: 300 }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        ownerId: { $ref: '#/components/schemas/Id' }
+        version: { $ref: '#/components/schemas/Version' }
+    AccountStatusChangeRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/AccountStatus' }
+        reason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    AccountConnection:
+      type: object
+      required: [contact, person, linkType, direction]
+      properties:
+        contact:
+          $ref: '#/components/schemas/PersonRef'
+          description: The account's contact.
+        person: { $ref: '#/components/schemas/PersonSummary' }
+        linkType: { $ref: '#/components/schemas/LinkType' }
+        direction: { $ref: '#/components/schemas/LinkDirection' }
+    # ---------- people ----------
+    PersonSummary:
+      type: object
+      required: [id, name, type, owner, consentStatus, retentionStatus]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        name: { type: string, examples: [Elif Yıldırım] }
+        title: { type: [string, 'null'], examples: [Finance Director] }
+        company: { type: [string, 'null'], examples: [Marmara Holding] }
+        type: { $ref: '#/components/schemas/PersonType' }
+        city: { type: [string, 'null'], examples: [Ankara] }
+        email: { type: [string, 'null'], format: email }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        lastContactAt: { type: [string, 'null'], format: date-time }
+        consentStatus: { $ref: '#/components/schemas/ConsentStatus' }
+        retentionStatus: { $ref: '#/components/schemas/RetentionStatus' }
+    PersonSummaryPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/PersonSummary' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    Employment:
+      type: object
+      required: [company]
+      properties:
+        company: { type: string, maxLength: 200, examples: [Marmara Holding] }
+        title: { type: [string, 'null'], maxLength: 200, examples: [Finance Director] }
+        startDate: { type: [string, 'null'], format: date }
+        endDate: { type: [string, 'null'], format: date, description: '`null` = current' }
+    Person:
+      allOf:
+        - $ref: '#/components/schemas/PersonSummary'
+        - type: object
+          required: [employments, anonymised, createdAt, updatedAt, version]
+          properties:
+            phone: { type: [string, 'null'], examples: ['+90 555 000 00 00'] }
+            linkedinUrl: { type: [string, 'null'], format: uri, description: Profile URL entered by hand; no scraping. }
+            howWeKnow: { type: [string, 'null'], examples: [Met at a CFO roundtable] }
+            notes: { type: [string, 'null'] }
+            employments:
+              type: array
+              description: Company history, most recent first.
+              items: { $ref: '#/components/schemas/Employment' }
+            anonymised: { type: boolean }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            version: { $ref: '#/components/schemas/Version' }
+    PersonCreateRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type: { $ref: '#/components/schemas/PersonType' }
+        title: { type: [string, 'null'], maxLength: 200 }
+        company: { type: [string, 'null'], maxLength: 200 }
+        email: { type: [string, 'null'], format: email, maxLength: 254 }
+        phone: { type: [string, 'null'], maxLength: 50 }
+        city: { type: [string, 'null'], maxLength: 100 }
+        linkedinUrl: { type: [string, 'null'], format: uri, maxLength: 300 }
+        howWeKnow: { type: [string, 'null'], maxLength: 1000 }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        ownerId:
+          $ref: '#/components/schemas/Id'
+          description: Defaults to the current user.
+        employments:
+          type: array
+          items: { $ref: '#/components/schemas/Employment' }
+    PersonUpdateRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type: { $ref: '#/components/schemas/PersonType' }
+        title: { type: [string, 'null'], maxLength: 200 }
+        company: { type: [string, 'null'], maxLength: 200 }
+        email: { type: [string, 'null'], format: email, maxLength: 254 }
+        phone: { type: [string, 'null'], maxLength: 50 }
+        city: { type: [string, 'null'], maxLength: 100 }
+        linkedinUrl: { type: [string, 'null'], format: uri, maxLength: 300 }
+        howWeKnow: { type: [string, 'null'], maxLength: 1000 }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        ownerId: { $ref: '#/components/schemas/Id' }
+        employments:
+          type: array
+          items: { $ref: '#/components/schemas/Employment' }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- contacts ----------
+    Contact:
+      type: object
+      required: [id, account, person, primary, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        person: { $ref: '#/components/schemas/PersonSummary' }
+        role: { type: [string, 'null'], examples: [HR Director] }
+        primary: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    ContactCreateRequest:
+      type: object
+      description: Exactly one of `personId` and `person`.
+      properties:
+        personId: { $ref: '#/components/schemas/Id' }
+        person: { $ref: '#/components/schemas/PersonCreateRequest' }
+        role: { type: [string, 'null'], maxLength: 200 }
+        primary: { type: boolean, default: false }
+    ContactUpdateRequest:
+      type: object
+      properties:
+        role: { type: [string, 'null'], maxLength: 200 }
+        primary: { type: boolean }
+    # ---------- network links ----------
+    LinkDirection:
+      type: string
+      description: Seen from the person whose links are listed. Symmetric types are always BOTH.
+      enum: [OUTGOING, INCOMING, BOTH]
+    NetworkLink:
+      type: object
+      required: [id, from, to, type, createdAt, createdBy]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        from: { $ref: '#/components/schemas/PersonRef' }
+        to: { $ref: '#/components/schemas/PersonRef' }
+        type: { $ref: '#/components/schemas/LinkType' }
+        note: { type: [string, 'null'], examples: [Introduced at a dinner in 2024] }
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/UserRef' }
+    NetworkLinkCreateRequest:
+      type: object
+      required: [fromPersonId, toPersonId, type]
+      properties:
+        fromPersonId: { $ref: '#/components/schemas/Id' }
+        toPersonId: { $ref: '#/components/schemas/Id' }
+        type: { $ref: '#/components/schemas/LinkType' }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    NetworkLinkUpdateRequest:
+      type: object
+      properties:
+        type: { $ref: '#/components/schemas/LinkType' }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    PersonConnection:
+      type: object
+      required: [linkId, type, direction, person]
+      properties:
+        linkId: { $ref: '#/components/schemas/Id' }
+        type: { $ref: '#/components/schemas/LinkType' }
+        direction: { $ref: '#/components/schemas/LinkDirection' }
+        person: { $ref: '#/components/schemas/PersonSummary' }
+        note: { type: [string, 'null'] }
+    # ---------- import ----------
+    ImportRowError:
+      type: object
+      required: [row, message]
+      properties:
+        row: { type: integer, description: 1-based data row (header excluded), examples: [7] }
+        column: { type: [string, 'null'], examples: [email] }
+        message: { type: string, examples: [Not a valid e-mail address] }
+    ImportJob:
+      type: object
+      required: [id, kind, status, fileName, totalRows, validRows, duplicateRows, importedRows, errors, createdAt, createdBy]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        kind: { $ref: '#/components/schemas/ImportKind' }
+        status: { $ref: '#/components/schemas/ImportStatus' }
+        fileName: { type: string, examples: [accounts.csv] }
+        totalRows: { type: integer, examples: [120] }
+        validRows: { type: integer, examples: [115] }
+        duplicateRows: { type: integer, description: Rows matching an existing record; skipped., examples: [3] }
+        importedRows: { type: integer, examples: [0] }
+        errors:
+          type: array
+          description: First 500 row errors.
+          items: { $ref: '#/components/schemas/ImportRowError' }
+        failureReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/UserRef' }
+        completedAt: { type: [string, 'null'], format: date-time }
+    ImportJobPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ImportJob' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    # ---------- search ----------
+    SearchResults:
+      type: object
+      required: [query, accounts, people, jobOrders, totals]
+      properties:
+        query: { type: string, examples: [ozturk] }
+        accounts:
+          type: array
+          items: { $ref: '#/components/schemas/Account' }
+        people:
+          type: array
+          items: { $ref: '#/components/schemas/PersonSummary' }
+        jobOrders:
+          type: array
+          items: { $ref: '#/components/schemas/JobOrder' }
+        totals:
+          type: object
+          required: [accounts, people, jobOrders]
+          properties:
+            accounts: { type: integer }
+            people: { type: integer }
+            jobOrders: { type: integer }
+    # ---------- job orders and pipeline ----------
+    StageCounts:
+      type: object
+      description: Applications per stage; every stage present.
+      required: [SOURCED, SCREENED, PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED, REJECTED]
+      properties:
+        SOURCED: { type: integer, examples: [3] }
+        SCREENED: { type: integer, examples: [2] }
+        PRESENTED: { type: integer, examples: [1] }
+        CLIENT_INTERVIEW: { type: integer, examples: [1] }
+        OFFER: { type: integer, examples: [0] }
+        PLACED: { type: integer, examples: [0] }
+        REJECTED: { type: integer, examples: [2] }
+    JobOrder:
+      type: object
+      required: [id, account, title, status, owner, openedOn, daysOpen, activeCandidates, stageCounts, statusChangedAt, createdAt, updatedAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        title: { type: string, examples: [Chief Financial Officer] }
+        location: { type: [string, 'null'], examples: [İstanbul] }
+        seniority: { type: [string, 'null'], examples: [C-level] }
+        description: { type: [string, 'null'] }
+        feeTerms: { type: [string, 'null'], examples: ['33% of first-year salary, retained'] }
+        status: { $ref: '#/components/schemas/JobOrderStatus' }
+        statusChangedAt: { type: string, format: date-time }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        openedOn: { type: string, format: date }
+        closedOn: { type: [string, 'null'], format: date, description: Set on FILLED or CANCELLED. }
+        daysOpen: { type: integer, description: From openedOn to closedOn or today., examples: [21] }
+        activeCandidates: { type: integer, description: Applications not PLACED or REJECTED., examples: [7] }
+        stageCounts: { $ref: '#/components/schemas/StageCounts' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    JobOrderPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/JobOrder' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    JobOrderCreateRequest:
+      type: object
+      required: [accountId, title]
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        location: { type: [string, 'null'], maxLength: 200 }
+        seniority: { type: [string, 'null'], maxLength: 100 }
+        description: { type: [string, 'null'], maxLength: 10000 }
+        feeTerms: { type: [string, 'null'], maxLength: 2000 }
+        openedOn: { type: string, format: date, description: Defaults to today. }
+        ownerId:
+          $ref: '#/components/schemas/Id'
+          description: Defaults to the current user.
+    JobOrderUpdateRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        location: { type: [string, 'null'], maxLength: 200 }
+        seniority: { type: [string, 'null'], maxLength: 100 }
+        description: { type: [string, 'null'], maxLength: 10000 }
+        feeTerms: { type: [string, 'null'], maxLength: 2000 }
+        openedOn: { type: string, format: date }
+        ownerId: { $ref: '#/components/schemas/Id' }
+        version: { $ref: '#/components/schemas/Version' }
+    JobOrderStatusChangeRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/JobOrderStatus' }
+        reason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    Application:
+      type: object
+      required: [id, jobOrder, account, person, stage, stageChangedAt, addedAt, addedBy, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        jobOrder: { $ref: '#/components/schemas/JobOrderRef' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        person: { $ref: '#/components/schemas/PersonSummary' }
+        stage: { $ref: '#/components/schemas/PipelineStage' }
+        rejectionReason: { type: [string, 'null'], description: Set while the stage is REJECTED. }
+        stageChangedAt: { type: string, format: date-time }
+        addedAt: { type: string, format: date-time }
+        addedBy: { $ref: '#/components/schemas/UserRef' }
+        version: { $ref: '#/components/schemas/Version' }
+    ApplicationCreateRequest:
+      type: object
+      required: [personId]
+      properties:
+        personId: { $ref: '#/components/schemas/Id' }
+    StageChangeRequest:
+      type: object
+      required: [stage]
+      properties:
+        stage: { $ref: '#/components/schemas/PipelineStage' }
+        reason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- proposals ----------
+    Proposal:
+      type: object
+      required: [id, account, title, status, statusChangedAt, owner, createdAt, updatedAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        title: { type: string, examples: [Executive search — CFO] }
+        terms: { type: [string, 'null'], examples: ['Retainer in three instalments, 90-day guarantee'] }
+        feeAmount: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$', description: Decimal as string to avoid rounding., examples: ['450000.00'] }
+        currency: { type: [string, 'null'], pattern: '^[A-Z]{3}$', examples: [TRY] }
+        status: { $ref: '#/components/schemas/ProposalStatus' }
+        statusChangedAt: { type: string, format: date-time }
+        statusReason: { type: [string, 'null'], description: Reason of the last status change (e.g. why rejected). }
+        sentOn: { type: [string, 'null'], format: date }
+        decidedOn: { type: [string, 'null'], format: date, description: Set on ACCEPTED or REJECTED. }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    ProposalPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Proposal' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    ProposalCreateRequest:
+      type: object
+      required: [accountId, title]
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        terms: { type: [string, 'null'], maxLength: 10000 }
+        feeAmount: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$' }
+        currency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        ownerId: { $ref: '#/components/schemas/Id' }
+    ProposalUpdateRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        terms: { type: [string, 'null'], maxLength: 10000 }
+        feeAmount: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$' }
+        currency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        ownerId: { $ref: '#/components/schemas/Id' }
+        version: { $ref: '#/components/schemas/Version' }
+    ProposalStatusChangeRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/ProposalStatus' }
+        reason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- activities and next actions ----------
+    Activity:
+      type: object
+      required: [id, type, note, occurredAt, user, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        type: { $ref: '#/components/schemas/ActivityType' }
+        note: { type: string, examples: [Discussed the CFO search timeline.] }
+        occurredAt: { type: string, format: date-time }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+        person: { oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }] }
+        jobOrder: { oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }] }
+        user: { $ref: '#/components/schemas/UserRef' }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    ActivityPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Activity' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    ActivityCreateRequest:
+      type: object
+      required: [type, note]
+      description: At least one of `accountId` and `personId`.
+      properties:
+        type: { $ref: '#/components/schemas/ActivityType' }
+        note: { type: string, minLength: 1, maxLength: 4000 }
+        occurredAt: { type: string, format: date-time, description: Defaults to now; may not be in the future. }
+        accountId: { $ref: '#/components/schemas/Id' }
+        personId: { $ref: '#/components/schemas/Id' }
+        jobOrderId: { $ref: '#/components/schemas/Id' }
+    ActivityUpdateRequest:
+      type: object
+      properties:
+        type: { $ref: '#/components/schemas/ActivityType' }
+        note: { type: string, minLength: 1, maxLength: 4000 }
+        occurredAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    NextAction:
+      type: object
+      required: [id, title, dueOn, owner, done, overdue, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        title: { type: string, examples: [Send shortlist to HR Director] }
+        dueOn: { type: string, format: date }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+        person: { oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }] }
+        jobOrder: { oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }] }
+        done: { type: boolean }
+        doneAt: { type: [string, 'null'], format: date-time }
+        overdue: { type: boolean, description: Not done and dueOn before today. }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    NextActionPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/NextAction' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    NextActionCreateRequest:
+      type: object
+      required: [title, dueOn]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        dueOn: { type: string, format: date }
+        ownerId: { $ref: '#/components/schemas/Id' }
+        accountId: { $ref: '#/components/schemas/Id' }
+        personId: { $ref: '#/components/schemas/Id' }
+        jobOrderId: { $ref: '#/components/schemas/Id' }
+    NextActionUpdateRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        dueOn: { type: string, format: date }
+        ownerId: { $ref: '#/components/schemas/Id' }
+        done: { type: boolean }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- timeline, dashboard, home ----------
+    TimelineEntry:
+      type: object
+      required: [id, accountId, occurredAt, kind, entityType, entityId, summary]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        accountId: { $ref: '#/components/schemas/Id' }
+        occurredAt: { type: string, format: date-time }
+        kind: { $ref: '#/components/schemas/TimelineKind' }
+        entityType: { $ref: '#/components/schemas/EntityType' }
+        entityId: { $ref: '#/components/schemas/Id' }
+        fromStatus: { type: [string, 'null'], examples: [ACTIVE] }
+        toStatus: { type: [string, 'null'], examples: [ON_HOLD] }
+        reason: { type: [string, 'null'], examples: [Client froze hiring until Q1] }
+        summary: { type: string, description: 'Short English text for logs; the UI builds its own TR/EN text from kind, statuses and refs.', examples: [Account moved from Active to On hold] }
+        person: { oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }] }
+        jobOrder: { oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }] }
+        actor: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }], description: '`null` for system jobs.' }
+    TimelineEntryPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/TimelineEntry' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    AccountDashboard:
+      type: object
+      required: [accountId, openJobOrders, candidatesPerStage, placedCount, openProposals]
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        openJobOrders: { type: integer, examples: [2] }
+        candidatesPerStage: { $ref: '#/components/schemas/StageCounts' }
+        avgDaysOpen: { type: [number, 'null'], description: Average days open of open job orders., examples: [18.5] }
+        placedCount: { type: integer, examples: [4] }
+        openProposals: { type: integer, description: DRAFT or SENT., examples: [1] }
+        nextAction: { oneOf: [{ $ref: '#/components/schemas/NextAction' }, { type: 'null' }] }
+    MyDay:
+      type: object
+      required: [user, today, nextActions, overdueCount, openJobOrders, recentAccounts, stats]
+      properties:
+        user: { $ref: '#/components/schemas/UserRef' }
+        today: { type: string, format: date }
+        nextActions:
+          type: array
+          description: Current user's open actions due within 7 days or overdue, by due date (max 20).
+          items: { $ref: '#/components/schemas/NextAction' }
+        overdueCount: { type: integer, examples: [2] }
+        openJobOrders:
+          type: array
+          description: Current user's open job orders (max 20).
+          items: { $ref: '#/components/schemas/JobOrder' }
+        recentAccounts:
+          type: array
+          description: 5 accounts with the latest activity.
+          items: { $ref: '#/components/schemas/Account' }
+        stats:
+          type: object
+          required: [activeAccounts, openJobOrders, candidatesInProcess, placedThisYear]
+          properties:
+            activeAccounts: { type: integer }
+            openJobOrders: { type: integer }
+            candidatesInProcess: { type: integer }
+            placedThisYear: { type: integer }
+    # ---------- privacy ----------
+    PrivacyNoticeRef:
+      type: object
+      required: [id, version, language]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        version: { type: string, examples: ['2026-10'] }
+        language: { $ref: '#/components/schemas/Language' }
+    PrivacyNotice:
+      type: object
+      required: [id, version, language, noticeText, consentText, effectiveFrom, current, createdAt, createdBy]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        version: { type: string, examples: ['2026-10'] }
+        language: { $ref: '#/components/schemas/Language' }
+        noticeText: { type: string, description: 'Information notice (aydınlatma metni), Markdown.' }
+        consentText: { type: string, description: 'Explicit consent declaration (açık rıza beyanı), Markdown.' }
+        effectiveFrom: { type: string, format: date }
+        current: { type: boolean, description: In force for its language. }
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/UserRef' }
+    PrivacyNoticeCreateRequest:
+      type: object
+      required: [version, language, noticeText, consentText, effectiveFrom]
+      properties:
+        version: { type: string, minLength: 1, maxLength: 40 }
+        language: { $ref: '#/components/schemas/Language' }
+        noticeText: { type: string, minLength: 1, maxLength: 50000 }
+        consentText: { type: string, minLength: 1, maxLength: 10000 }
+        effectiveFrom: { type: string, format: date }
+    ConsentRecord:
+      type: object
+      required: [id, personId, decision, channel, notice, recordedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        personId: { $ref: '#/components/schemas/Id' }
+        decision: { $ref: '#/components/schemas/ConsentDecision' }
+        channel: { $ref: '#/components/schemas/ConsentChannel' }
+        notice: { $ref: '#/components/schemas/PrivacyNoticeRef' }
+        recordedAt: { type: string, format: date-time, description: When the person decided. }
+        recordedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }], description: '`null` when the person used the e-mail link.' }
+        evidence: { type: [string, 'null'], description: E.g. "signed form in file 2026/14". }
+    ConsentRecordCreateRequest:
+      type: object
+      required: [decision, channel, noticeId]
+      properties:
+        decision: { $ref: '#/components/schemas/ConsentDecision' }
+        channel:
+          type: string
+          enum: [IN_PERSON, PHONE, IMPORT]
+          description: EMAIL_LINK and WEBSITE_FORM are recorded by the system only.
+        noticeId: { $ref: '#/components/schemas/Id' }
+        recordedAt: { type: string, format: date-time, description: Defaults to now; may not be in the future. }
+        evidence: { type: string, minLength: 1, maxLength: 1000 }
+    ConsentRequest:
+      type: object
+      required: [id, personId, notice, language, deliveryStatus, queuedAt, expiresAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        personId: { $ref: '#/components/schemas/Id' }
+        notice: { $ref: '#/components/schemas/PrivacyNoticeRef' }
+        language: { $ref: '#/components/schemas/Language' }
+        deliveryStatus: { $ref: '#/components/schemas/EmailDeliveryStatus' }
+        queuedAt: { type: string, format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+        failureReason: { type: [string, 'null'] }
+        expiresAt: { type: string, format: date-time }
+        respondedAt: { type: [string, 'null'], format: date-time }
+        response: { oneOf: [{ $ref: '#/components/schemas/ConsentDecision' }, { type: 'null' }] }
+        requestedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }], description: '`null` when sent automatically.' }
+    ConsentRequestPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ConsentRequest' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    ConsentRequestCreateRequest:
+      type: object
+      properties:
+        language:
+          $ref: '#/components/schemas/Language'
+          description: Defaults to TR.
+    ConsentRequestBulkRequest:
+      type: object
+      properties:
+        personIds:
+          type: array
+          maxItems: 1000
+          items: { $ref: '#/components/schemas/Id' }
+        importId:
+          $ref: '#/components/schemas/Id'
+          description: All people created by this import (instead of personIds).
+        consentStatus:
+          type: array
+          description: Or all people currently in these statuses.
+          items: { $ref: '#/components/schemas/ConsentStatus' }
+        language: { $ref: '#/components/schemas/Language' }
+    ConsentRequestBulkResult:
+      type: object
+      required: [queued, skipped]
+      properties:
+        queued: { type: integer, examples: [96] }
+        skipped: { type: integer, examples: [4] }
+    RetentionInfo:
+      type: object
+      required: [status, basisDate, retainUntil]
+      properties:
+        status: { $ref: '#/components/schemas/RetentionStatus' }
+        basisDate: { type: string, format: date, description: Start of the period per the retention basis. }
+        retainUntil: { type: string, format: date }
+        flaggedAt: { type: [string, 'null'], format: date-time }
+    ConsentOverview:
+      type: object
+      required: [personId, status, retention, records]
+      properties:
+        personId: { $ref: '#/components/schemas/Id' }
+        status: { $ref: '#/components/schemas/ConsentStatus' }
+        noticeSentAt: { type: [string, 'null'], format: date-time, description: First time the information notice was sent (NFR-01). }
+        lastRequest: { oneOf: [{ $ref: '#/components/schemas/ConsentRequest' }, { type: 'null' }] }
+        retention: { $ref: '#/components/schemas/RetentionInfo' }
+        records:
+          type: array
+          description: All consent records, newest first.
+          items: { $ref: '#/components/schemas/ConsentRecord' }
+    PublicConsentView:
+      type: object
+      required: [language, noticeVersion, noticeText, consentText, firstName, status, expiresAt]
+      properties:
+        language: { $ref: '#/components/schemas/Language' }
+        noticeVersion: { type: string }
+        noticeText: { type: string }
+        consentText: { type: string }
+        firstName: { type: string, description: First name only; no other personal data on the public page. }
+        controllerName: { type: string, description: The data controller (the firm). }
+        status: { $ref: '#/components/schemas/ConsentStatus' }
+        expiresAt: { type: string, format: date-time }
+    PublicConsentDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: { $ref: '#/components/schemas/ConsentDecision' }
+    RetentionSettings:
+      type: object
+      required: [retentionMonths, basis, action, warningDays, autoSendNotice, autoSendPersonTypes, version]
+      properties:
+        retentionMonths: { type: integer, minimum: 1, maximum: 120, default: 24, examples: [24] }
+        basis: { $ref: '#/components/schemas/RetentionBasis' }
+        action: { $ref: '#/components/schemas/RetentionAction' }
+        warningDays: { type: integer, minimum: 0, maximum: 365, default: 30, description: Flag this many days before the end. }
+        autoSendNotice: { type: boolean, default: true, description: Queue the notice and consent e-mail when a person with e-mail is created (S-01). }
+        autoSendPersonTypes:
+          type: array
+          description: Person types that get the automatic e-mail (default CANDIDATE, EXECUTIVE).
+          items: { $ref: '#/components/schemas/PersonType' }
+        renewOnConsent: { type: boolean, default: true, description: A GIVEN consent restarts the retention period. }
+        version: { $ref: '#/components/schemas/Version' }
+    RetentionItem:
+      type: object
+      required: [person, retention]
+      properties:
+        person: { $ref: '#/components/schemas/PersonSummary' }
+        retention: { $ref: '#/components/schemas/RetentionInfo' }
+    RetentionItemPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/RetentionItem' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    RetentionRunRequest:
+      type: object
+      required: [dryRun]
+      properties:
+        dryRun: { type: boolean, examples: [true] }
+    RetentionRun:
+      type: object
+      required: [id, startedAt, dryRun, flaggedCount, anonymisedCount, deletedCount]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+        triggeredBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }], description: '`null` = nightly scheduler.' }
+        dryRun: { type: boolean }
+        flaggedCount: { type: integer }
+        anonymisedCount: { type: integer }
+        deletedCount: { type: integer }
+        failureReason: { type: [string, 'null'] }
+    RetentionRunPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/RetentionRun' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    DataSubjectRequest:
+      type: object
+      required: [id, requesterName, requesterEmail, type, status, receivedAt, dueOn, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        person: { oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }], description: Linked once identified. }
+        requesterName: { type: string }
+        requesterEmail: { type: string, format: email }
+        type: { $ref: '#/components/schemas/DataSubjectRequestType' }
+        status: { $ref: '#/components/schemas/DataSubjectRequestStatus' }
+        description: { type: [string, 'null'] }
+        receivedAt: { type: string, format: date-time }
+        dueOn: { type: string, format: date, description: receivedAt + 30 days (KVKK art. 13). }
+        overdue: { type: boolean }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        resolution: { type: [string, 'null'], description: 'What was done, or why rejected.' }
+        handledBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/UserRef' }
+        version: { $ref: '#/components/schemas/Version' }
+    DataSubjectRequestPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/DataSubjectRequest' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    DataSubjectRequestCreateRequest:
+      type: object
+      required: [requesterName, requesterEmail, type]
+      properties:
+        personId: { $ref: '#/components/schemas/Id' }
+        requesterName: { type: string, minLength: 1, maxLength: 200 }
+        requesterEmail: { type: string, format: email, maxLength: 254 }
+        type: { $ref: '#/components/schemas/DataSubjectRequestType' }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        receivedAt: { type: string, format: date-time, description: Defaults to now. }
+    DataSubjectRequestUpdateRequest:
+      type: object
+      properties:
+        personId: { $ref: '#/components/schemas/Id' }
+        status: { $ref: '#/components/schemas/DataSubjectRequestStatus' }
+        reason: { $ref: '#/components/schemas/Reason' }
+        resolution: { type: [string, 'null'], maxLength: 4000 }
+        handledById: { $ref: '#/components/schemas/Id' }
+        version: { $ref: '#/components/schemas/Version' }
+    AnonymiseRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        dataSubjectRequestId: { $ref: '#/components/schemas/Id' }
+    PersonDataExport:
+      type: object
+      required: [exportedAt, exportedBy, person, contactRoles, links, activities, applications, consent]
+      properties:
+        exportedAt: { type: string, format: date-time }
+        exportedBy: { $ref: '#/components/schemas/UserRef' }
+        person: { $ref: '#/components/schemas/Person' }
+        contactRoles:
+          type: array
+          items: { $ref: '#/components/schemas/Contact' }
+        links:
+          type: array
+          items: { $ref: '#/components/schemas/PersonConnection' }
+        activities:
+          type: array
+          items: { $ref: '#/components/schemas/Activity' }
+        applications:
+          type: array
+          items: { $ref: '#/components/schemas/Application' }
+        consent: { $ref: '#/components/schemas/ConsentOverview' }
+    # ---------- audit ----------
+    AccessLogEntry:
+      type: object
+      required: [id, user, action, entityType, entityId, at]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        user: { $ref: '#/components/schemas/UserRef' }
+        action: { $ref: '#/components/schemas/AccessAction' }
+        entityType: { $ref: '#/components/schemas/EntityType' }
+        entityId: { $ref: '#/components/schemas/Id' }
+        at: { type: string, format: date-time }
+        ipAddress: { type: [string, 'null'] }
+    AccessLogEntryPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/AccessLogEntry' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    FieldChange:
+      type: object
+      required: [field]
+      properties:
+        field: { type: string, examples: [status] }
+        from: { description: Previous value (any JSON type). }
+        to: { description: New value (any JSON type). }
+    Revision:
+      type: object
+      required: [revision, at, type, changes]
+      properties:
+        revision: { type: integer, format: int64 }
+        at: { type: string, format: date-time }
+        user: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        type: { $ref: '#/components/schemas/RevisionType' }
+        changes:
+          type: array
+          items: { $ref: '#/components/schemas/FieldChange' }
+    RevisionPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Revision' }
+        page: { $ref: '#/components/schemas/PageMeta' }
