@@ -1,0 +1,5 @@
+{
+  "app": { "title": "Danışmanlık Platformu", "placeholder": "Bu ekran henüz hazırlanmadı." },
+  "nav": { "myDay": "Günüm", "accounts": "Müşteriler", "jobOrders": "İş emirleri", "network": "Ağ", "settings": "Ayarlar", "search": "Arama", "login": "Giriş" },
+  "screen": { "account": "Müşteri", "jobOrder": "İş emri", "person": "Kişi", "settingsSection": "Ayarlar" }
+}

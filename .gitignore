@@ -11,3 +11,8 @@ dist/
 !.env.example
 *.iml
 .DS_Store
+
+# frontend
+frontend/src/api/schema.d.ts
+frontend/coverage/
+*.tsbuildinfo
