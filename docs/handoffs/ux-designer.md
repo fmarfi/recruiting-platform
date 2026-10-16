@@ -26,3 +26,11 @@
 - Tokens are keyed by tone; frontends read `statusTone[kind][STATUS].tone` then `tone.<theme>.<tone>`. Unknown status falls back to `neutral`.
 - Open decisions flagged in specs: block "Add to job" for REFUSED/WITHDRAWN people (needs legal confirmation); retention counted from upload or last contact (open client question).
 - Not mapped to a screen: S-02 (website form, Phase 2 B-13) and UX-10 (process). All other Phase 1 requirements map in `docs/ux/README.md`.
+
+## Review fixes
+
+- `contracts/design-tokens.json`: tone to colours only (keys = `Tone` enum, uppercase); `statusTone` and all status labels removed. Labels, tones and transitions come from `GET /reference-data`.
+- Screens and flows switched to contract paths and fields (`/job-orders`, `/next-actions` with PATCH `done`, `/reference-data`, `candidate-suggestions`, `openedOn`, `feeTerms`, `activeCandidates`, `lastActivityAt`, `consentStatus`, `jobOrders`). This supersedes change requests 1-3 and the tone-map note above.
+- Settings status lists are read-only (ADR 0002); users, roles, retention, imports, audit kept with their endpoints.
+- S-02 marked Phase 2. "Remove contact" is now "End contact" with Show ended toggle and company history. Close-with-open-jobs 409 shows `blockingItems` as links.
+- Owner rule: any consultant edits anything; manager-only moves are disabled with a tooltip. Open items: "Contract gaps" in `docs/ux/README.md`.

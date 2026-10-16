@@ -23,18 +23,18 @@ Owner: architect. Java records: `contracts/events/*.java`, package `com.recruiti
 | `AccountStatusChanged` | accounts | accountId, from, to, reason | pipeline: timeline entry `ACCOUNT_STATUS` with from/to/reason |
 | `PersonCreated` | accounts | personId, type, ownerId, hasEmail, importId | privacy: create `person_privacy` (NOT_SENT, retention clock); if `autoSendNotice` and type in `autoSendPersonTypes` and `hasEmail` and not imported → queue consent request (S-01). Imported people wait for the bulk campaign. |
 | `PersonUpdated` | accounts | personId, type, emailChanged | privacy: if e-mail added and no request was ever sent and auto-send applies → queue consent request |
-| `PersonAnonymised` | accounts | personId, deleted | pipeline: scrub `activity.note`, `application.rejection_reason`, `next_action.title` for the person; privacy: mark `person_privacy` ANONYMISED, null `consent_record.evidence/ip_address` |
+| `PersonAnonymised` | accounts | personId, deleted | pipeline: scrub `activity.note`, `application.rejection_reason`, `next_action.title`, `timeline_entry.reason/summary` for the person; the `_aud` rows of person data are purged (list in schema.md, Anonymisation); privacy: mark `person_privacy` ANONYMISED, null `consent_record.evidence/ip_address` |
 | `ContactAdded` | accounts | contactId, accountId, personId, role | pipeline: timeline entry `CONTACT` |
-| `ContactRemoved` | accounts | contactId, accountId, personId | pipeline: timeline entry `CONTACT` |
+| `ContactRemoved` | accounts | contactId, accountId, personId | pipeline: timeline entry `CONTACT` (the contact was ended: `ended_on` set, the row stays) |
 | `ImportCompleted` | accounts | importId, kind, importedRows | privacy: none in Phase 1 beyond logging (the campaign is started by a manager with `POST /consent-requests/bulk`) |
-| `JobOrderCreated` | pipeline | jobOrderId, accountId, title, ownerId, status | accounts: recompute `account.open_job_count`; pipeline: timeline `JOB_ORDER` |
-| `JobOrderStatusChanged` | pipeline | jobOrderId, accountId, from, to, reason | accounts: recompute `open_job_count` when `from.isOpen() != to.isOpen()`; pipeline: timeline `JOB_ORDER` |
+| `JobOrderCreated` | pipeline | jobOrderId, accountId, title, ownerId, status | accounts: upsert `account_open_job` by `jobOrderId` (open = status.isOpen()), refresh `open_job_count`; pipeline: timeline `JOB_ORDER` |
+| `JobOrderStatusChanged` | pipeline | jobOrderId, accountId, from, to, reason | accounts: upsert `account_open_job` by `jobOrderId` (idempotent, redelivery harmless), refresh `open_job_count`; pipeline: timeline `JOB_ORDER` |
 | `ApplicationCreated` | pipeline | applicationId, jobOrderId, accountId, personId, stage | pipeline: timeline `CANDIDATE` |
 | `ApplicationStageChanged` | pipeline | applicationId, jobOrderId, accountId, personId, from, to, reason | pipeline: timeline `CANDIDATE` |
 | `ProposalCreated` | pipeline | proposalId, accountId, title | pipeline: timeline `PROPOSAL` |
 | `ProposalStatusChanged` | pipeline | proposalId, accountId, from, to, reason | pipeline: timeline `PROPOSAL` |
 | `ActivityLogged` | pipeline | activityId, type, activityAt, accountId?, personId?, jobOrderId? | accounts: `account.last_activity_at = max(...)`; `person.last_contact_at = max(...)` if `type.countsAsContact()`; privacy: recompute `basis_date`/`retain_until` when basis is FROM_LAST_CONTACT; pipeline: timeline `ACTIVITY` (when accountId set) |
-| `ConsentStatusChanged` | privacy | personId, from, to, channel | accounts: copy to `person.consent_status` |
+| `ConsentStatusChanged` | privacy | personId, from, to, channel, reason? | accounts: copy to `person.consent_status` |
 | `RetentionFlagged` | privacy | personId, ownerId, retainUntil | accounts: `person.retention_status = FLAGGED`; pipeline: next action "Renew consent / review retention" for `ownerId` due `retainUntil` (`source_event_id` = eventId) |
 | `CandidateShortlisted` | ai (Phase 2) | jobOrderId, personId, score | pipeline: add application in SOURCED unless present (human decision already made, NFR-06) |
 
@@ -54,12 +54,12 @@ UI PATCH /applications/{id}/stage
 
 ```
 UI PATCH /accounts/{id}/status {CLOSED, reason}
-  └─ accounts: check transition + reason; role MANAGER+ (requiresElevatedRole); guard: account.open_job_count == 0
+  └─ accounts: check transition + reason; role MANAGER+ (requiresElevatedRole); guard: no `account_open_job` row with open = true (else 409 with `blockingItems`)
        save; publish AccountStatusChanged
        └─ pipeline timeline listener → timeline_entry(kind=ACCOUNT_STATUS)
 ```
 
-`accounts` does not ask `pipeline` for open job orders (that would be a forbidden accounts → pipeline dependency). The guard uses the account's own `open_job_count` (kept current by `JobOrderCreated`/`JobOrderStatusChanged`). Because that copy is eventually consistent, `pipeline` also refuses to create a job order on a CLOSED account, which closes the race from the other side.
+`accounts` does not ask `pipeline` for open job orders (that would be a forbidden accounts → pipeline dependency). The guard uses the account's own projection table `account_open_job` (upserted by job order id from `JobOrderCreated`/`JobOrderStatusChanged`, so redelivery is harmless); `open_job_count` is derived from it and the open rows become `blockingItems` in the 409. Because that copy is eventually consistent, `pipeline` also refuses to create a job order on a CLOSED account, which closes the race from the other side.
 
 **Person added, consent requested (S-01)**
 

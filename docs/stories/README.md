@@ -19,7 +19,7 @@ One file per requirement of Module A (A-01 to A-14), shared KVKK (S-01 to S-04) 
 | A-13 | Network links | Should | [A-13.md](A-13.md) |
 | A-14 | Global search | Must | [A-14.md](A-14.md) |
 | S-01 | KVKK notice and consent e-mail | Must | [S-01.md](S-01.md) |
-| S-02 | Website form consent | Must | [S-02.md](S-02.md) |
+| S-02 | Website form consent | Must (Phase 2, with B-13) | [S-02.md](S-02.md) |
 | S-03 | Retention and deletion | Must | [S-03.md](S-03.md) |
 | S-04 | Data subject requests | Should | [S-04.md](S-04.md) |
 | UX-01 | Home: My day | Must | [UX-01.md](UX-01.md) |

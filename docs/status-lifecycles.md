@@ -7,12 +7,12 @@ Baseline: the status lists of the demo (`demo/src/main/java/com/recruiting/demo/
 ## Conventions
 
 - **Roles:** `consultant`, `manager`, `admin` (NFR-05). `manager` and `admin` can do everything a consultant can.
-- **Owner:** the account's responsible consultant (A-01). For job orders, proposals and applications, "owner" means the responsible consultant of the parent account.
+- **Owner:** the account's responsible consultant (A-01). Ownership does not restrict status changes: for the pilot any consultant may change any record (ASSUMPTION until the client answers). Manager-only moves below stay manager-only.
 - **Every transition is logged** (A-02, A-08): from, to, user, timestamp, reason if any. The log is append-only.
-- **Reason:** free text, trimmed, 3 to 500 characters. A missing or blank reason on a transition that requires one is a validation error. The reason is stored on the status-change record and shown in the timeline.
+- **Reason:** free text, trimmed, 3 to 500 characters (length counted after trimming). A missing or blank reason on a transition that requires one is a validation error. The reason is stored on the status-change record and shown in the timeline.
 - **No self-transitions:** moving to the current status is rejected.
 - **No AI moves:** a status change is always a human action (NFR-06).
-- **Role rules are ASSUMPTION** until the client answers "Which statuses do they use today ... and who may change them?" (requirements.md, open questions). They are a safe default: consultants move what they own, managers and admins move anything and handle reopening.
+- **Role rules are ASSUMPTION** until the client answers "Which statuses do they use today ... and who may change them?" (requirements.md, open questions). They are a safe default: any consultant moves any record; managers and admins additionally close and reopen.
 
 Tone values are semantic hints for the badge colour (ux-designer maps them to tokens): `neutral`, `info`, `progress`, `good`, `warn`, `bad`, `muted`.
 
@@ -32,15 +32,15 @@ ASSUMPTION: this list is the demo's guess and the requirement's example ("lead, 
 
 | From | To | Who | Reason |
 | --- | --- | --- | --- |
-| `LEAD` | `PROPOSAL_SENT` | consultant (owner), manager, admin | no |
+| `LEAD` | `PROPOSAL_SENT` | consultant, manager, admin | no |
 | `LEAD` | `CLOSED` | manager, admin | yes |
-| `PROPOSAL_SENT` | `ACTIVE` | consultant (owner), manager, admin | no |
-| `PROPOSAL_SENT` | `ON_HOLD` | consultant (owner), manager, admin | yes |
-| `PROPOSAL_SENT` | `LEAD` | consultant (owner), manager, admin | no |
+| `PROPOSAL_SENT` | `ACTIVE` | consultant, manager, admin | no |
+| `PROPOSAL_SENT` | `ON_HOLD` | consultant, manager, admin | yes |
+| `PROPOSAL_SENT` | `LEAD` | consultant, manager, admin | no |
 | `PROPOSAL_SENT` | `CLOSED` | manager, admin | yes |
-| `ACTIVE` | `ON_HOLD` | consultant (owner), manager, admin | yes |
+| `ACTIVE` | `ON_HOLD` | consultant, manager, admin | yes |
 | `ACTIVE` | `CLOSED` | manager, admin | yes |
-| `ON_HOLD` | `ACTIVE` | consultant (owner), manager, admin | no |
+| `ON_HOLD` | `ACTIVE` | consultant, manager, admin | no |
 | `ON_HOLD` | `CLOSED` | manager, admin | yes |
 | `CLOSED` | `LEAD` | manager, admin | yes |
 
@@ -64,11 +64,11 @@ Initial status on creation: `DRAFT`.
 
 | From | To | Who | Reason |
 | --- | --- | --- | --- |
-| `DRAFT` | `SENT` | consultant (owner), manager, admin | no |
-| `SENT` | `ACCEPTED` | consultant (owner), manager, admin | no |
-| `SENT` | `REJECTED` | consultant (owner), manager, admin | yes (client's reason, as far as known) |
-| `SENT` | `DRAFT` | consultant (owner), manager, admin | no (recall for rework) |
-| `REJECTED` | `DRAFT` | consultant (owner), manager, admin | no (rework) |
+| `DRAFT` | `SENT` | consultant, manager, admin | no |
+| `SENT` | `ACCEPTED` | consultant, manager, admin | no |
+| `SENT` | `REJECTED` | consultant, manager, admin | yes (client's reason, as far as known) |
+| `SENT` | `DRAFT` | consultant, manager, admin | no (recall for rework) |
+| `REJECTED` | `DRAFT` | consultant, manager, admin | no (rework) |
 
 `ACCEPTED` is final. Commercial terms (fee model, amount, currency, validity) are editable only in `DRAFT`; after `SENT` they are read-only, to keep what the client saw. ASSUMPTION; depends on open question about what is invoiced (retainer, success fee).
 
@@ -90,19 +90,19 @@ Initial status on creation: `OPEN`.
 
 | From | To | Who | Reason |
 | --- | --- | --- | --- |
-| `OPEN` | `SOURCING` | consultant (owner), manager, admin | no |
-| `OPEN` | `CANCELLED` | consultant (owner), manager, admin | yes |
-| `SOURCING` | `SHORTLIST_SENT` | consultant (owner), manager, admin | no |
-| `SOURCING` | `CANCELLED` | consultant (owner), manager, admin | yes |
-| `SHORTLIST_SENT` | `INTERVIEWING` | consultant (owner), manager, admin | no |
-| `SHORTLIST_SENT` | `SOURCING` | consultant (owner), manager, admin | no |
-| `SHORTLIST_SENT` | `CANCELLED` | consultant (owner), manager, admin | yes |
-| `INTERVIEWING` | `OFFER` | consultant (owner), manager, admin | no |
-| `INTERVIEWING` | `SOURCING` | consultant (owner), manager, admin | no |
-| `INTERVIEWING` | `CANCELLED` | consultant (owner), manager, admin | yes |
-| `OFFER` | `FILLED` | consultant (owner), manager, admin | no (guard below) |
-| `OFFER` | `INTERVIEWING` | consultant (owner), manager, admin | no |
-| `OFFER` | `CANCELLED` | consultant (owner), manager, admin | yes |
+| `OPEN` | `SOURCING` | consultant, manager, admin | no |
+| `OPEN` | `CANCELLED` | consultant, manager, admin | yes |
+| `SOURCING` | `SHORTLIST_SENT` | consultant, manager, admin | no |
+| `SOURCING` | `CANCELLED` | consultant, manager, admin | yes |
+| `SHORTLIST_SENT` | `INTERVIEWING` | consultant, manager, admin | no |
+| `SHORTLIST_SENT` | `SOURCING` | consultant, manager, admin | no |
+| `SHORTLIST_SENT` | `CANCELLED` | consultant, manager, admin | yes |
+| `INTERVIEWING` | `OFFER` | consultant, manager, admin | no |
+| `INTERVIEWING` | `SOURCING` | consultant, manager, admin | no |
+| `INTERVIEWING` | `CANCELLED` | consultant, manager, admin | yes |
+| `OFFER` | `FILLED` | consultant, manager, admin | no (guard below) |
+| `OFFER` | `INTERVIEWING` | consultant, manager, admin | no |
+| `OFFER` | `CANCELLED` | consultant, manager, admin | yes |
 | `CANCELLED` | `OPEN` | manager, admin | no |
 
 `FILLED` is final.
@@ -153,7 +153,7 @@ Resulting move table (active stage rows):
 | `REJECTED` | `SOURCED`, `SCREENED` | no |
 | `PLACED` | none | – |
 
-Who: consultant (owner of the account), manager, admin for every move above. `REJECTED` to `SOURCED`/`SCREENED` (reinstating) is also open to the owner consultant. ASSUMPTION; depends on "who may change them".
+Who: any consultant, manager, admin for every move above, including reinstating from `REJECTED`. ASSUMPTION; depends on "who may change them".
 
 Other rules:
 - The same person cannot be added twice to the same job order (even if `REJECTED`; reinstate instead).
@@ -162,6 +162,53 @@ Other rules:
 - Adding a candidate to a `FILLED`/`CANCELLED` job order is rejected.
 - Consent (S-01) does not block pipeline moves in Phase 1. ASSUMPTION: show a consent warning on the card instead; to be reviewed with the KVKK lawyer.
 
+## 5. Consent status (S-01)
+
+Per person. Initial status: `NOT_SENT`. Changes only through consent requests and recorded decisions, never by a direct edit. Only `GIVEN` allows matching and outreach.
+
+| Enum | EN | TR | Tone | Meaning |
+| --- | --- | --- | --- | --- |
+| `NOT_SENT` | Not requested | İstenmedi | neutral | No consent request sent yet |
+| `SENT` | Requested | İstendi | info | Request sent, no answer yet |
+| `GIVEN` | Given | Onay verdi | good | Explicit consent given |
+| `REFUSED` | Refused | Reddetti | bad | Consent refused |
+| `WITHDRAWN` | Withdrawn | Geri çekti | warn | Given earlier, then withdrawn |
+
+| From | To | Trigger |
+| --- | --- | --- |
+| `NOT_SENT` | `SENT` | Consent request e-mail sent |
+| `NOT_SENT` | `GIVEN` | Consent collected in person, on paper or by phone and recorded |
+| `NOT_SENT` | `REFUSED` | Refusal collected outside the e-mail and recorded |
+| `SENT` | `GIVEN` | Person confirms via the link |
+| `SENT` | `REFUSED` | Person refuses via the link |
+| `GIVEN` | `WITHDRAWN` | Person withdraws via the link, or withdrawal recorded |
+| `REFUSED` | `SENT` | New request sent |
+| `REFUSED` | `GIVEN` | Person changes their mind |
+| `WITHDRAWN` | `SENT` | New request sent |
+| `WITHDRAWN` | `GIVEN` | Person consents again |
+
+No self-transitions. Re-sending a request while `SENT` (reminder or resend) is a logged action, not a status change; renewing a `GIVEN` consent likewise stores a new consent record without changing the status. No reason required. Decisions arrive from the person via the link; recording a decision or sending a request manually is open to consultant, manager, admin.
+
+## 6. Data-subject request status (S-04)
+
+Initial status on logging: `RECEIVED`. Types (`DataSubjectRequestType`): `ACCESS`, `CORRECTION`, `DELETION`, `OTHER`. The controller has 30 days from receipt to answer (KVKK art. 13).
+
+| Enum | EN | TR | Tone | Meaning |
+| --- | --- | --- | --- | --- |
+| `RECEIVED` | Received | Alındı | neutral | Logged, not yet handled |
+| `IN_PROGRESS` | In progress | İşlemde | progress | Being handled |
+| `COMPLETED` | Completed | Tamamlandı | good | Answered and carried out (final) |
+| `REJECTED` | Rejected | Reddedildi | bad | Refused with a written reason (final) |
+
+| From | To | Who | Reason | Trigger |
+| --- | --- | --- | --- | --- |
+| `RECEIVED` | `IN_PROGRESS` | manager, admin | no | Handling starts |
+| `RECEIVED` | `REJECTED` | manager, admin | yes | Request refused |
+| `IN_PROGRESS` | `COMPLETED` | manager, admin | no | Answer sent; export, correction or deletion done |
+| `IN_PROGRESS` | `REJECTED` | manager, admin | yes | Request refused |
+
+Any consultant may log (create) a request; only manager and admin change its status. `COMPLETED` and `REJECTED` are final.
+
 ## Machine-readable summary (for enums and tests)
 
 ```yaml
@@ -169,14 +216,18 @@ account:      {initial: LEAD, final: [], states: [LEAD, PROPOSAL_SENT, ACTIVE, O
 proposal:     {initial: DRAFT, final: [ACCEPTED], states: [DRAFT, SENT, ACCEPTED, REJECTED]}
 job_order:    {initial: OPEN, final: [FILLED], states: [OPEN, SOURCING, SHORTLIST_SENT, INTERVIEWING, OFFER, FILLED, CANCELLED]}
 pipeline:     {initial: SOURCED, final: [PLACED], states: [SOURCED, SCREENED, PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED, REJECTED]}
+consent:      {initial: NOT_SENT, final: [], states: [NOT_SENT, SENT, GIVEN, REFUSED, WITHDRAWN]}
+data_subject: {initial: RECEIVED, final: [COMPLETED, REJECTED], states: [RECEIVED, IN_PROGRESS, COMPLETED, REJECTED]}
 reason_required_to:
   account: [ON_HOLD, CLOSED, "LEAD (only from CLOSED)"]
   proposal: [REJECTED]
   job_order: [CANCELLED]
   pipeline: [REJECTED]
+  data_subject: [REJECTED]
 manager_or_admin_only:
   account: ["* -> CLOSED", "CLOSED -> LEAD"]
   job_order: ["CANCELLED -> OPEN"]
+  data_subject: ["all status changes"]
 ```
 
 ## Changes from the demo baseline

@@ -55,3 +55,14 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 - **Proposed TASKS.md change requests** (orchestrator): move A-02 account status endpoint, `/reference-data` and `/search` to backend-accounts; frontend ownership paths under `frontend/src/`; add W1 task "devops: contracts module + package-info + Modulith test".
 - Website consent form (S-02) is Phase 2 (B-13); `ConsentChannel.WEBSITE_FORM` is reserved.
 - The ADR 0003 React choice should be confirmed by the orchestrator/client before Wave 1 frontends start.
+
+## Review fixes
+
+- Contacts keep history: `contact.ended_on`, `Contact.endedOn/active`, `DELETE` ends the contact (200 + Contact), `active` filter (default true) on the list; contact roles of a person show ended ones.
+- `account_open_job` projection (upsert by job_order_id) replaces the counter rule; `ProblemDetail.blockingItems` plus 409 close-account example.
+- `Reason` 3..500 trimmed; enforced in `IllegalTransitionException.check` (VALIDATION_FAILED on size).
+- Pilot ownership rule in openapi info, 403 description and ADR 0007 addendum; website form is Phase 2 (`WEBSITE_FORM` reserved).
+- `ConsentStatus`: self-transitions removed, triggers documented; re-send is the action `POST /people/{id}/consent/requests`.
+- schema.md: `event_publication` needs a Flyway migration (ddl-auto validate); anonymisation scrubs timeline reason/summary, nulls company, lists all `_aud` tables; unconfirmed imports purged after 30 days.
+- `ConsentStatusChanged.reason`, `JobOrder.openings` (>=1, default 1), fictional example company names, `/reference-data` stated read-only.
+- Lint 0 errors; `mvn -pl contracts compile` exit 0.

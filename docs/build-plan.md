@@ -190,16 +190,16 @@ Speed comes from agents never blocking or overwriting each other; these rules ar
 | Path | Owner |
 | --- | --- |
 | `contracts/` | architect (ux-designer for design tokens) |
-| `crm-accounts/` (accounts, contacts, network, search) | backend-accounts |
-| `crm-pipeline/` (status, proposals, job orders, pipeline, timeline) | backend-pipeline |
-| `db/migration/`, entities | db-engineer |
+| `crm-accounts/` (accounts incl. account status, contacts, network, import, search, reference data) | backend-accounts |
+| `crm-pipeline/` (job orders, pipeline, proposals, activities, next actions, timeline, home) | backend-pipeline |
+| `platform-app/src/main/resources/db/migration/`, `<module>/.../domain/` (entities, repositories) | db-engineer |
 | `security/`, `privacy/` | security-privacy |
-| `frontend/shell/`, `frontend/accounts/` | frontend-shell |
-| `frontend/pipeline/`, `frontend/network/` | frontend-pipeline |
+| `frontend/src/shell/`, `frontend/src/accounts/`, `frontend/src/settings/` | frontend-shell |
+| `frontend/src/pipeline/`, `frontend/src/network/` | frontend-pipeline |
 | `seed/` | synthetic-data |
 | `tests/e2e/` | qa-engineer |
 | `ai/` (Phase 2) | ai-engineer |
-| CI, Docker, build files | devops |
+| CI, Docker, build files, `frontend/` scaffold and config (package.json, vite, theme, `frontend/src/api/`) | devops |
 
 **Working rules**
 
