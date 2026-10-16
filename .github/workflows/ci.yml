@@ -55,3 +55,60 @@ jobs:
       - name: Run integration tests
         # *IT classes run only under the `integration` Maven profile (failsafe); none exist in the skeleton yet.
         run: mvn -B verify -Pintegration
+
+  frontend:
+    name: Frontend (typecheck, test, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      # no lint step: ESLint is not configured yet
+      - run: npm test
+      - run: npm run build
+
+  mock-smoke:
+    name: Prism mock smoke test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Start mock and call one endpoint
+        run: |
+          npm run mock > ../mock.log 2>&1 &
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -b JSESSIONID=mock http://127.0.0.1:4010/reference-data || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          echo "GET /reference-data -> $code"
+          [ "$code" = "200" ] || { cat ../mock.log; exit 1; }
+
+  docker-image:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
