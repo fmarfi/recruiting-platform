@@ -27,3 +27,9 @@ NFR-05 asks for role-based access (consultant, manager, admin). The SPA is serve
 
 - **JWT bearer tokens in the SPA**: stateless, but token storage in the browser and refresh handling add risk and work without a benefit for one same-origin app.
 - **HTTP Basic**: no logout, credentials on every request.
+
+## Addendum: pilot ownership rule (review fix)
+
+- For the pilot, any consultant may change any record, whoever its `owner` is. There are no record-level ownership checks. `owner` is for assignment, filtering and reminders only.
+- Manager-only moves stay manager-only (account to CLOSED, CLOSED to LEAD, job order CANCELLED to OPEN, from `Lifecycle.requiresElevatedRole`). A 403 `FORBIDDEN` therefore never means "not your record".
+- Reasons for status changes are trimmed and must be 3 to 500 characters.

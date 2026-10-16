@@ -1,10 +1,10 @@
 # Screen: Network list and Person page
 
-Requirements: A-12, A-13, A-03, A-04, A-10, S-01, S-02 (n/a here), S-03, S-04, NFR-01, NFR-02, UX-06, UX-08. Routes: `/network`, `/people/{id}`.
+Requirements: A-12, A-13, A-03, A-04, A-10, S-01, S-02 (Phase 2, n/a here), S-03, S-04, NFR-01, NFR-02, UX-06, UX-08. Routes: `/network`, `/people/{id}`.
 
 ## 1. Network list
 
-Question answered: **who do we know and who should I contact?** Data: `GET /people?q=&type=` (extend with `owner`, `lastContactBefore`, `consent` filters, new).
+Question answered: **who do we know and who should I contact?** Data: `GET /people?q=&type=&ownerId=&consentStatus=&lastContactBefore=&lastContactAfter=&sort=`.
 
 ### Desktop
 
@@ -30,7 +30,7 @@ Question answered: **who do we know and who should I contact?** Data: `GET /peop
 | (Consent given)            |
 ```
 
-Fields: PersonSummary `id`, `name`, `title`, `company`, `type`, `city`, `owner`, `lastContact`, `consent`. Sort default: last contact, oldest first when filter "Not contacted since" is on; otherwise name. Rows with last contact older than 90 days show the date in warn colour (nudge for A-12 "last contact date").
+Fields: PersonSummary `id`, `name`, `title`, `company`, `type`, `city`, `owner`, `lastContactAt`, `consentStatus`, `retentionStatus`. Type chip counts are a contract gap (see README); chips show no counts until then. Sort default: last contact, oldest first when filter "Not contacted since" is on; otherwise name. Rows with last contact older than 90 days show the date in warn colour (nudge for A-12 "last contact date").
 
 Actions: open, **+ New person** (F7), row menu (Log activity, Add action, Send consent request). States: loading skeleton rows; empty "Your network is empty. Add the first person or import contacts." (UX-08); empty filter result with Clear; error with Retry.
 
@@ -74,12 +74,12 @@ Question answered: **what is my relationship with this person and what is the ne
 
 | Block | Fields |
 | --- | --- |
-| Header | `person.name`, `type` (badge), `title`, `company`, `city`, `email`, `owner`, `lastContact`, `consent`; edit via ... > Edit |
-| Overview | `howWeKnow`, `career[]` (company history, A-12), `actions` (open) |
-| Connections (A-13) | `connections[]`: `personId`, `name`, `title`, `company`, `kind` |
-| Clients and jobs | `accounts[]`: `accountId`, `name`, `role`; `applications[]`: `jobTitle`, `accountName`, `stage` (badge), `updated` |
-| Activity (A-04) | `activities[]`: `type`, `note`, `at`, `user`, `accountName` |
-| Privacy (S-01, S-03, S-04, NFR-02) | consent status badge, history of notices/consents (text version, date, channel, withdrawal date), retention date, data requests log (new endpoints) |
+| Header | `person.name`, `type` (badge), `title`, `company`, `city`, `email`, `phone`, `linkedinUrl`, `owner`, `lastContactAt`, `consentStatus`; edit via ... > Edit (`PATCH /people/{id}`, sends `version`; any consultant may edit any person) |
+| Overview | `howWeKnow`, `notes`, `employments[]` (company history, A-12: `company`, `title`, `startDate`, `endDate`), plus accounts where the person is an **ended contact** (from `GET /people/{id}/contact-roles`), open actions (`GET /next-actions?personId=&done=false`) |
+| Connections (A-13) | `GET /people/{id}/links`: PersonConnection `linkId`, `type`, `direction`, `person` (PersonSummary), `note`; add with `POST /network-links` (`fromPersonId`, `toPersonId`, `type`, `note`) |
+| Clients and jobs | Accounts: `GET /people/{id}/contact-roles` (Contact: `account`, `role`, `primary`; ended ones in a "Former" group); applications: `GET /people/{id}/applications` (Application: `jobOrder.title`, `account.name`, `stage` badge, `stageChangedAt`) |
+| Activity (A-04) | `GET /activities?personId=`: Activity `type`, `note`, `occurredAt`, `user`, `account` |
+| Privacy (S-01, S-03, S-04, NFR-02) | `GET /people/{id}/consent` (ConsentOverview: `status`, `lastRequest`, `records[]` with notice version, `recordedAt`, `channel`, `decision`; `retention.retainUntil`), data requests log (`GET /data-subject-requests?personId=`) |
 
 ### Actions
 
@@ -87,15 +87,15 @@ Question answered: **what is my relationship with this person and what is the ne
 | --- | --- | --- |
 | Log activity | Sheet pre-filled with this person (F4) | A-04, UX-06 |
 | Add action | Title, due | A-10 |
-| Add connection | Pick person, choose kind; shown on both persons; also reachable as "Connections of {company}" from account | A-13 |
+| Add connection | Pick person, choose link type (`KNOWS`, `WORKED_WITH`, `INTRODUCED`, `REFERRED`, `REPORTS_TO`); shown on both persons; also reachable as "Connections of {company}" from account | A-13 |
 | Edit person / change relationship owner | Dialog | A-12 |
-| Add to job | Opens job picker (jobs not yet containing the person); creates application at Sourced | A-07 |
-| Send consent request | Button when `consent` is NOT_SENT/REFUSED...; confirm dialog shows the notice language (TR/EN) and recipient; sets SENT | S-01 |
-| Record consent / withdrawal received | Manual set with date, channel and text version | S-01, NFR-02 |
-| Log data request (access, correction, deletion) | Opens a request record with due date; Delete executes anonymisation behind a confirm requiring typing the name (admin) | S-04 |
+| Add to job | Opens job picker (`GET /job-orders?open=true`, excluding jobs the person is on); `POST /job-orders/{id}/applications`, application starts at Sourced | A-07 |
+| Send consent request | Button when `consentStatus` is NOT_SENT, REFUSED or WITHDRAWN; confirm dialog shows the notice language (TR/EN) and recipient; `POST /people/{id}/consent/requests` (`language`), status becomes SENT | S-01 |
+| Record consent / withdrawal received | `POST /people/{id}/consent/records` (`decision`, `channel` IN_PERSON/PHONE/IMPORT, `noticeId`, `recordedAt`, `evidence`) | S-01, NFR-02 |
+| Log data request (access, correction, deletion) | `POST /data-subject-requests`; deletion requests are completed with `POST /people/{id}/anonymise` behind a confirm requiring typing the name (admin); export via `GET /people/{id}/export` | S-04 |
 | See retention | Shows "Retention ends 12 Oct 2028"; banner when within 60 days: "Renew consent or delete" | S-03 |
 
-Connections view (A-13): a list, not a graph, in Phase 1 (graph visualisation is deferred; lists are faster to scan on phone). Group by kind; each row shows the connected person's badge and a link. The company's connections are on the Account page via the Contacts tab.
+Connections view (A-13): a list, not a graph, in Phase 1 (graph visualisation is deferred; lists are faster to scan on phone). Group by link type; each row shows the connected person's badge and a link. The company's connections are on the Account page via the Contacts tab.
 
 ### States
 
@@ -119,6 +119,6 @@ Connections view (A-13): a list, not a graph, in Phase 1 (graph visualisation is
 | btn.addConnection | Add connection | Bağlantı ekle |
 | btn.addToJob | Add to a job | Pozisyona ekle |
 | btn.sendConsent | Send consent request | Onay isteği gönder |
-| conn.kind | Knows / Introduced by / Introduced / Colleague / Referrer of | Tanıyor / Tanıştıran / Tanıştırdığı / Meslektaş / Yönlendiren |
+| conn.type | Knows / Worked with / Introduced / Referred / Reports to | Tanıyor / Birlikte çalıştı / Tanıştırdı / Yönlendirdi / Bağlı çalışıyor |
 | retention | Retention ends {date} | Saklama süresi {date} tarihinde bitiyor |
 | empty.network | Your network is empty | Ağınız boş |

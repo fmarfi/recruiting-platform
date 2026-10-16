@@ -1,6 +1,6 @@
 # Screen: My day (home)
 
-Requirements: UX-01, UX-02, A-10, A-09 (summary), UX-08. Route: `/`. Data: `GET /home`. The one question this screen answers: **what should I do next?**
+Requirements: UX-01, UX-02, A-10, A-09 (summary), UX-08. Route: `/`. Data: `GET /home` (`MyDay`). The one question this screen answers: **what should I do next?**
 
 ## Wireframe, desktop (laptop >= 960 px)
 
@@ -56,26 +56,26 @@ Stats strip becomes a 2 x 2 grid below the greeting on phone, collapsed behind "
 
 ## Data fields
 
-| Block | Fields (names from `demo/API.md`) |
+| Block | Fields (names from `contracts/openapi.yaml`) |
 | --- | --- |
-| Header | `user`, `today` |
+| Header | `user`, `today`. Status labels and tones for badges come from `GET /reference-data` |
 | Stats | `stats.activeAccounts`, `stats.openJobs`, `stats.candidatesInProcess`, `stats.placedThisYear` (each links to a filtered list) |
-| Next actions | Action: `id`, `title`, `due`, `owner`, `accountId/accountName`, `personId/personName`, `overdue`, `done`. Grouped Overdue / Today / Upcoming |
-| Open jobs | JobSummary: `id`, `title`, `accountName`, `status`, `daysOpen`, `candidates`, `stageCounts` (as mini chips) |
-| Recent accounts | AccountSummary: `id`, `name`, `status`, `lastActivity`, `openJobs` |
+| Next actions | NextAction: `id`, `title`, `dueOn`, `owner`, `account`, `person`, `jobOrder`, `overdue`, `done`. Grouped Overdue / Today / Upcoming (today from `today`). `overdueCount` drives the greeting line |
+| Open jobs | `openJobOrders[]` (JobOrder): `id`, `title`, `account.name`, `status`, `daysOpen`, `activeCandidates`, `stageCounts` (as mini chips) |
+| Recent accounts | `recentAccounts[]` (Account): `id`, `name`, `status`, `lastActivityAt`, `openJobCount` |
 
 ## Actions
 
 | Action | Result | Req |
 | --- | --- | --- |
-| Tick checkbox | `POST /actions/{id}/done`, row moves to Done with Undo | A-10 |
-| Add action | Dialog: title, due (default tomorrow), link to account/person; `POST /actions` | A-10 |
+| Tick checkbox | `PATCH /next-actions/{id}` with `{ done: true, version }`, row moves to Done with Undo (`done: false`) | A-10 |
+| Add action | Dialog: title, due (default tomorrow), link to account/person; `POST /next-actions` (`title`, `dueOn`, `accountId`, `personId`, `jobOrderId`) | A-10 |
 | Click action title | Opens linked account or person | UX-02 |
 | Click job row | Opens pipeline board | UX-02, UX-04 |
 | Click recent account | Opens Account page | UX-02 |
-| Click a stat | Opens the matching filtered list (Active clients -> Accounts filtered; Open jobs -> Jobs list) | UX-02 |
+| Click a stat | Opens the matching filtered list (Active clients -> Accounts filtered; Open jobs -> Job orders list) | UX-02 |
 | Global search, + New | Available in the top bar | UX-02, UX-06 |
-| Snooze (menu on an action) | Move due date +1 day / next Monday / pick date (new: `PATCH /actions/{id}`) | A-10 |
+| Snooze (menu on an action) | Move due date +1 day / next Monday / pick date (`PATCH /next-actions/{id}` with `dueOn`) | A-10 |
 
 ## States
 

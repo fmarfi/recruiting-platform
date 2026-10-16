@@ -14,8 +14,9 @@ import java.util.UUID;
  * @param from       previous status
  * @param to         new status
  * @param channel    how the decision was collected; {@code null} for {@link ConsentStatus#SENT}
+ * @param reason     optional reason (e.g. why consent was withdrawn), {@code null} if none
  */
 public record ConsentStatusChanged(UUID eventId, Instant occurredAt, UUID actorId,
                                    UUID personId, ConsentStatus from, ConsentStatus to,
-                                   ConsentChannel channel) implements DomainEvent {
+                                   ConsentChannel channel, String reason) implements DomainEvent {
 }

@@ -10,7 +10,7 @@ import java.util.UUID;
  * @param eventId    event id
  * @param occurredAt time of the change
  * @param actorId    user who removed it
- * @param contactId  the removed contact link
+ * @param contactId  the contact that was ended ({@code ended_on} set; the row is kept)
  * @param accountId  the account
  * @param personId   the person
  */

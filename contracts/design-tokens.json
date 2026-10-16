@@ -1,5 +1,5 @@
 {
-  "$comment": "Owned by ux-designer. Source values extracted from demo/src/main/resources/static/app.css. Frontends map these 1:1 to CSS custom properties (--color-*, --tone-<tone>-bg/fg/dot, --space-*, --radius-*). Statuses are keyed by tone: a new status only needs an entry in statusTone.",
+  "$comment": "Owned by ux-designer. Tokens map tone to colours only. Status labels (EN/TR), the status to tone assignment and allowed transitions are NOT here: they come at runtime from GET /reference-data (lifecycles.<kind>.statuses[].labelEn/labelTr/tone). Tone keys are the contracts/enums/Tone.java names in uppercase. Frontends map these 1:1 to CSS custom properties (--color-*, --tone-<tone>-bg/fg/dot, --space-*, --radius-*). Unknown tone falls back to NEUTRAL.",
   "version": "1.0.0",
   "color": {
     "light": {
@@ -21,22 +21,22 @@
   },
   "tone": {
     "light": {
-      "neutral":  { "bg": "#eaeeed", "fg": "#3e4a55", "dot": "#8a959c" },
-      "info":     { "bg": "#e2ecf7", "fg": "#1e4c80", "dot": "#3b78c0" },
-      "progress": { "bg": "#e8e6f6", "fg": "#43388a", "dot": "#6a5cc8" },
-      "good":     { "bg": "#dff0e6", "fg": "#1c5e3c", "dot": "#2f8f5a" },
-      "warn":     { "bg": "#f8eed6", "fg": "#7f5300", "dot": "#c98a12" },
-      "bad":      { "bg": "#f9e3e0", "fg": "#9a2c25", "dot": "#cf4a40" },
-      "muted":    { "bg": "#eff1f1", "fg": "#6f787e", "dot": "#a7afb3" }
+      "NEUTRAL":  { "bg": "#eaeeed", "fg": "#3e4a55", "dot": "#8a959c" },
+      "INFO":     { "bg": "#e2ecf7", "fg": "#1e4c80", "dot": "#3b78c0" },
+      "PROGRESS": { "bg": "#e8e6f6", "fg": "#43388a", "dot": "#6a5cc8" },
+      "GOOD":     { "bg": "#dff0e6", "fg": "#1c5e3c", "dot": "#2f8f5a" },
+      "WARN":     { "bg": "#f8eed6", "fg": "#7f5300", "dot": "#c98a12" },
+      "BAD":      { "bg": "#f9e3e0", "fg": "#9a2c25", "dot": "#cf4a40" },
+      "MUTED":    { "bg": "#eff1f1", "fg": "#6f787e", "dot": "#a7afb3" }
     },
     "dark": {
-      "neutral":  { "bg": "#232e31", "fg": "#c3cdcb", "dot": "#8a9a98" },
-      "info":     { "bg": "#1a2a3d", "fg": "#a4c6ee", "dot": "#5b97dc" },
-      "progress": { "bg": "#262344", "fg": "#c2baf3", "dot": "#8e80e6" },
-      "good":     { "bg": "#173226", "fg": "#9ad8b4", "dot": "#4cb37b" },
-      "warn":     { "bg": "#352a12", "fg": "#ecc878", "dot": "#d9a23a" },
-      "bad":      { "bg": "#3a1d1b", "fg": "#f2a59e", "dot": "#e0645a" },
-      "muted":    { "bg": "#1d2528", "fg": "#87938f", "dot": "#5f6b6b" }
+      "NEUTRAL":  { "bg": "#232e31", "fg": "#c3cdcb", "dot": "#8a9a98" },
+      "INFO":     { "bg": "#1a2a3d", "fg": "#a4c6ee", "dot": "#5b97dc" },
+      "PROGRESS": { "bg": "#262344", "fg": "#c2baf3", "dot": "#8e80e6" },
+      "GOOD":     { "bg": "#173226", "fg": "#9ad8b4", "dot": "#4cb37b" },
+      "WARN":     { "bg": "#352a12", "fg": "#ecc878", "dot": "#d9a23a" },
+      "BAD":      { "bg": "#3a1d1b", "fg": "#f2a59e", "dot": "#e0645a" },
+      "MUTED":    { "bg": "#1d2528", "fg": "#87938f", "dot": "#5f6b6b" }
     }
   },
   "badge": {
@@ -49,68 +49,6 @@
     },
     "fontWeight": 600,
     "dotSize": 6
-  },
-  "statusTone": {
-    "$comment": "Keys are the enum names used by contracts/openapi.yaml. tone is a key into tone.*. Labels mirror the demo enums; if product-analyst adds or renames a status, add or rename one entry here.",
-    "account": {
-      "LEAD":          { "tone": "neutral",  "en": "Lead",           "tr": "Aday müşteri" },
-      "PROPOSAL_SENT": { "tone": "info",     "en": "Proposal sent",  "tr": "Teklif gönderildi" },
-      "ACTIVE":        { "tone": "good",     "en": "Active",         "tr": "Aktif" },
-      "ON_HOLD":       { "tone": "warn",     "en": "On hold",        "tr": "Beklemede" },
-      "CLOSED":        { "tone": "muted",    "en": "Closed",         "tr": "Kapalı" }
-    },
-    "job": {
-      "OPEN":           { "tone": "neutral",  "en": "Open",           "tr": "Açık" },
-      "SOURCING":       { "tone": "info",     "en": "Sourcing",       "tr": "Aday arama" },
-      "SHORTLIST_SENT": { "tone": "progress", "en": "Shortlist sent", "tr": "Kısa liste gönderildi" },
-      "INTERVIEWING":   { "tone": "progress", "en": "Interviewing",   "tr": "Mülakatlar" },
-      "OFFER":          { "tone": "progress", "en": "Offer",          "tr": "Teklif" },
-      "FILLED":         { "tone": "good",     "en": "Filled",         "tr": "Kapatıldı" },
-      "CANCELLED":      { "tone": "muted",    "en": "Cancelled",      "tr": "İptal" }
-    },
-    "stage": {
-      "SOURCED":          { "tone": "neutral",  "en": "Sourced",          "tr": "Bulundu" },
-      "SCREENED":         { "tone": "info",     "en": "Screened",         "tr": "Ön görüşme" },
-      "PRESENTED":        { "tone": "progress", "en": "Presented",        "tr": "Müşteriye sunuldu" },
-      "CLIENT_INTERVIEW": { "tone": "progress", "en": "Client interview", "tr": "Müşteri mülakatı" },
-      "OFFER":            { "tone": "progress", "en": "Offer",            "tr": "Teklif" },
-      "PLACED":           { "tone": "good",     "en": "Placed",           "tr": "Yerleşti" },
-      "REJECTED":         { "tone": "bad",      "en": "Rejected",         "tr": "Elendi" }
-    },
-    "proposal": {
-      "DRAFT":    { "tone": "neutral", "en": "Draft",    "tr": "Taslak" },
-      "SENT":     { "tone": "info",    "en": "Sent",     "tr": "Gönderildi" },
-      "ACCEPTED": { "tone": "good",    "en": "Accepted", "tr": "Kabul edildi" },
-      "REJECTED": { "tone": "bad",     "en": "Rejected", "tr": "Reddedildi" }
-    },
-    "consent": {
-      "NOT_SENT":  { "tone": "muted", "en": "No consent request", "tr": "İstek gönderilmedi" },
-      "SENT":      { "tone": "info",  "en": "Request sent",       "tr": "İstek gönderildi" },
-      "GIVEN":     { "tone": "good",  "en": "Consent given",      "tr": "Onay verildi" },
-      "REFUSED":   { "tone": "bad",   "en": "Refused",            "tr": "Reddedildi" },
-      "WITHDRAWN": { "tone": "warn",  "en": "Withdrawn",          "tr": "Geri çekildi" }
-    },
-    "person": {
-      "EXECUTIVE":      { "tone": "info",     "en": "Executive",      "tr": "Üst düzey yönetici" },
-      "CLIENT_CONTACT": { "tone": "good",     "en": "Client contact", "tr": "Müşteri kontağı" },
-      "REFERRER":       { "tone": "progress", "en": "Referrer",       "tr": "Referans veren" },
-      "CANDIDATE":      { "tone": "neutral",  "en": "Candidate",      "tr": "Aday" }
-    },
-    "userRole": {
-      "CONSULTANT": { "tone": "neutral",  "en": "Consultant", "tr": "Danışman" },
-      "MANAGER":    { "tone": "info",     "en": "Manager",    "tr": "Yönetici" },
-      "ADMIN":      { "tone": "progress", "en": "Admin",      "tr": "Sistem yöneticisi" }
-    },
-    "userState": {
-      "ACTIVE":   { "tone": "good",  "en": "Active",   "tr": "Aktif" },
-      "DISABLED": { "tone": "muted", "en": "Disabled", "tr": "Devre dışı" }
-    },
-    "actionDue": {
-      "OVERDUE":  { "tone": "bad",     "en": "Overdue",  "tr": "Gecikmiş" },
-      "TODAY":    { "tone": "warn",    "en": "Today",    "tr": "Bugün" },
-      "UPCOMING": { "tone": "neutral", "en": "Upcoming", "tr": "Yaklaşan" },
-      "DONE":     { "tone": "muted",   "en": "Done",     "tr": "Tamamlandı" }
-    }
   },
   "spacing": {
     "unit": 4,

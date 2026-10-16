@@ -23,3 +23,11 @@ All role and reason rules are ASSUMPTION (open question: statuses used today and
 ## Left / open
 - Client answers needed: status lists in use and who changes them; retention clock start; invoicing/proposal terms; reminder channels; whether hiring companies log in.
 - No change requests for `docs/TASKS.md`. Suggest marking W0-01 and W0-02 as review.
+
+## Review fixes
+- S-02 moved to Phase 2 with B-13 (story and index); channel is `WEBSITE_FORM`.
+- Owner rule: any consultant may change any record (ASSUMPTION); manager-only moves unchanged. Updated status-lifecycles.md.
+- A-02 AC5 phrased with 409 `blockingItems`; reason rule 3-500 trimmed in conventions, A-02, S-04.
+- A-03: "End contact" sets `endedOn`; ended contacts hidden by default with a filter.
+- Added sections 5 (consent) and 6 (data-subject request) to status-lifecycles.md from the enums; no self-transitions (resend/renew are actions). Note: ConsentStatus.java still lists SENT->SENT and GIVEN->GIVEN; contracts owner must remove.
+- S-01, S-04 aligned with enums and openapi roles (consultant may POST; manager/admin GET/PATCH). A-13 link types use enum names; A-04 already did.

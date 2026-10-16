@@ -1,6 +1,6 @@
 # Screen: Search results
 
-Requirements: A-14, UX-02, UX-08. Route: `/search?q=&type=&sector=&status=&owner=&lastContact=`. Data: `GET /search?q=` returns `{ accounts, people, jobs }`; filters are new query parameters (demo has none, see handoff).
+Requirements: A-14, UX-02, UX-08. Route: `/search?q=&type=&sector=&status=&owner=&lastContact=`. Data: `GET /search?q=&types=&sector=&accountStatus=&jobOrderStatus=&ownerId=&lastContactBefore=&lastContactAfter=&limit=` returns `{ query, accounts, people, jobOrders, totals }`. "Show all" uses the list endpoints (`/accounts`, `/people`, `/job-orders` with `q`).
 
 Question answered: **where is the thing I am looking for?**
 
@@ -47,11 +47,11 @@ Filters on phone open in a bottom sheet with an **Apply** button showing the res
 
 | Group | Fields |
 | --- | --- |
-| Clients | AccountSummary: `name`, `sector`, `city`, `owner`, `status`, `openJobs`, `lastActivity` |
-| People | PersonSummary: `name`, `title`, `company`, `type`, `owner`, `lastContact`, `consent` |
-| Jobs | JobSummary: `title`, `accountName`, `status`, `owner`, `daysOpen`, `candidates` |
+| Clients | Account: `name`, `sector`, `city`, `owner`, `status`, `openJobCount`, `lastActivityAt` |
+| People | PersonSummary: `name`, `title`, `company`, `type`, `owner`, `lastContactAt`, `consentStatus` |
+| Jobs | JobOrder (`jobOrders`): `title`, `account.name`, `status`, `owner`, `daysOpen`, `activeCandidates` |
 
-Matched text is highlighted in names, companies and titles. Filters (A-14): Sector (clients, jobs via client), Status (applies to clients and jobs, shows the union of lists grouped by kind), Owner, Last contact (any / last 30 / 90 days / more than 90 days), Type (record kind). Filters that do not apply to a group hide that group with a note ("Sector filter hides People").
+Matched text is highlighted in names, companies and titles. Filters (A-14): Sector (clients, jobs via client), Status (two params, `accountStatus` and `jobOrderStatus`; the UI shows one dropdown grouped by kind), Owner, Last contact (any / last 30 / 90 days / more than 90 days), Type (record kind). Filters that do not apply to a group hide that group with a note ("Sector filter hides People").
 
 ## Actions
 

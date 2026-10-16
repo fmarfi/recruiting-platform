@@ -21,10 +21,10 @@ PostgreSQL 16+ with pgvector (vectors only in Phase 2). One schema, `public`.
 | Module | Tables |
 | --- | --- |
 | security | `app_user`, `access_log`, `revinfo` |
-| accounts | `account`, `person`, `person_employment`, `contact`, `network_link`, `import_job` |
+| accounts | `account`, `person`, `person_employment`, `contact`, `network_link`, `import_job`, `account_open_job` |
 | pipeline | `job_order`, `application`, `proposal`, `activity`, `next_action`, `timeline_entry` |
 | privacy | `person_privacy`, `privacy_notice`, `consent_record`, `consent_request`, `retention_settings`, `retention_run`, `data_subject_request` |
-| platform-app (Modulith) | `event_publication` (Spring Modulith JPA event registry, created by its starter schema) |
+| platform-app (Modulith) | `event_publication` (Spring Modulith JPA event registry; the db-engineer writes the Flyway migration for the table the Spring Modulith JPA starter expects, because `ddl-auto` is `validate` and nothing creates it automatically) |
 
 ## Relationships
 
@@ -94,7 +94,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | status | varchar(40) | `AccountStatus`, default `LEAD`; index |
 | status_changed_at | timestamptz | not null |
 | opened_on | date | not null, default today |
-| open_job_count | int | not null default 0; maintained from `JobOrderCreated`/`JobOrderStatusChanged` |
+| open_job_count | int | not null default 0; derived: `count(*) from account_open_job where account_id = ? and open`, refreshed after each projection upsert |
 | last_activity_at | timestamptz | null; maintained from `ActivityLogged`; index desc |
 | audit columns | | |
 
@@ -130,8 +130,11 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | account_id | uuid FK account | not null |
 | person_id | uuid FK person | not null |
 | role | varchar(200) | null |
-| is_primary | boolean | default false; partial unique index `(account_id) where is_primary` |
-| audit columns | | unique `(account_id, person_id)` |
+| is_primary | boolean | default false; partial unique index `(account_id) where is_primary and ended_on is null` |
+| ended_on | date | null; set by `DELETE .../contacts/{id}` (history is kept); `active = ended_on is null` |
+| audit columns | | unique `(account_id, person_id) where ended_on is null`; an ended contact can be re-added as a new row |
+
+**account_open_job** — projection, not audited. `job_order_id uuid PK` (no FK, pipeline owns the job order), `account_id uuid FK account not null` (index), `title varchar(200)`, `open boolean not null`, `updated_at timestamptz not null`. Fed by `JobOrderCreated` and `JobOrderStatusChanged` with an upsert by `job_order_id` (`open = status.isOpen()`), so redelivery is harmless. It feeds `open_job_count` and the `blockingItems` of the account-close guard.
 
 **network_link** — audited
 
@@ -174,6 +177,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | seniority | varchar(100) | null |
 | description | text | null |
 | fee_terms | text | null |
+| openings | int | not null default 1; `CHECK (openings >= 1)` |
 | status | varchar(40) | `JobOrderStatus`, default `OPEN`; index |
 | status_changed_at | timestamptz | not null |
 | owner_id | uuid FK app_user | not null; index |
@@ -345,4 +349,11 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 
 ## Anonymisation (S-03, S-04)
 
-`PersonDataApi.anonymise(personId)` in `accounts` sets `person.name = 'Anonymised person'`, nulls `email, phone, linkedin_url, how_we_know, notes, title, city`, deletes `person_employment` and `network_link` rows, sets `anonymised_at` and `retention_status = ANONYMISED`, then publishes `PersonAnonymised`. On that event `pipeline` replaces `activity.note`, `application.rejection_reason` and `next_action.title` for that person with `[removed]`, and `privacy` keeps `consent_record` rows (legal evidence) but nulls `ip_address` and `evidence`. Envers `_aud` rows for the person are purged in the same run (`delete from person_aud where id = ?` etc.), otherwise the history would keep the personal data. With `RetentionAction.DELETE` the person row is deleted instead; FKs from `application`, `activity`, `contact` must then be `on delete cascade` or nulled — the db-engineer applies `on delete cascade` to `contact`, `person_employment`, `network_link`, `application`, `person_privacy`, `consent_request`, `consent_record`, and `on delete set null` to `activity.person_id`, `next_action.person_id`, `data_subject_request.person_id`.
+`PersonDataApi.anonymise(personId)` in `accounts` sets `person.name = 'Anonymised person'`, nulls `email, phone, linkedin_url, how_we_know, notes, title, city, company`, deletes `person_employment` and `network_link` rows, sets `anonymised_at` and `retention_status = ANONYMISED`, then publishes `PersonAnonymised`. On that event:
+
+- `pipeline` replaces `activity.note`, `application.rejection_reason`, `next_action.title` for that person with `[removed]`, and also scrubs `timeline_entry.reason` and `timeline_entry.summary` of every entry with that `person_id` (set to `[removed]`). Decision: timeline text is free text written at event time and may contain names, so it is scrubbed (not re-rendered at read time); the entries and their ids stay.
+- `privacy` keeps `consent_record` rows (legal evidence) but nulls `ip_address` and `evidence`, and marks `person_privacy` ANONYMISED.
+- **Envers `_aud` purge**, in the same run, by person id: `person_aud`, `person_employment_aud`, `network_link_aud` (either end), `contact_aud`, `activity_aud`, `application_aud`, `next_action_aud`, `person_privacy_aud`. Any other audited table that holds person data must be added to this list (`account_aud`, `job_order_aud`, `proposal_aud` hold none). Otherwise the history would keep the personal data.
+- With `RetentionAction.DELETE` the person row is deleted instead; FKs from `application`, `activity`, `contact` must then be `on delete cascade` or nulled — the db-engineer applies `on delete cascade` to `contact`, `person_employment`, `network_link`, `application`, `person_privacy`, `consent_request`, `consent_record`, and `on delete set null` to `activity.person_id`, `next_action.person_id`, `data_subject_request.person_id`.
+
+**Import retention:** `import_job.file_content` and `errors` are deleted (set to null) 30 days after upload when the import was not committed; a nightly retention job in `accounts` does this.
