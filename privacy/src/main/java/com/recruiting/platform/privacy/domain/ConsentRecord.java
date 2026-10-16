@@ -35,7 +35,7 @@ public class ConsentRecord {
     private UUID consentRequestId;
 
     @Column(name = "recorded_at")
-    private Instant recordedAt;
+    private Instant recordedAt = Instant.now();
 
     @Column(name = "recorded_by")
     private UUID recordedBy;

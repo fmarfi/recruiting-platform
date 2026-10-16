@@ -35,13 +35,13 @@ public class DataSubjectRequest extends AuditableEntity {
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    private DataSubjectRequestStatus status;
+    private DataSubjectRequestStatus status = DataSubjectRequestStatus.RECEIVED;
 
     @Column(name = "description")
     private String description;
 
     @Column(name = "received_at")
-    private Instant receivedAt;
+    private Instant receivedAt = Instant.now();
 
     @Column(name = "due_on")
     private LocalDate dueOn;

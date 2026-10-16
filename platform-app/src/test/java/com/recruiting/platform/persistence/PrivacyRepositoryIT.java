@@ -73,6 +73,13 @@ class PrivacyRepositoryIT extends AbstractPersistenceIT {
         assertThat(s.getRetentionMonths()).isEqualTo(24);
         assertThat(s.getAction()).isEqualTo(RetentionAction.ANONYMISE);
         assertThat(s.getAutoSendPersonTypes()).isEqualTo("CANDIDATE,EXECUTIVE");
+
+        long before = s.getVersion();
+        tx.executeWithoutResult(t -> settings.findById((short) 1).orElseThrow().setWarningDays(31));
+        RetentionSettings updated = settings.findById((short) 1).orElseThrow();
+        assertThat(updated.getWarningDays()).isEqualTo(31);
+        assertThat(updated.getVersion()).isEqualTo(before + 1);
+        tx.executeWithoutResult(t -> settings.findById((short) 1).orElseThrow().setWarningDays(30));
     }
 
     @Test

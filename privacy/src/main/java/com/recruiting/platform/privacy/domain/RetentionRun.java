@@ -25,16 +25,16 @@ public class RetentionRun {
     private UUID triggeredBy;
 
     @Column(name = "dry_run")
-    private boolean dryRun;
+    private boolean dryRun = false;
 
     @Column(name = "flagged_count")
-    private Integer flaggedCount;
+    private Integer flaggedCount = 0;
 
     @Column(name = "anonymised_count")
-    private Integer anonymisedCount;
+    private Integer anonymisedCount = 0;
 
     @Column(name = "deleted_count")
-    private Integer deletedCount;
+    private Integer deletedCount = 0;
 
     @Column(name = "failure_reason")
     private String failureReason;

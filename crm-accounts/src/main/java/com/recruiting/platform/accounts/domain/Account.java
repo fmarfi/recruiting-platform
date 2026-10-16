@@ -40,17 +40,17 @@ public class Account extends AuditableEntity {
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    private AccountStatus status;
+    private AccountStatus status = AccountStatus.LEAD;
 
     @Column(name = "status_changed_at")
-    private Instant statusChangedAt;
+    private Instant statusChangedAt = Instant.now();
 
     @Column(name = "opened_on")
-    private LocalDate openedOn;
+    private LocalDate openedOn = LocalDate.now();
 
     @NotAudited
     @Column(name = "open_job_count")
-    private Integer openJobCount;
+    private Integer openJobCount = 0;
 
     @NotAudited
     @Column(name = "last_activity_at")

@@ -74,6 +74,42 @@ class AccountsRepositoryIT extends AbstractPersistenceIT {
     }
 
     @Test
+    void minimallyPopulatedEntitiesPersistWithDatabaseDefaults() {
+        UUID owner = newUser().getId();
+        Account a = new Account();
+        a.setName("Minimal Corp " + UUID.randomUUID());
+        a.setSector("Retail");
+        a.setOwnerId(owner);
+        Person p = new Person();
+        p.setName("Minimal Person " + UUID.randomUUID());
+        p.setType(PersonType.REFERRER);
+        p.setOwnerId(owner);
+        tx.executeWithoutResult(s -> {
+            accounts.save(a);
+            people.save(p);
+        });
+        Account loadedA = accounts.findById(a.getId()).orElseThrow();
+        assertThat(loadedA.getStatus()).isEqualTo(AccountStatus.LEAD);
+        assertThat(loadedA.getOpenJobCount()).isZero();
+        Person loadedP = people.findById(p.getId()).orElseThrow();
+        assertThat(loadedP.getConsentStatus()).isEqualTo(ConsentStatus.NOT_SENT);
+        assertThat(loadedP.getRetentionStatus()).isEqualTo(RetentionStatus.ACTIVE);
+    }
+
+    @Test
+    void purgeFilesClearsOldUploads() {
+        ImportJob job = new ImportJob();
+        job.setKind(ImportKind.ACCOUNTS);
+        job.setStatus(ImportStatus.VALIDATED);
+        job.setFileContent(new byte[] {9});
+        UUID id = tx.execute(s -> imports.save(job)).getId();
+        int changed = tx.execute(s -> imports.purgeFilesCreatedBefore(Instant.now().plusSeconds(60)));
+        assertThat(changed).isGreaterThanOrEqualTo(1);
+        byte[] content = tx.execute(s -> imports.findById(id).orElseThrow().getFileContent());
+        assertThat(content).isNull();
+    }
+
+    @Test
     void trigramSearchIgnoresCaseAndAccents() {
         UUID owner = newUser().getId();
         String tag = UUID.randomUUID().toString().substring(0, 8);

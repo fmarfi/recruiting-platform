@@ -15,27 +15,27 @@ public class RetentionSettings extends AuditableEntity {
     private Short id = 1;
 
     @Column(name = "retention_months")
-    private Integer retentionMonths;
+    private Integer retentionMonths = 24;
 
     @Column(name = "basis")
     @Enumerated(EnumType.STRING)
-    private RetentionBasis basis;
+    private RetentionBasis basis = RetentionBasis.FROM_CREATED;
 
     @Column(name = "action")
     @Enumerated(EnumType.STRING)
-    private RetentionAction action;
+    private RetentionAction action = RetentionAction.ANONYMISE;
 
     @Column(name = "warning_days")
-    private Integer warningDays;
+    private Integer warningDays = 30;
 
     @Column(name = "auto_send_notice")
-    private boolean autoSendNotice;
+    private boolean autoSendNotice = true;
 
     @Column(name = "auto_send_person_types", length = 200)
-    private String autoSendPersonTypes;
+    private String autoSendPersonTypes = "CANDIDATE,EXECUTIVE";
 
     @Column(name = "renew_on_consent")
-    private boolean renewOnConsent;
+    private boolean renewOnConsent = true;
 
     public RetentionSettings() {
         // for JPA

@@ -188,3 +188,11 @@ CREATE TABLE data_subject_request_aud (
 CREATE INDEX idx_dsr_aud_person ON data_subject_request_aud (person_id);
 CREATE INDEX idx_dsr_aud_rev ON data_subject_request_aud (rev);
 CREATE INDEX idx_dsr_aud_revend ON data_subject_request_aud (revend);
+
+-- Envers needs a history row for it, otherwise the first update fails with the validity audit strategy.
+INSERT INTO revinfo (rev, revtstmp) VALUES (nextval('revinfo_seq'), (extract(epoch FROM now()) * 1000)::bigint);
+INSERT INTO retention_settings_aud (id, rev, revtype, retention_months, basis, action, warning_days, auto_send_notice,
+                                    auto_send_person_types, renew_on_consent, created_at, updated_at)
+SELECT s.id, currval('revinfo_seq'), 0, s.retention_months, s.basis, s.action, s.warning_days, s.auto_send_notice,
+       s.auto_send_person_types, s.renew_on_consent, s.created_at, s.updated_at
+FROM retention_settings s;
