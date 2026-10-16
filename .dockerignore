@@ -1,0 +1,11 @@
+**/target/
+**/node_modules/
+frontend/dist/
+.git/
+.claude/
+.env
+.env.*
+!.env.example
+demo/
+docs/
+*.log

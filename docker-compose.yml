@@ -4,7 +4,6 @@
 services:
   postgres:
     image: pgvector/pgvector:0.8.7-pg17
-    container_name: recruiting-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-recruiting}
       POSTGRES_USER: ${POSTGRES_USER:-recruiting}
@@ -22,7 +21,6 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1.31.6
-    container_name: recruiting-mailpit
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
       - "${MAILPIT_UI_PORT:-8025}:8025"
