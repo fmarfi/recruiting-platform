@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Search CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <a class="skip-link" href="#view" data-i18n="skipToContent">Skip to content</a>
+  <div class="app">
+    <aside class="sidebar" aria-label="Primary">
+      <a class="brand" href="#/">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Search CRM</span>
+      </a>
+      <nav class="nav" id="side-nav">
+        <a href="#/" data-nav="home">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>
+          <span data-i18n="navHome">My day</span>
+        </a>
+        <a href="#/accounts" data-nav="accounts">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V6a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v15M14 10h5a1 1 0 0 1 1 1v10M3 21h18M8 9h2M8 13h2M8 17h2"/></svg>
+          <span data-i18n="navAccounts">Accounts</span>
+        </a>
+        <a href="#/network" data-nav="network">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.2a3 3 0 0 1 0 5.6M17.5 14.2A5.5 5.5 0 0 1 20.5 20"/></svg>
+          <span data-i18n="navNetwork">Network</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="me" id="me"></div>
+        <p class="demo-note" data-i18n="demoNote">Demo — all companies and people are fictional.</p>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <a class="brand brand-compact" href="#/" aria-label="Search CRM">
+          <span class="brand-mark" aria-hidden="true"></span>
+        </a>
+        <form class="global-search" id="global-search" role="search">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+          <label class="sr-only" for="global-q" data-i18n="searchLabel">Search accounts, people and jobs</label>
+          <input id="global-q" name="q" type="search" autocomplete="off" data-i18n-placeholder="searchPlaceholder" placeholder="Search accounts, people, jobs">
+        </form>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="en" aria-pressed="true">EN</button>
+          <button type="button" data-lang="tr" aria-pressed="false">TR</button>
+        </div>
+      </header>
+
+      <main id="view" class="view" tabindex="-1" aria-live="polite"></main>
+
+      <footer class="foot-note" data-i18n="demoNote">Demo — all companies and people are fictional.</footer>
+    </div>
+  </div>
+
+  <nav class="tabbar" id="tab-nav" aria-label="Primary">
+    <a href="#/" data-nav="home">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>
+      <span data-i18n="navHome">My day</span>
+    </a>
+    <a href="#/accounts" data-nav="accounts">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V6a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v15M14 10h5a1 1 0 0 1 1 1v10M3 21h18M8 9h2M8 13h2M8 17h2"/></svg>
+      <span data-i18n="navAccounts">Accounts</span>
+    </a>
+    <a href="#/network" data-nav="network">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.2a3 3 0 0 1 0 5.6M17.5 14.2A5.5 5.5 0 0 1 20.5 20"/></svg>
+      <span data-i18n="navNetwork">Network</span>
+    </a>
+  </nav>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
