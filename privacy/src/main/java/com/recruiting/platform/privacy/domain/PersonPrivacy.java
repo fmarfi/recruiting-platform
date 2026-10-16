@@ -20,20 +20,20 @@ public class PersonPrivacy {
 
     @Column(name = "consent_status")
     @Enumerated(EnumType.STRING)
-    private ConsentStatus consentStatus;
+    private ConsentStatus consentStatus = ConsentStatus.NOT_SENT;
 
     @Column(name = "notice_sent_at")
     private Instant noticeSentAt;
 
     @Column(name = "basis_date")
-    private LocalDate basisDate;
+    private LocalDate basisDate = LocalDate.now();
 
     @Column(name = "retain_until")
     private LocalDate retainUntil;
 
     @Column(name = "retention_status")
     @Enumerated(EnumType.STRING)
-    private RetentionStatus retentionStatus;
+    private RetentionStatus retentionStatus = RetentionStatus.ACTIVE;
 
     @Column(name = "flagged_at")
     private Instant flaggedAt;

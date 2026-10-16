@@ -8,6 +8,8 @@
 - `platform-app/.../PersistenceConfig` (profile `!test`): `@EnableJpaAuditing`, Envers `_aud` suffix and ValidityAuditStrategy.
 - ITs in `platform-app/src/test/.../persistence/`: `MigrationIT` (validate on empty DB, CHECK values == contracts enums), one repository IT per module (trigram search, Envers revisions, constraints).
 
+**Review fixes:** entity fields now carry the DB defaults (JPA inserts explicit NULLs). `ImportJob`: kept the blob column and replaced the finder with the bulk update `ImportJobRepository.purgeFilesCreatedBefore(cutoff)` (nulls file_content and errors). `PrivacyNotice` and `AccessLog` are `@Immutable`.
+
 **Not done / left**
 - `createdBy/updatedBy` and `revinfo.user_id` stay null until security provides an `AuditorAware<UUID>` bean and a `RevisionListener` (set it in `@RevisionEntity(...)` on `AuditRevision`).
 - Phase 2 tables (pgvector) deferred as instructed.

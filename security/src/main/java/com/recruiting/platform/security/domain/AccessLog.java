@@ -9,6 +9,7 @@ import org.hibernate.annotations.UuidGenerator;
 
 /** Maps table {@code access_log}. Other modules reference it by id only (ADR 0001). */
 @Entity
+@org.hibernate.annotations.Immutable
 @Table(name = "access_log")
 public class AccessLog {
 
@@ -32,7 +33,7 @@ public class AccessLog {
     private UUID entityId;
 
     @Column(name = "at")
-    private Instant at;
+    private Instant at = Instant.now();
 
     @Column(name = "ip_address", length = 45)
     private String ipAddress;

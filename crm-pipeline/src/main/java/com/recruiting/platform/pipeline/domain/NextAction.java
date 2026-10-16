@@ -37,7 +37,7 @@ public class NextAction extends AuditableEntity {
     private UUID jobOrderId;
 
     @Column(name = "done")
-    private boolean done;
+    private boolean done = false;
 
     @Column(name = "done_at")
     private Instant doneAt;

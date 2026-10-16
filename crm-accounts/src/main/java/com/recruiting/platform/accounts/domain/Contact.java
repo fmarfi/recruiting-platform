@@ -27,7 +27,7 @@ public class Contact extends AuditableEntity {
     private String role;
 
     @Column(name = "is_primary")
-    private boolean primary;
+    private boolean primary = false;
 
     @Column(name = "ended_on")
     private LocalDate endedOn;

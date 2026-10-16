@@ -62,12 +62,12 @@ public class Person extends AuditableEntity {
     @NotAudited
     @Column(name = "consent_status")
     @Enumerated(EnumType.STRING)
-    private ConsentStatus consentStatus;
+    private ConsentStatus consentStatus = ConsentStatus.NOT_SENT;
 
     @NotAudited
     @Column(name = "retention_status")
     @Enumerated(EnumType.STRING)
-    private RetentionStatus retentionStatus;
+    private RetentionStatus retentionStatus = RetentionStatus.ACTIVE;
 
     @Column(name = "anonymised_at")
     private Instant anonymisedAt;

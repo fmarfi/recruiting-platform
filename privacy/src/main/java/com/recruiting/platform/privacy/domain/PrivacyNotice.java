@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 /** Maps table {@code privacy_notice}. Other modules reference it by id only (ADR 0001). */
 @Entity
+@org.hibernate.annotations.Immutable
 @Table(name = "privacy_notice")
 @EntityListeners(AuditingEntityListener.class)
 public class PrivacyNotice {

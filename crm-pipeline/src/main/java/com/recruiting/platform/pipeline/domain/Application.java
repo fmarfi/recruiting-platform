@@ -26,13 +26,13 @@ public class Application extends AuditableEntity {
 
     @Column(name = "stage")
     @Enumerated(EnumType.STRING)
-    private PipelineStage stage;
+    private PipelineStage stage = PipelineStage.SOURCED;
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
 
     @Column(name = "stage_changed_at")
-    private Instant stageChangedAt;
+    private Instant stageChangedAt = Instant.now();
 
     public Application() {
         // for JPA

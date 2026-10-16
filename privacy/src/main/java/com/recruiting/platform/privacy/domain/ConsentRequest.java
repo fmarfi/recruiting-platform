@@ -39,7 +39,7 @@ public class ConsentRequest {
     private EmailDeliveryStatus deliveryStatus;
 
     @Column(name = "queued_at")
-    private Instant queuedAt;
+    private Instant queuedAt = Instant.now();
 
     @Column(name = "sent_at")
     private Instant sentAt;

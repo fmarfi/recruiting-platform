@@ -31,18 +31,18 @@ public class AppUser extends AuditableEntity {
     private Role role;
 
     @Column(name = "active")
-    private boolean active;
+    private boolean active = true;
 
     @Column(name = "language")
     @Enumerated(EnumType.STRING)
-    private Language language;
+    private Language language = Language.TR;
 
     @NotAudited
     @Column(name = "password_hash", length = 100)
     private String passwordHash;
 
     @Column(name = "must_change_password")
-    private boolean mustChangePassword;
+    private boolean mustChangePassword = true;
 
     @NotAudited
     @Column(name = "last_login_at")

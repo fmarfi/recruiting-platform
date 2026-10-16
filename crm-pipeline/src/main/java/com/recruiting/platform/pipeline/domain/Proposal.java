@@ -40,10 +40,10 @@ public class Proposal extends AuditableEntity {
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    private ProposalStatus status;
+    private ProposalStatus status = ProposalStatus.DRAFT;
 
     @Column(name = "status_changed_at")
-    private Instant statusChangedAt;
+    private Instant statusChangedAt = Instant.now();
 
     @Column(name = "status_reason")
     private String statusReason;

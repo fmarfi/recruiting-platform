@@ -38,20 +38,20 @@ public class JobOrder extends AuditableEntity {
     private String feeTerms;
 
     @Column(name = "openings")
-    private Integer openings;
+    private Integer openings = 1;
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    private JobOrderStatus status;
+    private JobOrderStatus status = JobOrderStatus.OPEN;
 
     @Column(name = "status_changed_at")
-    private Instant statusChangedAt;
+    private Instant statusChangedAt = Instant.now();
 
     @Column(name = "owner_id")
     private UUID ownerId;
 
     @Column(name = "opened_on")
-    private LocalDate openedOn;
+    private LocalDate openedOn = LocalDate.now();
 
     @Column(name = "closed_on")
     private LocalDate closedOn;
