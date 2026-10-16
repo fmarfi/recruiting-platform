@@ -9,9 +9,20 @@
   </parent>
   <artifactId>contracts</artifactId>
   <name>contracts</name>
-  <description>Shared enums (contracts/enums/*.java, package com.recruiting.platform.contracts). Other contract files (openapi.yaml, design tokens) are not compiled.</description>
+  <description>Shared contract types: enums/, events/ and errors/ (package com.recruiting.platform.contracts). No dependencies. openapi.yaml and design tokens are not compiled.</description>
   <build>
-    <!-- the architect's enum sources compile as-is from contracts/enums -->
-    <sourceDirectory>enums</sourceDirectory>
+    <!-- every *.java under contracts/ (enums/, events/, errors/) compiles as-is -->
+    <sourceDirectory>${project.basedir}</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>target/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 </project>
