@@ -1,4 +1,5 @@
 import { Container, Text, Title } from '@mantine/core';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom';
 
@@ -28,6 +29,14 @@ const NAV = [
 
 export function AppRoutes() {
   const { t, i18n } = useTranslation();
+  useEffect(() => {
+    const setLang = (l: string) => {
+      document.documentElement.lang = l;
+    };
+    setLang(i18n.language);
+    i18n.on('languageChanged', setLang);
+    return () => i18n.off('languageChanged', setLang);
+  }, [i18n]);
   return (
     <>
       <nav style={{ display: 'flex', gap: 'var(--space-4)', padding: 'var(--space-3)' }}>
