@@ -5,7 +5,8 @@
 ## Commands
 | What | Command |
 | --- | --- |
-| Run the demo (http://localhost:8080) | `cd demo` then `mvn spring-boot:run` |
+| Run the frontend (http://localhost:5173) on the mock API | in `frontend/`: `npm run mock`, then `npm run dev` |
+| Run the app on the local DB | `docker compose up -d`, `mvn -q install -DskipTests`, then in `platform-app/`: `mvn spring-boot:run -Dspring-boot.run.profiles=local` (env from `.env`) |
 | Build and test the platform | `mvn -q -B verify` |
 | See agent branches | `git branch --list "worktree-*"` |
 | Recent work | `git log --oneline -10` |
