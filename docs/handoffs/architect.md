@@ -69,7 +69,7 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 
 ## Wave 1b · W1-05 · 2026-10-17
 
-**Branch / commits:** `worktree-wave1b-architect` · 1 commit
+**Branch / commits:** `worktree-wave1b-architect` · 2 commits
 
 **Done**
 - ADR 0009: every FK to `person` is `on delete cascade`, except `data_subject_request.person_id` (`set null`). FKs to `account` stay `no action` (accounts are never hard-deleted).
@@ -80,7 +80,9 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 - `PersonDeleteIT`: deleting a person with a person-only activity succeeds and cascades, and the DSR survives with `person_id` null. It also checks the FK rule in `pg_constraint` for `person` and `account`.
 
 **Others must know**
-- security-privacy: implement the order in schema.md (minimise DSRs, then `anonymise` or `delete`, then the listeners, then the `_aud` purge in its own transaction). Keep `store_data_at_delete=false`.
+- security-privacy: implement the order in schema.md (minimise DSRs, then `anonymise` or `delete`, then the listeners, then the `_aud` purge in its own transaction). Keep `store_data_at_delete=false`. The DSR e-mail uses HMAC with the env var `PRIVACY_HMAC_KEY` (versioned), not plain sha256.
+- backend-accounts: delete people through JPA (this writes the revtype=2 audit row). Set `import_job.file_content` and `errors` to null when an import ends.
+- Review fixes applied (commit "Apply W1-05 review fixes"): HMAC, JPA delete, import purge, DSR aud `person_id` set to null, wider IT.
 - backend-pipeline: when `PersonAnonymised(deleted=true)`, only `timeline_entry` needs scrubbing. Everything else has cascaded.
 - db-engineer: a new FK to `person` must be cascade, or `PersonDeleteIT` fails.
 
