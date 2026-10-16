@@ -1,0 +1,5 @@
+{
+  "app": { "title": "Recruiting Platform", "placeholder": "This screen is not built yet." },
+  "nav": { "myDay": "My day", "accounts": "Accounts", "jobOrders": "Job orders", "network": "Network", "settings": "Settings", "search": "Search", "login": "Sign in" },
+  "screen": { "account": "Account", "jobOrder": "Job order", "person": "Person", "settingsSection": "Settings" }
+}
