@@ -31,10 +31,12 @@ Runs in two parts so builders never guess shared foundations. Endpoints are list
 
 | ID | Task | Owner | Status | Blocked by |
 | --- | --- | --- | --- | --- |
-| W1-01 | Flyway migrations for every table in `contracts/schema.md` (extensions unaccent, pg_trgm; vector deferred to Phase 2), `immutable_unaccent` function, CHECK constraints from enums, indexes incl. trigram search, Spring Modulith `event_publication` table, `account_open_job` projection | db-engineer | in progress | Gate 0 |
-| W1-02 | JPA entities + Envers + repositories per module in `<module>/.../<module>/domain/`; repository tests on embedded PostgreSQL (no Docker locally) | db-engineer | in progress | Gate 0 |
-| W1-03 | `frontend/` scaffold: Vite + React + TS strict + Mantine theme from design tokens, `openapi-typescript` client, React Router with placeholder routes per screen, i18next TR/EN, Vitest, `npm run mock` (Prism) | devops | in progress | Gate 0 |
-| W1-04 | CI: frontend job, Prism mock-server smoke job; app Dockerfile; add `spring-modulith-starter-jpa` (and exclude its auto-config in the test profile); contracts sources via build-helper `add-source` instead of `sourceDirectory=${project.basedir}`; update devops hand-off | devops | in progress | Gate 0 |
+| W1-01 | Flyway migrations for every table in `contracts/schema.md` (extensions unaccent, pg_trgm; vector deferred to Phase 2), `immutable_unaccent` function, CHECK constraints from enums, indexes incl. trigram search, Spring Modulith `event_publication` table, `account_open_job` projection | db-engineer | done | Gate 0 |
+| W1-02 | JPA entities + Envers + repositories per module in `<module>/.../<module>/domain/`; repository tests as Testcontainers `*IT` (`mvn -B verify -Pintegration`) | db-engineer | done | Gate 0 |
+| W1-03 | `frontend/` scaffold: Vite + React + TS strict + Mantine theme from design tokens, `openapi-typescript` client, React Router with placeholder routes per screen, i18next TR/EN, Vitest, `npm run mock` (Prism) | devops | done | Gate 0 |
+| W1-04 | CI: frontend job, Prism mock-server smoke job; app Dockerfile; add `spring-modulith-starter-jpa` (and exclude its auto-config in the test profile); contracts sources via build-helper `add-source` instead of `sourceDirectory=${project.basedir}`; update devops hand-off | devops | done | Gate 0 |
+
+**Wave 1a result (2026-10-16):** merged after review (no blockers; review fixes applied). On main: `mvn -B verify -Pintegration` green (Docker), frontend typecheck/test/build green, Docker image builds. Repo line endings normalised to LF (`.gitattributes`).
 
 ### Wave 1b: features (parallel, after 1a merges)
 
@@ -73,6 +75,11 @@ Runs in two parts so builders never guess shared foundations. Endpoints are list
 | architect | devops | `contracts` module compiles all contract Java; module `allowedDependencies` per ADR 0001 | done in wave-0 merge |
 | ux-designer | architect | ~15 endpoints the screens need beyond the demo API | done; remaining gaps settled in docs/ux/README.md |
 | ux-designer | ux/frontends | Jobs item in the main navigation | W1-13 |
+| db-engineer | architect | `contracts/schema.md`: `activity.person_id ON DELETE SET NULL` conflicts with `ck_activity_target`, so deleting a person with a person-only activity fails (breaks S-03 delete). Suggested: `ON DELETE CASCADE` + IT | todo, before W1-12 |
+| db-engineer | architect | `contracts/schema.md`: `data_subject_request_aud` missing from the anonymisation purge list; decide keep (legal evidence) or purge | todo, before W1-12 |
+| db-engineer | security-privacy | `AuditorAware` bean + Envers `RevisionListener`, so `created_by`/`updated_by`/`revinfo.user_id` get filled | W1-12 |
+| devops | security-privacy | Permit `/actuator/health` (unauthenticated, no details); then devops adds Dockerfile HEALTHCHECK | W1-12 |
+| devops | devops | Bundle frontend into the app jar; add ESLint + CI lint step; dark-mode tokens into the Mantine dark palette | before pilot |
 
 ## Decisions log
 
@@ -81,6 +88,9 @@ Runs in two parts so builders never guess shared foundations. Endpoints are list
 - 2026-10-16 · Status lists are read-only in Settings (ADR 0002); labels and tones come from `/reference-data`, design tokens map tone to colour only.
 - 2026-10-16 · Frontend: React + TypeScript + Mantine (ADR 0003), confirmed by the orchestrator; revisit only if the client asks for Vaadin.
 - 2026-10-16 · Wave 1 split into 1a (foundations) and 1b (features).
+- 2026-10-16 · Docker Desktop installed: DB tests use Testcontainers (`*IT`, `-Pintegration`) instead of embedded PostgreSQL.
+- 2026-10-16 · Repo line endings are LF (`.gitattributes`); agents must not rewrite files to CRLF.
+- 2026-10-16 · Migrations use timestamp names (`V202610160001__...`) as schema.md specifies.
 
 ## Open questions blocking work
 
