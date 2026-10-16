@@ -26,5 +26,7 @@
 
 ## Change requests / left to do
 
+- security-privacy: Dockerfile has no HEALTHCHECK because Spring Security locks `/actuator/health`; permit it, then devops adds the check.
+- Known gap: dark-mode token variables (`tokens.ts`) do not feed Mantine's dark palette yet.
 - Frontend is not yet bundled into the jar (ADR 0003 serving step); do it before the pilot (copy `dist/` into platform-app static resources or add it to the Dockerfile).
 - ESLint and Dependabot not set up. The orchestrator can mark W1-03 and W1-04 done after merge.

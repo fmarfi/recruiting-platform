@@ -11,7 +11,6 @@ COPY crm-accounts/pom.xml crm-accounts/pom.xml
 COPY crm-pipeline/pom.xml crm-pipeline/pom.xml
 COPY ai/pom.xml ai/pom.xml
 COPY platform-app/pom.xml platform-app/pom.xml
-RUN --mount=type=cache,target=/root/.m2 mvn -q -B dependency:go-offline -DskipTests || true
 COPY contracts contracts
 COPY security security
 COPY privacy privacy
@@ -20,7 +19,8 @@ COPY crm-pipeline crm-pipeline
 COPY ai ai
 COPY platform-app platform-app
 RUN --mount=type=cache,target=/root/.m2 mvn -q -B -pl platform-app -am package -DskipTests \
-    && java -Djarmode=tools -jar platform-app/target/platform-app-*.jar extract --layers --destination /workspace/extracted
+    && cp platform-app/target/platform-app-*.jar app.jar \
+    && java -Djarmode=tools -jar app.jar extract --layers --destination /workspace/extracted
 
 FROM eclipse-temurin:21-jre AS runtime
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app
@@ -30,5 +30,6 @@ COPY --from=build --chown=app:app /workspace/extracted/spring-boot-loader/ ./
 COPY --from=build --chown=app:app /workspace/extracted/snapshot-dependencies/ ./
 COPY --from=build --chown=app:app /workspace/extracted/application/ ./
 USER app
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/platform-app-0.1.0-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
