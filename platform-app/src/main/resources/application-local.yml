@@ -1,0 +1,11 @@
+# Local development: docker compose up -d, then run with --spring.profiles.active=local
+# DB and Mailpit defaults match docker-compose.yml / .env.example.
+spring:
+  datasource:
+    password: ${DB_PASSWORD:recruiting}
+  mail:
+    host: localhost
+    port: 1025
+logging:
+  level:
+    com.recruiting: DEBUG
