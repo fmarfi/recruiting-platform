@@ -1,0 +1,90 @@
+{
+  "$comment": "Owned by ux-designer. Tokens map tone to colours only. Status labels (EN/TR), the status to tone assignment and allowed transitions are NOT here: they come at runtime from GET /reference-data (lifecycles.<kind>.statuses[].labelEn/labelTr/tone). Tone keys are the contracts/enums/Tone.java names in uppercase. Frontends map these 1:1 to CSS custom properties (--color-*, --tone-<tone>-bg/fg/dot, --space-*, --radius-*). Unknown tone falls back to NEUTRAL.",
+  "version": "1.0.0",
+  "color": {
+    "light": {
+      "bg": "#f3f6f4", "surface": "#ffffff", "surface2": "#eef3f0", "surface3": "#e5ece8",
+      "border": "#dbe3df", "borderStrong": "#c3cfca",
+      "ink": "#15233a", "ink2": "#434f5e", "ink3": "#6b7784",
+      "accent": "#2f5d50", "accentHover": "#254b41", "accentInk": "#ffffff", "accentSoft": "#e2ede8",
+      "danger": "#b0322b", "dangerSoft": "#fbe6e3", "focus": "#2f7d68",
+      "backdrop": "rgba(18,28,32,0.42)"
+    },
+    "dark": {
+      "bg": "#0e1416", "surface": "#151d1f", "surface2": "#1a2427", "surface3": "#223034",
+      "border": "#253236", "borderStrong": "#34454a",
+      "ink": "#e5ecea", "ink2": "#b3c0bd", "ink3": "#85938f",
+      "accent": "#78b49f", "accentHover": "#8fc6b2", "accentInk": "#0c1a15", "accentSoft": "#1c302a",
+      "danger": "#ef8076", "dangerSoft": "#3a1f1d", "focus": "#8fd0b9",
+      "backdrop": "rgba(0,0,0,0.6)"
+    }
+  },
+  "tone": {
+    "light": {
+      "NEUTRAL":  { "bg": "#eaeeed", "fg": "#3e4a55", "dot": "#8a959c" },
+      "INFO":     { "bg": "#e2ecf7", "fg": "#1e4c80", "dot": "#3b78c0" },
+      "PROGRESS": { "bg": "#e8e6f6", "fg": "#43388a", "dot": "#6a5cc8" },
+      "GOOD":     { "bg": "#dff0e6", "fg": "#1c5e3c", "dot": "#2f8f5a" },
+      "WARN":     { "bg": "#f8eed6", "fg": "#7f5300", "dot": "#c98a12" },
+      "BAD":      { "bg": "#f9e3e0", "fg": "#9a2c25", "dot": "#cf4a40" },
+      "MUTED":    { "bg": "#eff1f1", "fg": "#6f787e", "dot": "#a7afb3" }
+    },
+    "dark": {
+      "NEUTRAL":  { "bg": "#232e31", "fg": "#c3cdcb", "dot": "#8a9a98" },
+      "INFO":     { "bg": "#1a2a3d", "fg": "#a4c6ee", "dot": "#5b97dc" },
+      "PROGRESS": { "bg": "#262344", "fg": "#c2baf3", "dot": "#8e80e6" },
+      "GOOD":     { "bg": "#173226", "fg": "#9ad8b4", "dot": "#4cb37b" },
+      "WARN":     { "bg": "#352a12", "fg": "#ecc878", "dot": "#d9a23a" },
+      "BAD":      { "bg": "#3a1d1b", "fg": "#f2a59e", "dot": "#e0645a" },
+      "MUTED":    { "bg": "#1d2528", "fg": "#87938f", "dot": "#5f6b6b" }
+    }
+  },
+  "badge": {
+    "$comment": "A badge is always dot + text label (never colour alone). Size sm for lists and cards, md default, lg for record headers.",
+    "shape": "pill",
+    "sizes": {
+      "sm": { "height": 20, "paddingX": 7, "fontSize": "0.7rem" },
+      "md": { "height": 24, "paddingX": 9, "fontSize": "0.76rem" },
+      "lg": { "height": 28, "paddingX": 12, "fontSize": "0.82rem" }
+    },
+    "fontWeight": 600,
+    "dotSize": 6
+  },
+  "spacing": {
+    "unit": 4,
+    "scale": { "0": 0, "1": 4, "2": 8, "3": 12, "4": 16, "5": 20, "6": 24, "7": 28, "8": 40 },
+    "gutter": { "desktop": 28, "phone": 16 },
+    "sidebarWidth": 228,
+    "contentMaxWidth": 1360,
+    "touchTargetMin": 44,
+    "$comment": "Card padding 18px 20px desktop, 16px phone. List row padding 12px 18px desktop, 11px 14px phone."
+  },
+  "radius": { "sm": 6, "md": 8, "lg": 12, "sheet": 16, "pill": 999 },
+  "shadow": {
+    "pop": {
+      "light": "0 10px 30px rgba(21,35,58,.14), 0 2px 6px rgba(21,35,58,.08)",
+      "dark": "0 12px 34px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.35)"
+    }
+  },
+  "typography": {
+    "$comment": "Turkish needs dotted/dotless i and the letters Ğ Ş Ç Ö Ü: load the latin-ext subset of the web fonts.",
+    "fontSans": "\"Instrument Sans\", \"IBM Plex Sans\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
+    "fontMono": "\"IBM Plex Mono\", ui-monospace, \"SFMono-Regular\", Consolas, monospace",
+    "base": { "desktop": "14.5px", "phone": "15px", "lineHeight": 1.5 },
+    "scale": {
+      "h1": { "desktop": "1.6rem", "phone": "1.35rem", "weight": 600 },
+      "h2": { "size": "1.05rem", "weight": 600 },
+      "h3": { "size": "0.95rem", "weight": 600 },
+      "body": { "size": "1rem", "weight": 400 },
+      "small": { "size": "0.82rem", "weight": 500 },
+      "caption": { "size": "0.78rem", "weight": 400 },
+      "eyebrow": { "size": "0.72rem", "weight": 400, "transform": "uppercase", "letterSpacing": "0.08em", "family": "mono" }
+    }
+  },
+  "breakpoints": { "phone": 719, "tablet": 960, "laptop": 1100 },
+  "motion": { "fast": "120ms", "base": "200ms", "honourReducedMotion": true },
+  "layout": {
+    "boardColumnWidth": { "desktop": 264, "phone": "78vw" },
+    "bottomTabBarHeight": 56
+  }
+}
