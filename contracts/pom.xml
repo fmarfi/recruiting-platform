@@ -11,17 +11,26 @@
   <name>contracts</name>
   <description>Shared contract types: enums/, events/ and errors/ (package com.recruiting.platform.contracts). No dependencies. openapi.yaml and design tokens are not compiled.</description>
   <build>
-    <!-- every *.java under contracts/ (enums/, events/, errors/) compiles as-is -->
-    <sourceDirectory>${project.basedir}</sourceDirectory>
     <plugins>
+      <!-- java sources live in enums/, events/ and errors/ (not src/main/java) -->
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <excludes>
-            <exclude>target/**</exclude>
-          </excludes>
-        </configuration>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <id>add-contract-sources</id>
+            <phase>generate-sources</phase>
+            <goals><goal>add-source</goal></goals>
+            <configuration>
+              <sources>
+                <source>${project.basedir}/enums</source>
+                <source>${project.basedir}/events</source>
+                <source>${project.basedir}/errors</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
