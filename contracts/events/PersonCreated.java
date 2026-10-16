@@ -16,9 +16,9 @@ import java.util.UUID;
  * @param type       person type
  * @param ownerId    relationship owner
  * @param hasEmail   whether an e-mail address is known (consent e-mail possible)
- * @param imported   whether the person came from a CSV import (A-11)
+ * @param importId   the import job that created the person (A-11), or {@code null}
  */
 public record PersonCreated(UUID eventId, Instant occurredAt, UUID actorId,
                             UUID personId, PersonType type, UUID ownerId,
-                            boolean hasEmail, boolean imported) implements DomainEvent {
+                            boolean hasEmail, UUID importId) implements DomainEvent {
 }
