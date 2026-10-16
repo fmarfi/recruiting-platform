@@ -41,4 +41,4 @@ Maven multi-module, base package `com.recruiting.platform`: `contracts`, `crm-ac
 | Who does what now? | docs/TASKS.md |
 | What did another agent leave? | docs/handoffs/<agent>.md |
 
-`demo/` is a throwaway prototype. Use it only when a task says so.
+The early clickable prototype (`demo/`) was removed on 2026-10-17; it remains in git history (commit 0e0a7bb). Its findings live in docs/ux/demo-review.md.
