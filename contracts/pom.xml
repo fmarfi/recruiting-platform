@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.recruiting</groupId>
+    <artifactId>recruiting-platform</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+  <artifactId>contracts</artifactId>
+  <name>contracts</name>
+  <description>Shared contract types: enums/, events/ and errors/ (package com.recruiting.platform.contracts). No dependencies. openapi.yaml and design tokens are not compiled.</description>
+  <build>
+    <!-- every *.java under contracts/ (enums/, events/, errors/) compiles as-is -->
+    <sourceDirectory>${project.basedir}</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>target/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
