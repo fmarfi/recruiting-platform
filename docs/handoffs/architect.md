@@ -66,3 +66,25 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 - schema.md: `event_publication` needs a Flyway migration (ddl-auto validate); anonymisation scrubs timeline reason/summary, nulls company, lists all `_aud` tables; unconfirmed imports purged after 30 days.
 - `ConsentStatusChanged.reason`, `JobOrder.openings` (>=1, default 1), fictional example company names, `/reference-data` stated read-only.
 - Lint 0 errors; `mvn -pl contracts compile` exit 0.
+
+## Wave 1b · W1-05 · 2026-10-17
+
+**Branch / commits:** `worktree-wave1b-architect` · 2 commits
+
+**Done**
+- ADR 0009: every FK to `person` is `on delete cascade`, except `data_subject_request.person_id` (`set null`). FKs to `account` stay `no action` (accounts are never hard-deleted).
+- `V202610170001__person_fk_cascade.sql`: `activity.person_id` and `next_action.person_id` changed from SET NULL to CASCADE. This fixes the `ck_activity_target` failure on DELETE.
+- `_aud` purge rule (schema.md, "Anonymisation and deletion"): a match table per `_aud` table. ANONYMISE deletes revisions with `revend IS NOT NULL` and overwrites the current revision with placeholders (needed for `ValidityAuditStrategy`). DELETE removes all matching rows, except the id-only `person_aud` DEL row and the current DSR row.
+- DSRs are kept as evidence and minimised: name becomes a placeholder, e-mail becomes a sha256 hash, description becomes `[removed]`. `data_subject_request_aud` is now on the purge list.
+- events.md: the `PersonAnonymised` consumers now cover `deleted=true`.
+- `PersonDeleteIT`: deleting a person with a person-only activity succeeds and cascades, and the DSR survives with `person_id` null. It also checks the FK rule in `pg_constraint` for `person` and `account`.
+
+**Others must know**
+- security-privacy: implement the order in schema.md (minimise DSRs, then `anonymise` or `delete`, then the listeners, then the `_aud` purge in its own transaction). Keep `store_data_at_delete=false`. The DSR e-mail uses HMAC with the env var `PRIVACY_HMAC_KEY` (versioned), not plain sha256.
+- backend-accounts: delete people through JPA (this writes the revtype=2 audit row). Set `import_job.file_content` and `errors` to null when an import ends.
+- Review fixes applied (commit "Apply W1-05 review fixes"): HMAC, JPA delete, import purge, DSR aud `person_id` set to null, wider IT.
+- backend-pipeline: when `PersonAnonymised(deleted=true)`, only `timeline_entry` needs scrubbing. Everything else has cascaded.
+- db-engineer: a new FK to `person` must be cascade, or `PersonDeleteIT` fails.
+
+**Verified with**
+- `mvn -q -B verify -Pintegration` → exit 0 (PersonDeleteIT: 3 tests, 0 failures)
