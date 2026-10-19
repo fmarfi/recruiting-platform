@@ -6,7 +6,8 @@ import com.recruiting.platform.accounts.person.web.dto.PersonCreateRequest;
 import com.recruiting.platform.accounts.person.web.dto.PersonResponse;
 import com.recruiting.platform.accounts.person.web.dto.PersonSummaryResponse;
 import com.recruiting.platform.accounts.person.web.dto.PersonUpdateRequest;
-import com.recruiting.platform.accounts.shared.ActorResolver;
+import com.recruiting.platform.accounts.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.accounts.shared.Paging;
 import com.recruiting.platform.accounts.shared.PatchBinder;
 import com.recruiting.platform.accounts.shared.dto.PageResponse;
@@ -44,14 +45,14 @@ public class PersonController {
     private final PersonService service;
     private final PersonQueryService queries;
     private final PatchBinder binder;
-    private final ActorResolver actors;
+    private final CurrentUser currentUser;
 
     public PersonController(PersonService service, PersonQueryService queries, PatchBinder binder,
-            ActorResolver actors) {
+            CurrentUser currentUser) {
         this.service = service;
         this.queries = queries;
         this.binder = binder;
-        this.actors = actors;
+        this.currentUser = currentUser;
     }
 
     @GetMapping
@@ -68,7 +69,7 @@ public class PersonController {
 
     @PostMapping
     public ResponseEntity<PersonResponse> create(@Valid @RequestBody PersonCreateRequest request) {
-        PersonResponse created = service.create(request, actors.current());
+        PersonResponse created = service.create(request, Actor.of(currentUser));
         return ResponseEntity.created(URI.create("/api/v1/people/" + created.id())).body(created);
     }
 
@@ -79,6 +80,6 @@ public class PersonController {
 
     @PatchMapping("/{id}")
     public PersonResponse update(@PathVariable UUID id, @RequestBody JsonNode body) {
-        return service.update(id, binder.bind(body, PersonUpdateRequest.class), actors.current());
+        return service.update(id, binder.bind(body, PersonUpdateRequest.class), Actor.of(currentUser));
     }
 }

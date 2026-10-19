@@ -12,13 +12,21 @@
 - Tests: TableReaderTest (unit); platform-app `AccountsApiIT` (reference data, account lifecycle, contacts, links, search, import).
 
 **Not done / left**
-- Real current user: `ActorResolver` and `UserLookup` are temporary (user id = authentication name; reads app_user by JDBC). Swap to security's CurrentUser/UserDirectory when published.
 - Import columns are my choice (see ImportTemplates): ACCOUNTS name,sector,city,website,ownerEmail; CONTACTS accountName,name,title,email,phone,city,role; PEOPLE name,type,title,company,email,phone,city,ownerEmail.
-- `createdBy` is null in responses until an AuditorAware bean exists (security).
+
+**Update 2026-10-19 (security merged)**
+- `ActorResolver`, `UserLookup` and the local `UserRef` are gone: accounts uses security's `CurrentUser` (via `Actor.of`), `UserDirectory`, `UserRef`. I added `UserDirectory.isActive(id)` and `activeIdByEmail(email)` (owner checks, import owner e-mail); security please keep them.
+- New public API `com.recruiting.platform.accounts.PersonDataApi` (`anonymise(personId, actorId)`, `delete(personId, actorId)`, ADR 0009 step 2, publishes `PersonAnonymised`, delete goes through JPA so Envers writes the revtype 2 row) and SPI `PersonExportContributor` (`section()`, `collect(personId)`).
+- `GET /people/{id}/export` (MANAGER+) in accounts: person, contactRoles, links; `activities`/`applications` = [] and `consent` omitted until contributors exist. Writes the EXPORT access-log row.
+- AccountsApiIT now extends AbstractApiIT (real login, method security): imports (all endpoints) are 403 for CONSULTANT; export 401/403/404/200 + access log; anonymise and delete via PersonDataApi.
+
+**How security swaps the adapter**
+1. privacy/pom.xml: add dependency on `crm-accounts` (module already allows `accounts`).
+2. Replace `JdbcPersonGateway` by a gateway using `PersonApi` (find/findByIds: PersonSummary has no city/lastContactAt/createdAt, ask me if needed; `idsWithoutPrivacy` has no API yet, keep one SQL or request `PersonApi.idsWithoutPrivacy`) and `PersonDataApi.anonymise/delete`. Remove event publishing and Envers SQL from privacy: accounts publishes `PersonAnonymised` now.
+3. Add `@Component class ConsentExportContributor implements PersonExportContributor` with `section()="consent"` returning `ConsentQueryService.overview(id)`. Pipeline should add `activities` and `applications` the same way.
 
 **Others must know**
 - backend-pipeline: implement `com.recruiting.platform.accounts.SearchContributor` (type JOB_ORDER) for /search.
-- security-privacy: enable method security (controllers use `@PreAuthorize`; imports need MANAGER); publish AuditorAware and CurrentUser.
 
 **Change requests** (for files you don't own)
 - platform-app · main: add the `@RestControllerAdvice` for ApiException/validation/MaxUploadSizeExceeded (ADR 0006); none exists yet (my IT has a stand-in).
@@ -28,4 +36,4 @@
 
 **Verified with**
 - `mvn -q -B verify` → green (incl. ModularityTests)
-- `mvn -q -B verify -Pintegration` → green (AccountsApiIT 3, other ITs, PlatformApplicationIT)
+- `mvn -q -B -Pintegration verify` → green, 49 tests (AccountsApiIT 4)

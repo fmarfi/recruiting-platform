@@ -4,7 +4,8 @@ import com.recruiting.platform.accounts.importing.app.ImportCommitService;
 import com.recruiting.platform.accounts.importing.app.ImportService;
 import com.recruiting.platform.accounts.importing.app.ImportTemplates;
 import com.recruiting.platform.accounts.importing.web.dto.ImportJobResponse;
-import com.recruiting.platform.accounts.shared.ActorResolver;
+import com.recruiting.platform.accounts.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.accounts.shared.Paging;
 import com.recruiting.platform.accounts.shared.dto.PageResponse;
 import com.recruiting.platform.contracts.ImportKind;
@@ -37,12 +38,12 @@ public class ImportController {
 
     private final ImportService service;
     private final ImportCommitService commits;
-    private final ActorResolver actors;
+    private final CurrentUser currentUser;
 
-    public ImportController(ImportService service, ImportCommitService commits, ActorResolver actors) {
+    public ImportController(ImportService service, ImportCommitService commits, CurrentUser currentUser) {
         this.service = service;
         this.commits = commits;
-        this.actors = actors;
+        this.currentUser = currentUser;
     }
 
     @GetMapping("/imports")
@@ -77,6 +78,6 @@ public class ImportController {
 
     @PostMapping("/imports/{id}/commit")
     public ImportJobResponse commit(@PathVariable UUID id) {
-        return commits.commit(id, actors.current());
+        return commits.commit(id, Actor.of(currentUser));
     }
 }

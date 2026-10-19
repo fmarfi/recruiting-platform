@@ -3,7 +3,8 @@ package com.recruiting.platform.accounts.account.web;
 import com.recruiting.platform.accounts.account.app.AccountStatusService;
 import com.recruiting.platform.accounts.account.web.dto.AccountResponse;
 import com.recruiting.platform.accounts.account.web.dto.AccountStatusChangeRequest;
-import com.recruiting.platform.accounts.shared.ActorResolver;
+import com.recruiting.platform.accounts.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,15 +21,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountStatusController {
 
     private final AccountStatusService service;
-    private final ActorResolver actors;
+    private final CurrentUser currentUser;
 
-    public AccountStatusController(AccountStatusService service, ActorResolver actors) {
+    public AccountStatusController(AccountStatusService service, CurrentUser currentUser) {
         this.service = service;
-        this.actors = actors;
+        this.currentUser = currentUser;
     }
 
     @PatchMapping
     public AccountResponse change(@PathVariable UUID id, @Valid @RequestBody AccountStatusChangeRequest request) {
-        return service.change(id, request, actors.current());
+        return service.change(id, request, Actor.of(currentUser));
     }
 }

@@ -3,8 +3,8 @@ package com.recruiting.platform.accounts.importing.app;
 import com.recruiting.platform.accounts.domain.ImportJob;
 import com.recruiting.platform.accounts.importing.web.dto.ImportJobResponse;
 import com.recruiting.platform.accounts.importing.web.dto.ImportRowError;
-import com.recruiting.platform.accounts.shared.UserLookup;
-import com.recruiting.platform.accounts.shared.dto.UserRef;
+import com.recruiting.platform.security.UserDirectory;
+import com.recruiting.platform.security.UserRef;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,9 +16,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class ImportJobMapper {
 
-    private final UserLookup users;
+    private final UserDirectory users;
 
-    public ImportJobMapper(UserLookup users) {
+    public ImportJobMapper(UserDirectory users) {
         this.users = users;
     }
 
