@@ -25,3 +25,12 @@
 
 **Verified with**
 - `mvn -B verify -Pintegration` → exit 0, 44 tests (SecurityApiIT 8, ConsentApiIT 7, RetentionAndRequestsApiIT 4, ModularityTests, persistence ITs).
+
+## Update 2026-10-19 (accounts/pipeline/seed merged)
+- `JdbcPersonGateway` replaced by `AccountsPersonGateway` (PersonApi + PersonDataApi; accounts now publishes `PersonAnonymised`). Only `idsWithoutPrivacy` stays SQL (ids only); `PersonSummary` has no `createdAt`, so the retention basis falls back to today for people without a privacy row. privacy now depends on `crm-accounts`.
+- `ErrorCode.TOO_MANY_REQUESTS(429)` added; `ApiExceptionHandler` uses it. Still open for architect: list it in `contracts/openapi.yaml` ErrorCode enum and on login/public consent.
+- `ConsentExportContributor` adds `consent` to `GET /people/{id}/export` (IT added). backend-pipeline: add `PersonExportContributor` for `activities` and `applications`.
+- `application-local.yml`: DB default port 5433, imports `.env` (`../.env`, `./.env`; not in a worktree, so export `DB_PASSWORD`/`DB_URL`).
+- Local run verified (own DB `security_privacy`, port 8083, `mvn spring-boot:run -Dspring-boot.run.profiles=local`, Flyway ok, seed loaded with `COMPOSE_PROJECT_NAME=recruiting-platform seed/load.sh security_privacy`): login admin@demo.example 200, `/auth/me` 200, `/accounts` 200, `/people` 200, export 200 with consent, `/retention/flagged` 200, `/users` 200, POST without CSRF 403. Server stopped.
+- BUG for synthetic-data: seeded rows have no `_aud` baseline, so PATCH /people/{id} (and anonymise/delete of seeded people) returns 500 "Cannot update previous revision". Seed must insert a revtype 0 `_aud` row plus `revinfo` per audited row (person, account, contact, job_order, application, proposal, app_user, network_link, person_employment).
+- `mvn -q -B -Pintegration verify` green (60 tests).
