@@ -1,9 +1,10 @@
-import { AppShell, Burger, Group, Text } from '@mantine/core';
+import { ActionIcon, AppShell, Burger, Group, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
 import { tokens } from '../../theme/tokens';
+import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { LanguageSwitch } from './LanguageSwitch';
 import { NavItems } from './NavItems';
@@ -15,6 +16,7 @@ export function Shell() {
   const { t } = useTranslation();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
   const [drawer, setDrawer] = useState(false);
+  const [fab, setFab] = useState(false);
   const [version, setVersion] = useState(0); // bump to re-mount the screen after a quick add
 
   return (
@@ -46,6 +48,21 @@ export function Shell() {
         <AppShell.Footer p={4}>
           <NavItems vertical={false} />
         </AppShell.Footer>
+      )}
+      {phone && (
+        <>
+          <ActionIcon
+            size={56}
+            radius="xl"
+            variant="filled"
+            aria-label={t('quickAdd.new')}
+            onClick={() => setFab(true)}
+            style={{ position: 'fixed', right: 16, bottom: tokens.layout.bottomTabBarHeight + 16, zIndex: 150 }}
+          >
+            <Text fz={28} lh={1}>+</Text>
+          </ActionIcon>
+          <QuickAdd opened={fab} onClose={() => setFab(false)} onSaved={() => setVersion((v) => v + 1)} />
+        </>
       )}
     </AppShell>
   );

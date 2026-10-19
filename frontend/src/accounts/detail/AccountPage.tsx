@@ -1,10 +1,12 @@
-import { Anchor, Button, Card, Container, Grid, Skeleton, Stack, Tabs, Text } from '@mantine/core';
+import { Anchor, Button, Card, Container, Grid, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { EmptyState } from '../../shell/components/EmptyState';
 import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { SkeletonRows } from '../../shell/components/SkeletonRows';
+import { AddContactDialog } from '../components/AddContactDialog';
+import { NewRecordDialog } from '../components/NewRecordDialog';
 import { AddActionDialog } from '../components/AddActionDialog';
 import { LogActivityDialog } from '../components/LogActivityDialog';
 import { AccountHeader } from './AccountHeader';
@@ -20,7 +22,7 @@ export function AccountPage() {
   const { t } = useTranslation();
   const { id = '' } = useParams();
   const page = useAccountPage(id);
-  const [dialog, setDialog] = useState<null | 'log' | 'action'>(null);
+  const [dialog, setDialog] = useState<null | 'log' | 'action' | 'contact' | 'job' | 'proposal'>(null);
   const a = page.account.data;
 
   if (page.account.status === 404)
@@ -73,12 +75,27 @@ export function AccountPage() {
                 </Tabs.Tab>
               </Tabs.List>
               <Tabs.Panel value="jobs" pt="md">
+                <Group justify="flex-end" mb="xs">
+                  <Button size="compact-sm" variant="light" onClick={() => setDialog('job')}>
+                    + {t('accounts.newJob')}
+                  </Button>
+                </Group>
                 <JobsTab jobs={jobs} />
               </Tabs.Panel>
               <Tabs.Panel value="contacts" pt="md">
-                <ContactsTab contacts={contacts} showEnded={page.showEnded} onShowEnded={page.setShowEnded} />
+                <Group justify="flex-end" mb="xs">
+                  <Button size="compact-sm" variant="light" onClick={() => setDialog('contact')}>
+                    + {t('accounts.addContact')}
+                  </Button>
+                </Group>
+                <ContactsTab contacts={contacts} showEnded={page.showEnded} onShowEnded={page.setShowEnded} accountId={a.id} onChanged={page.reloadAll} />
               </Tabs.Panel>
               <Tabs.Panel value="proposals" pt="md">
+                <Group justify="flex-end" mb="xs">
+                  <Button size="compact-sm" variant="light" onClick={() => setDialog('proposal')}>
+                    + {t('accounts.newProposal')}
+                  </Button>
+                </Group>
                 <ProposalsTab proposals={proposals} onChanged={page.reloadAll} />
               </Tabs.Panel>
               <Tabs.Panel value="timeline" pt="md" hiddenFrom="md">
@@ -93,6 +110,9 @@ export function AccountPage() {
       </Stack>
       <LogActivityDialog opened={dialog === 'log'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
       <AddActionDialog opened={dialog === 'action'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
+      <AddContactDialog opened={dialog === 'contact'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
+      <NewRecordDialog kind="job" opened={dialog === 'job'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
+      <NewRecordDialog kind="proposal" opened={dialog === 'proposal'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
     </Container>
   );
 }

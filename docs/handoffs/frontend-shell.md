@@ -25,3 +25,10 @@
 
 **Verified with**
 - `npx tsc --noEmit` → clean; `npx vitest run` → 7 passed; `npx vite build` → ok (in frontend/).
+
+## Wave 1b frontend fixes (branch worktree-wave1b-frontend-fixes)
+- Global + New: Log activity / Add action open pipeline QuickAdd (onSaved reloads screen); Person item opens NewPersonDialog; account-level Log/Add dialogs removed from the menu. Phone floating + (Shell.tsx) opens QuickAdd.
+- pipeline useRefData/useCurrentUser now read the shell ReferenceDataProvider/AuthProvider (one /reference-data and /auth/me fetch). Tests rendering pipeline screens need AuthContext and RefContext providers.
+- QuickAdd split into QuickAdd.tsx, QuickAddFields.tsx, quickAddState.ts; 4 component tests added.
+- Settings: Import (upload, review, commit/discard, history), Retention (admin edits, dry/real run, runs, flagged), Audit log (admin only, action filter). Account page: Add contact, End contact, New job, New proposal.
+- Not done: Import/Retention/Audit have no component tests; phone FAB is not covered by a test; flagged/runs lists show only the first page.
