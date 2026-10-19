@@ -1,0 +1,20 @@
+/* Path chevrons: light surfaces, navy accent from the design tokens. */
+.path { display: flex; list-style: none; margin: 0; padding: 0; overflow-x: auto; }
+.path li { display: flex; flex: 1 1 0; min-width: 96px; margin-left: -8px; }
+.path li:first-child { margin-left: 0; }
+.path-step {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; padding: 0 18px 0 22px; border: 0; cursor: pointer;
+  font: inherit; font-size: 13px; white-space: nowrap;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%);
+}
+.path li:first-child .path-step { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%); border-radius: 4px 0 0 4px; }
+.path-step span { overflow: hidden; text-overflow: ellipsis; }
+.path-upcoming { background: var(--color-surface3); color: var(--color-ink2); }
+.path-done { background: var(--color-accentSoft); color: var(--color-accent); }
+.path-current { background: var(--color-accent); color: var(--color-accentInk); font-weight: 700; }
+.path-current.path-negative { background: var(--color-danger); }
+.path-step[aria-disabled='true'] { cursor: default; }
+.path-step:not([aria-disabled='true']):hover { filter: brightness(0.95); }
+.path-step:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.path-step:disabled { opacity: 0.55; cursor: not-allowed; }

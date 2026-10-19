@@ -31,7 +31,7 @@ export const nowLocal = () => {
   return `${toIsoDate(d)}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-export function useQuickAddForm(opened: boolean, initialMode: Mode, context: QuickAddContext | undefined, onSaved?: () => void, onClose?: () => void) {
+export function useQuickAddForm(opened: boolean, initialMode: Mode, context: QuickAddContext | undefined, onSaved?: () => void, onClose?: () => void, initialType?: ActivityType) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [type, setType] = useState<ActivityType>(readLast);
@@ -49,7 +49,7 @@ export function useQuickAddForm(opened: boolean, initialMode: Mode, context: Qui
   useEffect(() => {
     if (!opened) return;
     setMode(initialMode);
-    setType(readLast());
+    setType(initialType ?? readLast());
     setNote('');
     setWhen(nowLocal());
     setAccount(context?.account ? { value: context.account.id, label: context.account.name } : null);

@@ -1,0 +1,10 @@
+{
+  "path": { "changeStatus": "Change status", "label": "Status path", "managerOnly": "Only managers can take this step", "stepOf": "Step {{n}} of {{total}}" },
+  "record": { "details": "Details", "new": "New", "related": "Related", "showLess": "Show less", "viewAll": "View all", "activity": "Activity" },
+  "activity": {
+    "composer": { "call": "Log a call", "email": "Email", "note": "Note", "task": "New task" },
+    "empty": "No activity yet. Log a call or note above.",
+    "filter": { "ALL": "All", "CALL": "Calls", "EMAIL": "Emails", "MEETING": "Meetings", "NOTE": "Notes" },
+    "overdue": "Overdue", "upcoming": "Upcoming and overdue"
+  }
+}

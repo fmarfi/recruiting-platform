@@ -22,6 +22,10 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
       padding="xs"
       radius="md"
       data-testid={`card-${app.id}`}
+      onClick={(e) => {
+        // Links and the Move menu keep their own behaviour; the rest of the card opens the drawer.
+        if (!(e.target as HTMLElement).closest('a,button,[role=menu]')) props.onOpen?.(app);
+      }}
       {...(draggable ? { ...attributes, ...listeners } : {})}
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -60,6 +64,7 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
                   {label('pipelineStage', m.to)}
                 </Menu.Item>
               ))}
+              {props.onOpen && <Menu.Item onClick={() => props.onOpen?.(app)}>{t('pipeline.details')}</Menu.Item>}
               <Menu.Item component={Link} to={`/people/${p.id}`}>
                 {t('pipeline.openProfile')}
               </Menu.Item>

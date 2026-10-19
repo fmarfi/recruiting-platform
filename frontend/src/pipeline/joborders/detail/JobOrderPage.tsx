@@ -1,30 +1,37 @@
 // Job order page with the pipeline board (A-06, A-07, UX-03, UX-04).
-import { Alert, Anchor, Button, Card, Container, Group, Loader, Skeleton, Text, Title } from '@mantine/core';
+import { Alert, Anchor, Button, Card, Container, Group, Loader, Skeleton, Tabs, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../../api';
-import { Board } from '../../board/Board';
+import { ActivityTimeline } from '../../../common/activity/ActivityTimeline';
+import type { ComposerChoice } from '../../../common/activity/ActivityComposer';
+import { RecordLayout } from '../../../common/record/RecordLayout';
+import type { Application } from '../../board/boardRules';
 import { ReasonDialog } from '../../board/ReasonDialog';
 import { useBoardMoves } from '../../board/useBoardMoves';
 import { QuickAdd, type QuickAddContext } from '../../quickadd/QuickAdd';
-import { StatusBadge, problemText, useCurrentUser, useFormat, useLabel, type Schemas } from '../../shared';
+import { StatusBadge, problemText, useCurrentUser, useLabel, type Schemas } from '../../shared';
 import { AddCandidateDialog } from './AddCandidateDialog';
-import { JobStatusMenu } from './JobStatusMenu';
+import { CandidateDrawer } from './CandidateDrawer';
+import { CandidatesCard } from './CandidatesCard';
+import { JobHeader } from './JobHeader';
 import { MoveToast } from './MoveToast';
 import { useJobOrder } from './useJobOrder';
 
 export function JobOrderPage() {
   const { id = '' } = useParams();
   const { t } = useTranslation();
-  const fmt = useFormat();
   const { ref, def } = useLabel();
   const me = useCurrentUser();
-  const { job, apps: appsRes } = useJobOrder(id);
+  const { job, apps: appsRes, activities, actions } = useJobOrder(id);
   const moves = useBoardMoves(appsRes.data, job.reload);
   const [addOpen, setAddOpen] = useState(false);
   const [logCtx, setLogCtx] = useState<QuickAddContext>();
   const [statusAsk, setStatusAsk] = useState<string>();
+  const [openAppId, setOpenAppId] = useState<string>();
+  const [rejectAsk, setRejectAsk] = useState<Application>();
+  const [compose, setCompose] = useState<ComposerChoice>();
 
   const j = job.data;
   const readOnly = !!j && (j.status === 'FILLED' || j.status === 'CANCELLED');
@@ -67,43 +74,48 @@ export function JobOrderPage() {
   const next = def('jobOrder', j.status)?.next ?? [];
   const rejectedCount = moves.apps.filter((a) => a.stage === 'REJECTED').length;
 
+  const board = {
+    apps: moves.apps,
+    ref,
+    readOnly,
+    onMove: (a: Application, to: Application['stage'], reason?: string) => void moves.move(a, to, reason),
+    onRemove: (a: Application) => void moves.remove(a),
+    onLogActivity: (a: Application) => setLogCtx({ account: j.account, person: a.person, jobOrder: j }),
+    onOpen: (a: Application) => setOpenAppId(a.id),
+  };
+
+  const candidates = (
+    appsRes.loading && moves.apps.length === 0 ? (
+          <Loader size="sm" />
+        ) : appsRes.error ? (
+          <Alert color="red" role="alert" title={t('pipeline.loadFailed')}>
+            <Button variant="light" onClick={appsRes.reload}>
+              {t('common.retry')}
+            </Button>
+          </Alert>
+        ) : moves.apps.length === 0 ? (
+          <Card withBorder padding="xl" ta="center" data-testid="empty-pipeline">
+            <Text fw={600}>{t('pipeline.emptyTitle')}</Text>
+            <Text c="dimmed" size="sm" mb="md">
+              {t('pipeline.emptyBody')}
+            </Text>
+            {!readOnly && <Button onClick={() => setAddOpen(true)}>{t('pipeline.addCandidate')}</Button>}
+          </Card>
+        ) : (
+          <CandidatesCard rejectedCount={rejectedCount} board={board} />
+  )
+  );
+
   return (
     <Container maw="var(--content-max-width)" fluid>
-      <Group gap="xs" mb="xs">
-        <Anchor component={Link} to={`/accounts/${j.account.id}`} size="sm">
-          {j.account.name}
-        </Anchor>
-        <Text size="sm" c="dimmed">
-          / {j.title}
-        </Text>
-      </Group>
-      <Group justify="space-between" align="flex-start">
-        <Group gap="sm">
-          <Title order={1} data-testid="screen-title" size="h2">
-            {j.title}
-          </Title>
-          <JobStatusMenu
-            status={j.status}
-            isManager={isManager}
-            onChoose={(to, reasonRequired) => (reasonRequired ? setStatusAsk(to) : void changeStatus(to))}
-          />
-        </Group>
-        <Group gap="xs">
-          {!readOnly && <Button onClick={() => setAddOpen(true)}>+ {t('pipeline.addCandidate')}</Button>}
-          <Button variant="default" onClick={() => setLogCtx({ account: j.account, jobOrder: j })}>
-            {t('pipeline.logActivity')}
-          </Button>
-        </Group>
-      </Group>
-      <Text size="sm" c="dimmed" mt={4}>
-        <StatusBadge lifecycle="account" value={j.account.status} /> {[j.location, j.seniority].filter(Boolean).join(' · ')}
-        {j.feeTerms ? ` · ${t('pipeline.fee')}: ${j.feeTerms}` : ''} · {t('pipeline.owner')}: {j.owner.name}
-      </Text>
-      <Text size="sm" c="dimmed" mb="md">
-        {t('pipeline.opened')}: {fmt.dateLong(j.openedOn)} ({t('pipeline.daysOpen', { count: j.daysOpen })}) ·{' '}
-        {t('pipeline.activeCandidates', { count: j.activeCandidates })}
-        {rejectedCount > 0 ? ` · ${t('pipeline.rejectedLane', { count: rejectedCount })}` : ''}
-      </Text>
+      <JobHeader
+        job={j}
+        isManager={isManager}
+        readOnly={readOnly}
+        onStatus={(to, reasonRequired) => (reasonRequired ? setStatusAsk(to) : void changeStatus(to))}
+        onAdd={() => setAddOpen(true)}
+        onLog={() => setLogCtx({ account: j.account, jobOrder: j })}
+      />
 
       {readOnly && (
         <Alert color={j.status === 'FILLED' ? 'green' : 'gray'} mb="md" data-testid="readonly-banner">
@@ -129,32 +141,37 @@ export function JobOrderPage() {
       )}
       {moves.toast && <MoveToast toast={moves.toast} onClose={() => moves.setToast(undefined)} onRefresh={appsRes.reload} />}
 
-      {appsRes.loading && moves.apps.length === 0 ? (
-        <Loader size="sm" />
-      ) : appsRes.error ? (
-        <Alert color="red" role="alert" title={t('pipeline.loadFailed')}>
-          <Button variant="light" onClick={appsRes.reload}>
-            {t('common.retry')}
-          </Button>
-        </Alert>
-      ) : moves.apps.length === 0 ? (
-        <Card withBorder padding="xl" ta="center" data-testid="empty-pipeline">
-          <Text fw={600}>{t('pipeline.emptyTitle')}</Text>
-          <Text c="dimmed" size="sm" mb="md">
-            {t('pipeline.emptyBody')}
-          </Text>
-          {!readOnly && <Button onClick={() => setAddOpen(true)}>{t('pipeline.addCandidate')}</Button>}
-        </Card>
-      ) : (
-        <Board
-          apps={moves.apps}
-          ref={ref}
-          readOnly={readOnly}
-          onMove={(a, to, reason) => void moves.move(a, to, reason)}
-          onRemove={(a) => void moves.remove(a)}
-          onLogActivity={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })}
-        />
-      )}
+      <RecordLayout
+        main={
+          <Tabs defaultValue="candidates" keepMounted={false}>
+            <Tabs.List mb="md">
+              <Tabs.Tab value="candidates">{t('pipeline.candidates')}</Tabs.Tab>
+              <Tabs.Tab value="activity">{t('record.activity')}</Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="candidates">{candidates}</Tabs.Panel>
+            <Tabs.Panel value="activity">
+              <ActivityTimeline
+                activities={activities.data?.content ?? []}
+                actions={actions.data?.content ?? []}
+                onCompose={setCompose}
+              />
+            </Tabs.Panel>
+          </Tabs>
+        }
+        aside={
+          <Card withBorder padding="md" data-testid="client-card">
+            <Text fw={600} mb="xs">
+              {t('pipeline.client')}
+            </Text>
+            <Anchor component={Link} to={`/accounts/${j.account.id}`}>
+              {j.account.name}
+            </Anchor>
+            <div style={{ marginTop: 6 }}>
+              <StatusBadge lifecycle="account" value={j.account.status} />
+            </div>
+          </Card>
+        }
+      />
 
       <AddCandidateDialog
         jobId={id}
@@ -165,7 +182,36 @@ export function JobOrderPage() {
           job.reload();
         }}
       />
-      <QuickAdd opened={!!logCtx} onClose={() => setLogCtx(undefined)} context={logCtx} />
+      <CandidateDrawer
+        app={moves.apps.find((a) => a.id === openAppId)}
+        readOnly={readOnly}
+        isManager={isManager}
+        onClose={() => setOpenAppId(undefined)}
+        onStage={(a, to, reasonRequired) => (reasonRequired ? setRejectAsk(a) : void moves.move(a, to as Application['stage']))}
+        onLog={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })}
+      />
+      <ReasonDialog
+        opened={!!rejectAsk}
+        title={t('pipeline.rejectTitle')}
+        chips={t('pipeline.rejectChips', { returnObjects: true }) as unknown as string[]}
+        onCancel={() => setRejectAsk(undefined)}
+        onConfirm={(reason) => {
+          if (rejectAsk) void moves.move(rejectAsk, 'REJECTED', reason);
+          setRejectAsk(undefined);
+        }}
+      />
+      <QuickAdd opened={!!logCtx} onClose={() => setLogCtx(undefined)} context={logCtx} onSaved={activities.reload} />
+      <QuickAdd
+        opened={!!compose}
+        initialMode={compose?.mode}
+        initialType={compose?.type}
+        onClose={() => setCompose(undefined)}
+        context={{ account: j.account, jobOrder: j }}
+        onSaved={() => {
+          activities.reload();
+          actions.reload();
+        }}
+      />
       <ReasonDialog
         opened={!!statusAsk}
         title={t('pipeline.statusReason')}

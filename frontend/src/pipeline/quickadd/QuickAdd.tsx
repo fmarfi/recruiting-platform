@@ -2,7 +2,7 @@ import { Button, Group, Modal, Stack, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
 import { QuickAddFields } from './QuickAddFields';
-import { useQuickAddForm, type QuickAddContext } from './quickAddState';
+import { useQuickAddForm, type ActivityType, type QuickAddContext } from './quickAddState';
 
 export type { QuickAddContext };
 
@@ -15,16 +15,18 @@ export type QuickAddProps = {
   initialMode?: 'activity' | 'action';
   /** Called after a successful save so the host screen can reload its timeline. */
   onSaved?: () => void;
+  /** Pre-selected activity type (the activity composer buttons); default is the last used type. */
+  initialType?: ActivityType;
 };
 
 /**
  * Quick add (UX-06): log a call, visit, meeting, e-mail or note, or create a next action, in under 30 seconds.
  * Controlled by the host (account, person and job pages, or the top bar of frontend-shell).
  */
-export function QuickAdd({ opened, onClose, context, initialMode = 'activity', onSaved }: QuickAddProps) {
+export function QuickAdd({ opened, onClose, context, initialMode = 'activity', onSaved, initialType }: QuickAddProps) {
   const { t } = useTranslation();
   const phone = useMediaQuery('(max-width: 48em)');
-  const f = useQuickAddForm(opened, initialMode, context, onSaved, onClose);
+  const f = useQuickAddForm(opened, initialMode, context, onSaved, onClose, initialType);
   return (
     <Modal
       opened={opened}
