@@ -1,6 +1,6 @@
 package com.recruiting.platform.security;
 
-/** Thrown when a rate limit is exceeded; the global handler answers 429 (not an ErrorCode in the contract yet). */
+/** Thrown when a rate limit is exceeded; the global handler answers 429 with ErrorCode TOO_MANY_REQUESTS. */
 public class TooManyRequestsException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;

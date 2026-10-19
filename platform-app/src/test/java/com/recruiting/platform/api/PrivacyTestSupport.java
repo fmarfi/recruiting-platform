@@ -15,6 +15,11 @@ final class PrivacyTestSupport {
         jdbc.update("insert into person (id, name, type, email, owner_id, title, company, city, notes) "
                 + "values (?, ?, 'CANDIDATE', ?, ?, 'CFO', 'Acme', 'Ankara', 'secret notes')",
                 id, name, email, ownerId);
+        // the first revision JPA would have written; Envers needs it before it can update or delete the row
+        Long rev = jdbc.queryForObject("select nextval('revinfo_seq')", Long.class);
+        jdbc.update("insert into revinfo (rev, revtstmp) values (?, 0)", rev);
+        jdbc.update("insert into person_aud (id, rev, revtype, name, email) values (?, ?, 0, ?, ?)", id, rev, name,
+                email);
         return id;
     }
 
@@ -32,6 +37,7 @@ final class PrivacyTestSupport {
 
     /** Two Envers rows for the person: an old closed revision and the current one, both holding personal data. */
     static void insertPersonHistory(JdbcTemplate jdbc, UUID personId) {
+        jdbc.update("delete from person_aud where id = ?", personId);
         Long oldRev = jdbc.queryForObject("select nextval('revinfo_seq')", Long.class);
         jdbc.update("insert into revinfo (rev, revtstmp) values (?, 1)", oldRev);
         Long currentRev = jdbc.queryForObject("select nextval('revinfo_seq')", Long.class);
