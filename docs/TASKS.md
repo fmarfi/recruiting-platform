@@ -47,15 +47,15 @@ Shared briefing: `docs/context/wave-1b.md` (ports, shared files, auth, demo logi
 | W1-05 | Settle Wave 1a schema change requests (activity FK vs CHECK; `data_subject_request_aud` purge): update `contracts/schema.md` + migration + IT | architect | done | – |
 | W1-10 | Tags Reference data, Accounts (incl. account status A-02), Contacts, People, Network links, Import, Search | backend-accounts | done | W1-02 |
 | W1-11 | Tags Job orders, Pipeline, Proposals, Activities, Next actions, Account overview, Home; status transition rules from `docs/status-lifecycles.md`; timeline from events; `DELETE /applications/{id}` only in SOURCED (409 otherwise) | backend-pipeline | done | W1-02 |
-| W1-12 | Tags Auth, Users, Audit (session + CSRF, 3 roles, access log); Consent, Public consent, Privacy notices, Retention, Data-subject requests (S-01, S-03, S-04; S-02 is Phase 2); logins written to the access log; consent token masked in logs | security-privacy | review | W1-02, W1-05 |
+| W1-12 | Tags Auth, Users, Audit (session + CSRF, 3 roles, access log); Consent, Public consent, Privacy notices, Retention, Data-subject requests (S-01, S-03, S-04; S-02 is Phase 2); logins written to the access log; consent token masked in logs | security-privacy | done | W1-02, W1-05 |
 | W1-13 | Shell, My day, Accounts list + Account page, Search, Settings (UX-01, 02, 05, 07–09) | frontend-shell | done | W1-03 |
 | W1-14 | Job orders + pipeline board, Network list + Person page, Quick add (UX-03, 04, 06) | frontend-pipeline | done | W1-03 |
 | W1-15 | Demo dataset: fictional accounts in every status, people, job orders, pipelines, history; loaded with one command | synthetic-data | done | W1-01 |
 | W1-16 | Contract tests (responses validated against openapi.yaml) and Playwright smoke tests against the mock; test plan per Must story | qa-engineer | done | W1-03 |
 
 **Gate 1 → 2**
-- [ ] All Phase 1 Must endpoints and screens merged
-- [ ] Demo data loads with one command
+- [x] All Phase 1 Must endpoints and screens merged (2026-10-20; `mvn -Pintegration verify` and frontend tests green; screens not yet clicked through against the real backend)
+- [x] Demo data loads with one command (`seed/load.sh` / `load.ps1`; includes Envers baseline rows)
 
 ## Wave 2 — integrate and harden
 
