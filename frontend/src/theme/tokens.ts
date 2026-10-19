@@ -45,8 +45,13 @@ export function tokenCss(): string {
   return [
     `:root{${staticVars()}${schemeVars('light')}}`,
     `body{background:var(--color-bg);color:var(--color-ink);font-size:${tokens.typography.base.desktop};line-height:${tokens.typography.base.lineHeight};-webkit-font-smoothing:antialiased;}`,
+    `:root{--mantine-color-dimmed:var(--color-ink3);--mantine-color-text:var(--color-ink);--mantine-color-body:var(--color-bg);--mantine-color-error:var(--color-danger);--mantine-color-placeholder:var(--color-ink3);}`,
+    `.mantine-Button-root[data-variant="light"]{background:var(--color-accentSoft);color:var(--color-accent);}`,
+    `.mantine-Button-root[data-variant="light"]:hover{background:var(--color-surface3);}`,
+    `.mantine-Button-root[data-variant="default"]{border-color:var(--color-borderStrong);color:var(--color-ink);}`,
     `h1,h2,h3,h4{letter-spacing:-0.01em;color:var(--color-ink);}`,
     `.mantine-Paper-root,.mantine-Card-root{border-color:var(--color-border);}`,
+    `.mantine-Table-th button{font:inherit;font-size:inherit;font-weight:inherit;text-transform:inherit;letter-spacing:inherit;color:inherit;}`,
     `.mantine-Table-tr:hover{background:var(--color-surface2);}`,
     `@media (max-width:${tokens.breakpoints.phone}px){body{font-size:${tokens.typography.base.phone};}}`,
     `.tone-badge{display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius-pill);font-weight:${tokens.badge.fontWeight};}`,

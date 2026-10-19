@@ -21,7 +21,7 @@ export function JobOrdersList() {
   const statuses = ref?.lifecycles.jobOrder.statuses ?? [];
 
   return (
-    <Container py="md" fluid>
+    <Container maw="var(--content-max-width)" fluid>
       <Title order={1} data-testid="screen-title" mb="md">
         {t('pipeline.list.title')}
       </Title>
