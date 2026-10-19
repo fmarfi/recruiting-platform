@@ -2,6 +2,9 @@ import { Anchor, Group, NavLink as MNavLink, Stack, Text, Title } from '@mantine
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../shell/auth/useAuth';
+import { AuditSection } from './AuditSection';
+import { ImportSection } from './ImportSection';
+import { RetentionSection } from './RetentionSection';
 import { RolesSection } from './RolesSection';
 import { StatusListsSection } from './StatusListsSection';
 import { UsersSection } from './users/UsersSection';
@@ -37,7 +40,9 @@ export function SettingsPage() {
           {section === 'users' && <UsersSection />}
           {section === 'roles' && <RolesSection />}
           {section === 'statuses' && <StatusListsSection />}
-          {!['users', 'roles', 'statuses'].includes(section) && <Text c="dimmed">{t('settings.soon')}</Text>}
+          {section === 'import' && <ImportSection />}
+          {section === 'retention' && <RetentionSection />}
+          {section === 'audit' && <AuditSection />}
         </div>
       </Group>
     </Stack>
