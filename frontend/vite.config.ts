@@ -14,7 +14,13 @@ export default defineConfig({
     proxy: {
       '/api/v1': target
         ? { target, changeOrigin: true }
-        : { target: 'http://127.0.0.1:4010', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/v1/, '') },
+        : {
+            target: 'http://127.0.0.1:4010',
+            changeOrigin: true,
+            rewrite: (p) => p.replace(/^\/api\/v1/, ''),
+            // Prism has no sessions: pretend every request carries the mock session cookie.
+            headers: { Cookie: 'JSESSIONID=mock' },
+          },
     },
   },
   test: {
