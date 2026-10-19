@@ -23,7 +23,7 @@ public class ImportJobMapper {
     }
 
     public ImportJobResponse response(ImportJob j) {
-        return build(j, users.refs(List.of(j.getCreatedBy())));
+        return build(j, users.refs(java.util.Collections.singletonList(j.getCreatedBy())));
     }
 
     public List<ImportJobResponse> responses(Collection<ImportJob> jobs) {

@@ -20,14 +20,12 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Dry-run validation of an import file (A-11). Nothing is written. Rows match existing records by e-mail
  * (people, contacts) or exact name (accounts) and are counted as duplicates; so are repeats inside the file.
  */
 @Component
-@Transactional(readOnly = true)
 public class ImportAnalyzer {
 
     public static final int MAX_ROWS = 10_000;
