@@ -27,7 +27,7 @@ Password for all three: `Demo-Password-2026` (stored as `{bcrypt}`).
 | `04_job_orders.sql` | 10 job orders (every status), 38 applications (every stage), `account_open_job` |
 | `05_proposals.sql` | 18 proposals, every status |
 | `06_activities_actions.sql` | 70 activities, 24 next actions (6 overdue, 6 today, 8 upcoming, 4 done) |
-| `07_timeline.sql` | 310 timeline entries derived from the rows above |
+| `07_timeline.sql` | 311 timeline entries derived from the rows above (placed candidates get an OFFER step first) |
 | `08_privacy.sql` | notices, per-person privacy rows, consent requests/records, 4 data-subject requests, retention |
 
 ## Fixed ids

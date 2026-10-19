@@ -1,7 +1,9 @@
 # Load the synthetic demo dataset into an already migrated database.
 # Usage: seed/load.ps1 [-Database recruiting]
 param([string]$Database = 'recruiting')
-$ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 turns docker's stderr progress lines into terminating errors under 'Stop',
+# so native calls are checked through $LASTEXITCODE instead.
+$ErrorActionPreference = 'Continue'
 Set-Location (Join-Path $PSScriptRoot '..')
 docker compose exec -T postgres rm -rf /tmp/seed
 if ($LASTEXITCODE -ne 0) { throw 'docker compose exec failed' }
