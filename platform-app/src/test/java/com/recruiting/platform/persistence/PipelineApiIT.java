@@ -349,4 +349,23 @@ class PipelineApiIT extends AbstractPersistenceIT {
         mvc.perform(get("/api/v1/home").with(as(consultant, "NOBODY")))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void personExportIncludesActivitiesAndApplications() throws Exception {
+        String job = newJob();
+        call(post("/api/v1/job-orders/" + job + "/applications"), consultant, "CONSULTANT",
+                "{\"personId\":\"" + personA + "\"}").andExpect(status().isCreated());
+        call(post("/api/v1/activities"), consultant, "CONSULTANT",
+                "{\"type\":\"CALL\",\"note\":\"Export me\",\"personId\":\"" + personA + "\"}")
+                .andExpect(status().isCreated());
+        call(get("/api/v1/people/" + personA + "/export"), manager, "MANAGER", null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activities.length()").value(1))
+                .andExpect(jsonPath("$.activities[0].note").value("Export me"))
+                .andExpect(jsonPath("$.applications.length()").value(1))
+                .andExpect(jsonPath("$.applications[0].jobOrder.id").value(job));
+        call(get("/api/v1/people/" + personB + "/export"), manager, "MANAGER", null)
+                .andExpect(jsonPath("$.activities.length()").value(0))
+                .andExpect(jsonPath("$.applications.length()").value(0));
+    }
 }

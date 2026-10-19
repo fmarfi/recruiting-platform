@@ -26,5 +26,8 @@
 - devops/orchestrator · `PlatformApplicationTests` removed, replaced by `persistence/ContextLoadsIT` on Testcontainers: feature beans need repositories, the DB-less "test" profile can no longer start. Other agents will hit the same; keep one fix.
 - architect · openapi: reason shorter than 3 chars answers `VALIDATION_FAILED`, missing reason `REASON_REQUIRED` (per Transitions); confirm.
 
+**Update 2026-10-19 (export)**
+- `pipeline/export/`: `ActivitiesExportContributor` and `ApplicationsExportContributor` implement accounts' `PersonExportContributor`, so GET /people/{id}/export fills `activities` and `applications` (API representation). IT: `PipelineApiIT.personExportIncludesActivitiesAndApplications`.
+
 **Verified with**
 - `mvn -q -B -Pintegration verify` → exit 0 (PipelineApiIT 9 tests, TimelineWriterTest 2, ModularityTests, ContextLoadsIT).
