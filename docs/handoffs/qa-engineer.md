@@ -21,8 +21,15 @@
 
 **Change requests**
 - devops · .github/workflows/ci.yml · add a job: `cd tests/e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test`.
-- synthetic-data · seed · include a person named Öztürk and at least one account in LEAD with a job order that has candidates in Sourced.
+- orchestrator · platform-app/pom.xml · test dependency `com.atlassian.oai:swagger-request-validator-mockmvc:2.46.0` is on this branch but not on main, and ContractHarnessTest needs it. Main's pom is otherwise unchanged; kept as is.
+- synthetic-data · seed · Öztürk person: done (Merve Öztürk, person 81). Account in LEAD with Sourced candidates: still open, LEAD accounts have no job orders.
+
+**Review fixes (2026-10-19)**
+- ContractHarnessTest negative case asserts `OpenApiMatchers.OpenApiValidationException` and that the report names the offending value `SUPERUSER`.
+- must-stories board spec picks the row by name `/Supply Chain Director/`.
 
 **Verified with**
 - `mvn -B -q -pl platform-app test -Dtest=ContractHarnessTest` → pass
 - `cd tests/e2e && npx playwright test specs/navigation.spec.ts` → 6 passed
+- `mvn -B -q -o test -Dtest=ContractHarnessTest` (platform-app) → both tests pass (surefire report)
+- `npx tsc --noEmit -p tsconfig.json` (tests/e2e) → exit 0
