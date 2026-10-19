@@ -30,9 +30,20 @@ management:
     health:
       probes:
         enabled: true
+      show-details: never
+  health:
+    mail:
+      enabled: false # a mail outage must not mark the app as down
 
 server:
   forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
   error:
     include-message: never
     include-stacktrace: never

@@ -6,6 +6,11 @@ spring:
   mail:
     host: localhost
     port: 1025
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false # plain http on localhost
 logging:
   level:
     com.recruiting: DEBUG
