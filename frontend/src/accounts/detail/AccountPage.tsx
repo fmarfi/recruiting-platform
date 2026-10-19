@@ -1,10 +1,11 @@
 import { Anchor, Button, Card, Container, Grid, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { EmptyState } from '../../shell/components/EmptyState';
 import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { SkeletonRows } from '../../shell/components/SkeletonRows';
+import { rememberRecent } from '../../shell/utility/recents';
 import { AddContactDialog } from '../components/AddContactDialog';
 import { NewRecordDialog } from '../components/NewRecordDialog';
 import { AddActionDialog } from '../components/AddActionDialog';
@@ -24,6 +25,11 @@ export function AccountPage() {
   const page = useAccountPage(id);
   const [dialog, setDialog] = useState<null | 'log' | 'action' | 'contact' | 'job' | 'proposal'>(null);
   const a = page.account.data;
+
+  // Feeds the utility bar's Recent items (browser-local).
+  useEffect(() => {
+    if (a) rememberRecent({ path: `/accounts/${a.id}`, label: a.name });
+  }, [a]);
 
   if (page.account.status === 404)
     return (

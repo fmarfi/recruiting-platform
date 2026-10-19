@@ -12,12 +12,16 @@ interface Props {
   sort: string;
   onSort: (field: string) => void;
   phone: boolean;
+  /** Column keys to show (name is always shown). */
+  columns: string[];
+  compact: boolean;
 }
 
 /** Table on laptop, cards on phone (UX-09). */
-export function AccountsTable({ rows, sort, onSort, phone }: Props) {
+export function AccountsTable({ rows, sort, onSort, phone, columns, compact }: Props) {
   const { t, i18n } = useTranslation();
   const [field, dir] = sort.split(',');
+  const show = (c: string) => columns.includes(c);
   const head = (f: string, label: string) => (
     <UnstyledButton onClick={() => onSort(f)} fw={600} aria-label={t('accounts.sortBy', { col: label })}>
       {label} {field === f ? (dir === 'asc' ? '▲' : '▼') : ''}
@@ -45,16 +49,16 @@ export function AccountsTable({ rows, sort, onSort, phone }: Props) {
     );
 
   return (
-    <Table highlightOnHover withTableBorder>
+    <Table highlightOnHover withTableBorder verticalSpacing={compact ? 4 : 'sm'} stickyHeader>
       <Table.Thead>
         <Table.Tr>
           <Table.Th>{head('name', t('accounts.name'))}</Table.Th>
-          <Table.Th>{t('accounts.sector')}</Table.Th>
-          <Table.Th>{t('accounts.city')}</Table.Th>
-          <Table.Th>{t('accounts.owner')}</Table.Th>
-          <Table.Th>{head('status', t('accounts.status'))}</Table.Th>
-          <Table.Th>{head('openJobCount', t('accounts.jobs'))}</Table.Th>
-          <Table.Th>{head('lastActivityAt', t('accounts.lastActivity'))}</Table.Th>
+          {show('sector') && <Table.Th>{t('accounts.sector')}</Table.Th>}
+          {show('city') && <Table.Th>{t('accounts.city')}</Table.Th>}
+          {show('owner') && <Table.Th>{t('accounts.owner')}</Table.Th>}
+          {show('status') && <Table.Th>{head('status', t('accounts.status'))}</Table.Th>}
+          {show('jobs') && <Table.Th>{head('openJobCount', t('accounts.jobs'))}</Table.Th>}
+          {show('lastActivity') && <Table.Th>{head('lastActivityAt', t('accounts.lastActivity'))}</Table.Th>}
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -65,14 +69,18 @@ export function AccountsTable({ rows, sort, onSort, phone }: Props) {
                 {a.name}
               </Anchor>
             </Table.Td>
-            <Table.Td>{a.sector}</Table.Td>
-            <Table.Td>{a.city ?? '-'}</Table.Td>
-            <Table.Td>{a.owner.name}</Table.Td>
-            <Table.Td>
-              <StatusBadge kind="account" value={a.status} size="sm" />
-            </Table.Td>
-            <Table.Td>{a.openJobCount}</Table.Td>
-            <Table.Td title={a.lastActivityAt ? fmtDate(a.lastActivityAt, i18n.language) : undefined}>{fmtRelative(a.lastActivityAt, i18n.language)}</Table.Td>
+            {show('sector') && <Table.Td>{a.sector}</Table.Td>}
+            {show('city') && <Table.Td>{a.city ?? '-'}</Table.Td>}
+            {show('owner') && <Table.Td>{a.owner.name}</Table.Td>}
+            {show('status') && (
+              <Table.Td>
+                <StatusBadge kind="account" value={a.status} size="sm" />
+              </Table.Td>
+            )}
+            {show('jobs') && <Table.Td>{a.openJobCount}</Table.Td>}
+            {show('lastActivity') && (
+              <Table.Td title={a.lastActivityAt ? fmtDate(a.lastActivityAt, i18n.language) : undefined}>{fmtRelative(a.lastActivityAt, i18n.language)}</Table.Td>
+            )}
           </Table.Tr>
         ))}
       </Table.Tbody>

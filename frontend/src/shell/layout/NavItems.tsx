@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 
-function useNavItems() {
+/** Nav entries for the current role; shared by the tab bar and the phone bottom bar. */
+export function useNavItems() {
   const { isManager } = useAuth();
   const items: [string, string][] = [
     ['/', 'nav.myDay'],
