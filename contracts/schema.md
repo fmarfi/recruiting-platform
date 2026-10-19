@@ -226,7 +226,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | note | text | not null |
 | occurred_at | timestamptz | not null |
 | account_id | uuid FK account | null; index `(account_id, occurred_at desc)` |
-| person_id | uuid FK person | null; index `(person_id, occurred_at desc)` |
+| person_id | uuid FK person | null; `on delete cascade` (ADR 0009); index `(person_id, occurred_at desc)` |
 | job_order_id | uuid FK job_order | null |
 | user_id | uuid FK app_user | not null |
 | audit columns | | `CHECK (account_id IS NOT NULL OR person_id IS NOT NULL)` |
@@ -239,7 +239,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | title | varchar(300) | not null |
 | due_on | date | not null |
 | owner_id | uuid FK app_user | not null; index `(owner_id, done, due_on)` |
-| account_id, person_id, job_order_id | uuid FK | all null allowed |
+| account_id, person_id, job_order_id | uuid FK | all null allowed; `person_id` `on delete cascade` (ADR 0009) |
 | done | boolean | default false |
 | done_at | timestamptz | null |
 | source_event_id | uuid | null; unique; set for actions created from `RetentionFlagged` (idempotency) |
@@ -334,7 +334,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 | Column | Type | Notes |
 | --- | --- | --- |
 | id | uuid PK | |
-| person_id | uuid FK person | null until identified; `on delete set null` |
+| person_id | uuid FK person | null until identified; `on delete set null` (the only FK to person that is not cascade, ADR 0009) |
 | requester_name | varchar(200) | |
 | requester_email | varchar(254) | |
 | type | varchar(40) | `DataSubjectRequestType` |
@@ -347,13 +347,30 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 | handled_by | uuid FK app_user | null |
 | audit columns | | |
 
-## Anonymisation (S-03, S-04)
+## Anonymisation and deletion (S-03, S-04, ADR 0009)
 
-`PersonDataApi.anonymise(personId)` in `accounts` sets `person.name = 'Anonymised person'`, nulls `email, phone, linkedin_url, how_we_know, notes, title, city, company`, deletes `person_employment` and `network_link` rows, sets `anonymised_at` and `retention_status = ANONYMISED`, then publishes `PersonAnonymised`. On that event:
+**Foreign-key rule:** every FK to `person` is `on delete cascade` (`person_employment`, `contact`, `network_link` both ends, `application`, `activity`, `next_action`, `person_privacy`, `consent_request`, `consent_record`), except `data_subject_request.person_id` (`on delete set null`). FKs to `account` stay `no action`: accounts are never hard-deleted. `PersonDeleteIT` enforces both rules.
 
-- `pipeline` replaces `activity.note`, `application.rejection_reason`, `next_action.title` for that person with `[removed]`, and also scrubs `timeline_entry.reason` and `timeline_entry.summary` of every entry with that `person_id` (set to `[removed]`). Decision: timeline text is free text written at event time and may contain names, so it is scrubbed (not re-rendered at read time); the entries and their ids stay.
-- `privacy` keeps `consent_record` rows (legal evidence) but nulls `ip_address` and `evidence`, and marks `person_privacy` ANONYMISED.
-- **Envers `_aud` purge**, in the same run, by person id: `person_aud`, `person_employment_aud`, `network_link_aud` (either end), `contact_aud`, `activity_aud`, `application_aud`, `next_action_aud`, `person_privacy_aud`. Any other audited table that holds person data must be added to this list (`account_aud`, `job_order_aud`, `proposal_aud` hold none). Otherwise the history would keep the personal data.
-- With `RetentionAction.DELETE` the person row is deleted instead; FKs from `application`, `activity`, `contact` must then be `on delete cascade` or nulled — the db-engineer applies `on delete cascade` to `contact`, `person_employment`, `network_link`, `application`, `person_privacy`, `consent_request`, `consent_record`, and `on delete set null` to `activity.person_id`, `next_action.person_id`, `data_subject_request.person_id`.
+**Order (one retention or DSR action, run by `privacy`):**
 
-**Import retention:** `import_job.file_content` and `errors` are deleted (set to null) 30 days after upload when the import was not committed; a nightly retention job in `accounts` does this.
+1. **Minimise DSRs** (via JPA, so Envers records it) for every `data_subject_request` with that `person_id`: `requester_name = 'Anonymised person'`, `requester_email = 'hmac:v<k>:' || hex(HMAC-SHA256(PRIVACY_HMAC_KEY, lower(trim(email))))`. The key comes from an env var outside the database; `<k>` is `PRIVACY_HMAC_KEY_VERSION`. Old keys are kept read-only for matching and values are never re-hashed (ADR 0009)., `description = '[removed]'`. Keep the rest as evidence; `resolution` must not hold personal data. DSRs are never purged in Phase 1.
+2. **ANONYMISE:** `PersonDataApi.anonymise(personId)` in `accounts` sets `person.name = 'Anonymised person'`, nulls `email, phone, linkedin_url, how_we_know, notes, title, city, company`, deletes `person_employment` and `network_link` rows, sets `anonymised_at` and `retention_status = ANONYMISED`, then publishes `PersonAnonymised(deleted=false)`.
+   **DELETE** (`RetentionAction.DELETE`, or a completed DELETION request): `PersonDataApi.delete(personId)` removes the person **through JPA** (`PersonRepository.delete`; never a native `DELETE`). Envers then writes the id-only `person_aud` row with `revtype = 2` (`org.hibernate.envers.store_data_at_delete` stays false). The FKs cascade the rest and set the DSR's `person_id` to null. It then publishes `PersonAnonymised(deleted=true)`.
+3. **Listeners on `PersonAnonymised`:**
+   - `pipeline` sets `timeline_entry.reason` and `summary` to `[removed]` for every entry with that `person_id`. Timeline text is free text written at event time, so it is scrubbed, not re-rendered; the entries and their ids stay. When `deleted=false`, it also replaces `activity.note`, `application.rejection_reason` and `next_action.title` for the person with `[removed]`.
+   - `privacy` keeps `consent_record` rows (legal evidence; they cascade away on DELETE), nulls `ip_address` and `evidence`, and marks `person_privacy` ANONYMISED.
+4. **Envers `_aud` purge**, by `privacy`, after step 3. It is idempotent and runs in its own transaction. It covers these tables and match conditions (`:p` is the person id):
+
+| `_aud` table | Match |
+| --- | --- |
+| `person_aud` | `id = :p` |
+| `person_employment_aud`, `contact_aud`, `activity_aud`, `application_aud`, `next_action_aud`, `data_subject_request_aud` | `person_id = :p` |
+| `network_link_aud` | `from_person_id = :p OR to_person_id = :p` |
+| `person_privacy_aud` | `person_id = :p` |
+
+   - ANONYMISE: `DELETE` the matching rows `WHERE revend IS NOT NULL`. In the matching rows `WHERE revend IS NULL`, set the personal columns to the same placeholders as the live row (`[removed]` or null; DSR values from step 1). The current revision must stay, because `ValidityAuditStrategy` updates its `revend` on the next change.
+   - DELETE: `DELETE` all matching rows except two. Keep the `person_aud` row with `revtype = 2` (id only; the NFR-03 deletion record). Keep the current `data_subject_request_aud` row (`revend IS NULL`, already minimised), and set its `person_id` to null, because the database's SET NULL is not audited.
+   - Imports: set `import_job.file_content` and `errors` to null for every import that has ended (`status IN ('COMPLETED','FAILED','DISCARDED')`). A committed CSV would otherwise still hold the person's data.
+   - `account_aud`, `job_order_aud`, `proposal_aud`, `app_user_aud` and `retention_settings_aud` hold no person data. Any new audited table that holds person data must be added to this table. Otherwise the history keeps the personal data.
+
+**Import retention:** `import_job.file_content` and `errors` are set to null as soon as an import ends (COMPLETED, FAILED or DISCARDED), in the same transaction as the status change. A nightly job in `accounts` also nulls them 30 days after upload for imports that never ended (VALIDATED). The person purge (step 4) nulls any that remain.
