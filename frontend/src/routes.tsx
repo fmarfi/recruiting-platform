@@ -2,6 +2,11 @@ import { Container, Text, Title } from '@mantine/core';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { JobOrdersList } from './pipeline/joborders/list/JobOrdersList';
+import { JobOrderPage } from './pipeline/joborders/detail/JobOrderPage';
+import { NetworkList } from './network/list/NetworkList';
+import { QuickAddLauncher } from './pipeline/quickadd/QuickAddLauncher';
+import { PersonPage } from './network/person/PersonPage';
 
 // One placeholder per screen in docs/ux/screens/*.md. Feature agents replace the element, not the path.
 function Placeholder({ titleKey }: { titleKey: string }) {
@@ -45,6 +50,7 @@ export function AppRoutes() {
             {t(key)}
           </NavLink>
         ))}
+        <QuickAddLauncher />
         <button type="button" onClick={() => void i18n.changeLanguage(i18n.language === 'tr' ? 'en' : 'tr')}>
           {i18n.language === 'tr' ? 'EN' : 'TR'}
         </button>
@@ -54,10 +60,10 @@ export function AppRoutes() {
         <Route path="/login" element={<Placeholder titleKey="nav.login" />} />
         <Route path="/accounts" element={<Placeholder titleKey="nav.accounts" />} />
         <Route path="/accounts/:id" element={<Placeholder titleKey="screen.account" />} />
-        <Route path="/job-orders" element={<Placeholder titleKey="nav.jobOrders" />} />
-        <Route path="/job-orders/:id" element={<Placeholder titleKey="screen.jobOrder" />} />
-        <Route path="/network" element={<Placeholder titleKey="nav.network" />} />
-        <Route path="/people/:id" element={<Placeholder titleKey="screen.person" />} />
+        <Route path="/job-orders" element={<JobOrdersList />} />
+        <Route path="/job-orders/:id" element={<JobOrderPage />} />
+        <Route path="/network" element={<NetworkList />} />
+        <Route path="/people/:id" element={<PersonPage />} />
         <Route path="/search" element={<Placeholder titleKey="nav.search" />} />
         <Route path="/settings" element={<Navigate to="/settings/users" replace />} />
         <Route path="/settings/:section" element={<Placeholder titleKey="screen.settingsSection" />} />
