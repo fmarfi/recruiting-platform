@@ -4,8 +4,10 @@ import com.recruiting.platform.contracts.DataSubjectRequestStatus;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface DataSubjectRequestRepository extends JpaRepository<DataSubjectRequest, UUID> {
+public interface DataSubjectRequestRepository
+        extends JpaRepository<DataSubjectRequest, UUID>, JpaSpecificationExecutor<DataSubjectRequest> {
 
     List<DataSubjectRequest> findByStatus(DataSubjectRequestStatus status);
 
