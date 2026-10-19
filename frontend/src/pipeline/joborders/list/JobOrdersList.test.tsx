@@ -27,11 +27,19 @@ describe('JobOrdersList', () => {
       );
     }));
     const { JobOrdersList } = await import('./JobOrdersList');
+    const { AuthContext } = await import('../../../shell/auth/useAuth');
+    const { RefContext } = await import('../../../shell/refdata/useReference');
+    const auth = { user: { id: 'u1', name: 'Demo', role: 'CONSULTANT' }, status: 'authed', isManager: false, isAdmin: false };
+    const ref = { data: { lifecycles: { jobOrder: { statuses: [] }, pipelineStage: { statuses: [] } } }, label: (_k: string, v: string) => v, tone: () => 'gray', def: () => undefined };
     render(
       <MantineProvider>
-        <MemoryRouter>
-          <JobOrdersList />
-        </MemoryRouter>
+        <AuthContext.Provider value={auth as never}>
+          <RefContext.Provider value={ref as never}>
+            <MemoryRouter>
+              <JobOrdersList />
+            </MemoryRouter>
+          </RefContext.Provider>
+        </AuthContext.Provider>
       </MantineProvider>,
     );
     expect(await screen.findByText('CFO Search')).toBeInTheDocument();
