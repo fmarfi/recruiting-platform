@@ -1,6 +1,6 @@
--- 03: 80 people (Turkish and English names), employment history, 30 account contacts, network links.
+-- 03: 81 people (Turkish and English names), employment history, 30 account contacts, network links.
 -- Person id uid(3, n): 1-30 CLIENT_CONTACT (n = account n for 1-25; 26-30 second contacts of accounts 11-15),
--- 31-64 CANDIDATE, 65-74 EXECUTIVE, 75-79 REFERRER, 80 CANDIDATE already anonymised.
+-- 31-64 CANDIDATE, 65-74 EXECUTIVE, 75-79 REFERRER, 80 CANDIDATE already anonymised, 81 CANDIDATE with surname Öztürk.
 -- Contact id uid(4, n) = contact of person n. Network link ids uid(11, n).
 CREATE TEMP TABLE p_seed AS
 WITH nm AS (SELECT
@@ -12,8 +12,8 @@ SELECT g.n,
        CASE WHEN g.n <= 30 THEN 'CLIENT_CONTACT' WHEN g.n <= 64 THEN 'CANDIDATE' WHEN g.n <= 74 THEN 'EXECUTIVE'
             WHEN g.n <= 79 THEN 'REFERRER' ELSE 'CANDIDATE' END AS type,
        nm.f[(g.n * 11) % 40 + 1] AS first_name,
-       nm.l[(g.n * 9 + (g.n / 40) * 3) % 40 + 1] AS last_name
-FROM generate_series(1, 80) AS g(n) CROSS JOIN nm;
+       CASE WHEN g.n = 81 THEN 'Öztürk' ELSE nm.l[(g.n * 9 + (g.n / 40) * 3) % 40 + 1] END AS last_name
+FROM generate_series(1, 81) AS g(n) CROSS JOIN nm;
 
 -- derived columns; consent_status mix and retention flags are decided here and reused by 08_privacy.sql
 CREATE TEMP TABLE p_full AS
@@ -48,10 +48,10 @@ INSERT INTO person (id, name, type, title, company, email, phone, city, linkedin
                     last_contact_at, consent_status, retention_status, anonymised_at, created_at, created_by, updated_at, updated_by)
 SELECT pg_temp.uid(3, n), name, type, title, company,
        pg_temp.slug(first_name) || '.' || pg_temp.slug(last_name) || n || '@' || dom || '.example',
-       '+90 555 ' || lpad(((n * 37) % 1000)::text, 3, '0') || ' ' || lpad(((n * 91) % 100)::text, 2, '0') || ' ' || lpad(((n * 53) % 100)::text, 2, '0'),
+       '+90 000 000 ' || lpad(((n * 37) % 100)::text, 2, '0') || ' ' || lpad(((n * 91) % 100)::text, 2, '0'),
        city,
        CASE WHEN type <> 'CLIENT_CONTACT' AND n % 3 <> 0
-            THEN 'https://www.linkedin.com/in/' || pg_temp.slug(first_name) || '-' || pg_temp.slug(last_name) || '-' || n END,
+            THEN 'https://linkedin.example/in/' || pg_temp.slug(first_name) || '-' || pg_temp.slug(last_name) || '-' || n END,
        how_we_know, notes, pg_temp.uid(1, owner),
        CASE WHEN n % 6 <> 0 THEN now() - make_interval(days => (n * 5) % 90 + 3) END,
        consent_status, retention_status, CASE WHEN n = 80 THEN now() - interval '2 days' END,
