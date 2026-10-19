@@ -94,6 +94,16 @@ class ConsentApiIT extends AbstractApiIT {
     }
 
     @Test
+    void personExportIncludesTheConsentSection() throws Exception {
+        Client manager = login(Role.MANAGER);
+        UUID person = PrivacyTestSupport.insertPerson(jdbc, manager.userId(), "Export Person", null);
+        record(manager, person, "GIVEN", "IN_PERSON").andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/people/" + person + "/export").session(manager.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.consent.status").value("GIVEN"))
+                .andExpect(jsonPath("$.consent.records.length()").value(1));
+    }
+
+    @Test
     void sendingIsRefusedWithoutEmailOrAfterConsentWasGiven() throws Exception {
         Client consultant = login(Role.CONSULTANT);
         UUID noMail = PrivacyTestSupport.insertPerson(jdbc, consultant.userId(), "No Mail", null);

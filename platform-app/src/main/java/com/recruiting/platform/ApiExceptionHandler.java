@@ -61,10 +61,7 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(TooManyRequestsException.class)
     ResponseEntity<Object> handleRateLimit(TooManyRequestsException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
-        problem.setType(URI.create("urn:recruiting:problem:too-many-requests"));
-        problem.setTitle("Too many requests");
-        problem.setProperty("code", "TOO_MANY_REQUESTS");
+        ProblemDetail problem = problem(ErrorCode.TOO_MANY_REQUESTS, ex.getMessage());
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).header(HttpHeaders.RETRY_AFTER, "60").body(problem);
     }
 
