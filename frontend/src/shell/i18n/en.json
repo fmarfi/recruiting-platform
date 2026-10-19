@@ -1,0 +1,24 @@
+{
+  "shell": {
+    "cancel": "Cancel", "save": "Save", "saveError": "Could not save. Try again.", "loadError": "Could not load this screen.", "retry": "Retry",
+    "undo": "Undo", "new": "New", "menu": "Menu", "mainNav": "Main navigation", "logout": "Sign out", "userMenu": "User menu",
+    "changeStatus": "Change status", "managerOnly": "Only managers can {{action}}",
+    "recentSearches": "Recent searches", "searchNone": "No results for \"{{q}}\"", "searchPlaceholder": "Search clients, people, jobs", "seeAll": "See all results for \"{{q}}\""
+  },
+  "login": { "title": "Sign in", "email": "E-mail", "password": "Password", "submit": "Sign in", "invalid": "E-mail or password is wrong.", "error": "Sign-in is not available right now. Try again." },
+  "myday": {
+    "greeting": "Hello, {{name}}", "summary": "{{overdue}} overdue, {{today}} due today", "welcome": "Welcome", "welcomeHint": "Add your first client to get started, or import a CSV.",
+    "addFirst": "Add your first client", "import": "Import CSV", "loadError": "Could not load your day.",
+    "actions": "Next actions", "caughtUp": "You are all caught up", "caughtUpHint": "Nothing is due. Add an action to plan ahead.",
+    "group": { "overdue": "Overdue", "today": "Today", "upcoming": "Upcoming" },
+    "overdueBy": "{{n}} days overdue", "snooze": "Snooze", "snoozeTomorrow": "Tomorrow", "snoozeWeek": "Next week", "doneToast": "Done: {{title}}",
+    "stat": { "activeAccounts": "Active clients", "openJobs": "Open jobs", "inProcess": "Candidates in process", "placed": "Placed this year" },
+    "jobs": "Open job orders", "noJobs": "No open job orders", "noJobsHint": "Job orders appear here once a client opens one.", "recent": "Recent clients",
+    "daysOpen": "{{n}} days open", "candidates": "{{n}} candidates"
+  },
+  "search": {
+    "results": "Results for \"{{q}}\"", "all": "All", "clear": "Clear", "showAll": "Show all {{n}}", "none": "No results for \"{{q}}\"", "noneHint": "Check the spelling or try a shorter word.",
+    "addClient": "Add \"{{q}}\" as a new client", "start": "Search", "startHint": "Type at least two characters.", "sector": "Sector", "status": "Status",
+    "group": { "accounts": "Clients", "people": "People", "jobs": "Job orders" }
+  }
+}

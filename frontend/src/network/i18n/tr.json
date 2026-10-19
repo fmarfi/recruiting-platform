@@ -1,0 +1,18 @@
+{
+  "network": {
+    "accounts": "Müşteriler", "addAction": "Aksiyon ekle", "addConnection": "Bağlantı ekle", "addToJob": "Pozisyona ekle", "all": "Tümü", "career": "Kariyer", "clear": "Temizle",
+    "consentFailed": "Onay isteği gönderilemedi.", "consentNoEmail": "Bu kişinin e-posta adresi yok.", "consentTo": "{{email}} adresine onay isteği gönderilecek.",
+    "createFailed": "Kişi oluşturulamadı.", "daysAgo": "{{count}} gün", "daysShort": "{{count}} gün önce",
+    "doNotContact": "Yeni pozisyonlar için iletişime geçmeyin; veriler silinmek üzere planlandı.",
+    "fields": { "city": "Şehir", "company": "Şirket", "consent": "Onay", "email": "E-posta", "howWeKnow": "Nasıl tanışıyoruz", "lastContact": "Son görüşme", "name": "Ad", "owner": "İlişki sorumlusu", "title": "Unvan", "titleCompany": "Unvan ve şirket", "type": "Tür" },
+    "filterNotContacted": "Şu tarihten beri görüşülmedi", "formerRoles": "Önceki görevler", "linkFailed": "Bağlantı eklenemedi.", "linkType": "Bağlantı türü",
+    "linkTypes": { "KNOWS": "Tanıyor", "WORKED_WITH": "Birlikte çalıştı", "INTRODUCED": "Tanıştırdı", "REFERRED": "Yönlendirdi", "REPORTS_TO": "Bağlı çalışıyor" },
+    "loadFailed": "Ağ yüklenemedi.", "logActivity": "Hareket ekle", "mine": "Benim", "never": "Hiç", "newPerson": "Yeni kişi", "nextActions": "Sıradaki aksiyonlar",
+    "noActivity": "Henüz görüşme kaydı yok. İlk aramanızı veya toplantınızı kaydedin.", "noConnections": "Sizi kim tanıştırdı? İlk bağlantıyı ekleyin.",
+    "noOpenJobs": "Uygun açık pozisyon yok.", "noPipelines": "Henüz bir pozisyonda değil.", "note": "Not", "notFound": "Kişi bulunamadı.", "openExisting": "Mevcut kaydı aç",
+    "person": "Kişi", "pipelines": "Süreçler", "privacy": "Gizlilik", "privacyUnavailable": "Gizlilik bilgileri görüntülenemiyor.",
+    "retention": "Saklama süresi {{date}} tarihinde bitiyor", "retentionWarning": "Veriler silinmek üzere planlandı.", "search": "Kişi ara", "sendConsent": "Onay isteği gönder",
+    "tabs": { "activity": "Hareketler", "connections": "Bağlantılar", "jobs": "Müşteriler ve pozisyonlar", "overview": "Genel", "privacy": "Gizlilik" },
+    "types": { "EXECUTIVE": "Yönetici", "CLIENT_CONTACT": "Müşteri kontağı", "REFERRER": "Yönlendiren", "CANDIDATE": "Aday" }
+  }
+}
