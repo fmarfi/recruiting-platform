@@ -3,7 +3,7 @@ package com.recruiting.platform.pipeline.nextaction.app;
 import com.recruiting.platform.pipeline.domain.NextAction;
 import com.recruiting.platform.pipeline.domain.NextActionRepository;
 import com.recruiting.platform.pipeline.nextaction.web.dto.NextActionCreateRequest;
-import com.recruiting.platform.pipeline.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.pipeline.shared.JobOrderRefs;
 import com.recruiting.platform.pipeline.shared.Patch;
 import com.recruiting.platform.pipeline.shared.Refs;
@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NextActionService {
 
+    private final CurrentUser currentUser;
     private static final Map<String, String> SORTABLE = Map.of("dueOn", "dueOn", "createdAt", "createdAt",
             "title", "title");
 
@@ -34,15 +35,16 @@ public class NextActionService {
     private final Refs refs;
     private final JobOrderRefs jobs;
 
-    NextActionService(NextActionRepository repo, Refs refs, JobOrderRefs jobs) {
+    NextActionService(NextActionRepository repo, Refs refs, JobOrderRefs jobs, CurrentUser currentUser) {
+        this.currentUser = currentUser;
         this.repo = repo;
         this.refs = refs;
         this.jobs = jobs;
     }
 
     @Transactional(readOnly = true)
-    public Page<NextAction> list(NextActionFilter f, Actor actor, int page, int size, List<String> sort) {
-        UUID owner = Boolean.TRUE.equals(f.mine()) ? actor.id() : f.ownerId();
+    public Page<NextAction> list(NextActionFilter f, int page, int size, List<String> sort) {
+        UUID owner = Boolean.TRUE.equals(f.mine()) ? currentUser.id() : f.ownerId();
         Specification<NextAction> spec = (root, q, cb) -> {
             List<Predicate> ps = new ArrayList<>();
             if (owner != null) {
@@ -70,8 +72,8 @@ public class NextActionService {
     }
 
     @Transactional
-    public NextAction create(NextActionCreateRequest r, Actor actor) {
-        UUID owner = r.ownerId() != null ? r.ownerId() : actor.id();
+    public NextAction create(NextActionCreateRequest r) {
+        UUID owner = r.ownerId() != null ? r.ownerId() : currentUser.id();
         if (r.ownerId() != null) {
             refs.requireUser(owner);
         }

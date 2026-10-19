@@ -5,7 +5,6 @@ import com.recruiting.platform.pipeline.nextaction.app.NextActionMapper;
 import com.recruiting.platform.pipeline.nextaction.app.NextActionService;
 import com.recruiting.platform.pipeline.nextaction.web.dto.NextActionCreateRequest;
 import com.recruiting.platform.pipeline.nextaction.web.dto.NextActionResponse;
-import com.recruiting.platform.pipeline.shared.Actor;
 import com.recruiting.platform.pipeline.shared.Patch;
 import com.recruiting.platform.pipeline.shared.dto.PageResponse;
 import jakarta.validation.Valid;
@@ -15,7 +14,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -47,16 +45,15 @@ public class NextActionController {
             @RequestParam(required = false) UUID personId, @RequestParam(required = false) UUID jobOrderId,
             @RequestParam(required = false) Boolean done,
             @RequestParam(required = false) LocalDate dueBefore, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size, @RequestParam(required = false) List<String> sort,
-            Authentication auth) {
+            @RequestParam(defaultValue = "20") int size, @RequestParam(required = false) List<String> sort) {
         NextActionFilter f = new NextActionFilter(mine, ownerId, accountId, personId, jobOrderId, done, dueBefore);
-        return PageResponse.of(service.list(f, Actor.of(auth), Math.max(0, page),
+        return PageResponse.of(service.list(f, Math.max(0, page),
                 Math.min(100, Math.max(1, size)), sort), mapper::toResponses);
     }
 
     @PostMapping
-    ResponseEntity<NextActionResponse> create(@Valid @RequestBody NextActionCreateRequest r, Authentication auth) {
-        NextActionResponse out = mapper.toResponse(service.create(r, Actor.of(auth)));
+    ResponseEntity<NextActionResponse> create(@Valid @RequestBody NextActionCreateRequest r) {
+        NextActionResponse out = mapper.toResponse(service.create(r));
         return ResponseEntity.created(URI.create("/api/v1/next-actions/" + out.id())).body(out);
     }
 

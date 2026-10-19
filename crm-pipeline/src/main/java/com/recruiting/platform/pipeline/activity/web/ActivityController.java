@@ -6,7 +6,6 @@ import com.recruiting.platform.pipeline.activity.app.ActivityMapper;
 import com.recruiting.platform.pipeline.activity.app.ActivityService;
 import com.recruiting.platform.pipeline.activity.web.dto.ActivityCreateRequest;
 import com.recruiting.platform.pipeline.activity.web.dto.ActivityResponse;
-import com.recruiting.platform.pipeline.shared.Actor;
 import com.recruiting.platform.pipeline.shared.Patch;
 import com.recruiting.platform.pipeline.shared.dto.PageResponse;
 import jakarta.validation.Valid;
@@ -16,7 +15,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -55,8 +53,8 @@ public class ActivityController {
     }
 
     @PostMapping
-    ResponseEntity<ActivityResponse> log(@Valid @RequestBody ActivityCreateRequest r, Authentication auth) {
-        ActivityResponse out = mapper.toResponse(service.log(r, Actor.of(auth)));
+    ResponseEntity<ActivityResponse> log(@Valid @RequestBody ActivityCreateRequest r) {
+        ActivityResponse out = mapper.toResponse(service.log(r));
         return ResponseEntity.created(URI.create("/api/v1/activities/" + out.id())).body(out);
     }
 
@@ -66,13 +64,13 @@ public class ActivityController {
     }
 
     @PatchMapping("/{id}")
-    ActivityResponse update(@PathVariable UUID id, @RequestBody JsonNode body, Authentication auth) {
-        return mapper.toResponse(service.update(id, new Patch(body), Actor.of(auth)));
+    ActivityResponse update(@PathVariable UUID id, @RequestBody JsonNode body) {
+        return mapper.toResponse(service.update(id, new Patch(body)));
     }
 
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> delete(@PathVariable UUID id, Authentication auth) {
-        service.delete(id, Actor.of(auth));
+    ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
         return ResponseEntity.noContent().build();
     }
 }

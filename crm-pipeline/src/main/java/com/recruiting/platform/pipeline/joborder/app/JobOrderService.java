@@ -8,7 +8,7 @@ import com.recruiting.platform.contracts.JobOrderStatus;
 import com.recruiting.platform.pipeline.domain.JobOrder;
 import com.recruiting.platform.pipeline.domain.JobOrderRepository;
 import com.recruiting.platform.pipeline.joborder.web.dto.JobOrderCreateRequest;
-import com.recruiting.platform.pipeline.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.pipeline.shared.Patch;
 import com.recruiting.platform.pipeline.shared.Refs;
 import com.recruiting.platform.pipeline.shared.Sorts;
@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class JobOrderService {
 
+    private final CurrentUser currentUser;
     private static final Map<String, String> SORTABLE = Map.of("title", "title", "status", "status",
             "openedOn", "openedOn");
 
@@ -37,7 +38,8 @@ public class JobOrderService {
     private final Refs refs;
     private final ApplicationEventPublisher events;
 
-    JobOrderService(JobOrderRepository repo, Refs refs, ApplicationEventPublisher events) {
+    JobOrderService(JobOrderRepository repo, Refs refs, ApplicationEventPublisher events, CurrentUser currentUser) {
+        this.currentUser = currentUser;
         this.repo = repo;
         this.refs = refs;
         this.events = events;
@@ -65,12 +67,12 @@ public class JobOrderService {
     }
 
     @Transactional
-    public JobOrder create(JobOrderCreateRequest r, Actor actor) {
+    public JobOrder create(JobOrderCreateRequest r) {
         var account = refs.requireAccount(r.accountId());
         if (account.status() == AccountStatus.CLOSED) {
             throw new ApiException(ErrorCode.TRANSITION_GUARD_FAILED, "A closed account accepts no new job orders.");
         }
-        UUID owner = r.ownerId() != null ? r.ownerId() : actor.id();
+        UUID owner = r.ownerId() != null ? r.ownerId() : currentUser.id();
         if (r.ownerId() != null) {
             refs.requireUser(owner);
         }
@@ -87,7 +89,7 @@ public class JobOrderService {
         j.setStatus(JobOrderStatus.INITIAL);
         j.setStatusChangedAt(Instant.now());
         repo.saveAndFlush(j);
-        events.publishEvent(new JobOrderCreated(Uuids.v7(), Instant.now(), actor.id(), j.getId(), j.getAccountId(),
+        events.publishEvent(new JobOrderCreated(Uuids.v7(), Instant.now(), currentUser.id(), j.getId(), j.getAccountId(),
                 j.getTitle(), j.getOwnerId(), j.getStatus()));
         return j;
     }

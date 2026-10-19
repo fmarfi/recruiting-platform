@@ -8,7 +8,7 @@ import com.recruiting.platform.pipeline.domain.NextActionRepository;
 import com.recruiting.platform.pipeline.joborder.app.JobOrderMapper;
 import com.recruiting.platform.pipeline.nextaction.app.NextActionMapper;
 import com.recruiting.platform.pipeline.overview.web.dto.MyDayResponse;
-import com.recruiting.platform.pipeline.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.pipeline.shared.Refs;
 import com.recruiting.platform.pipeline.shared.dto.AccountResponse;
 import com.recruiting.platform.pipeline.shared.ref.AccountDirectory;
@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MyDayService {
 
+    private final CurrentUser currentUser;
     private final Refs refs;
     private final AccountDirectory accounts;
     private final NextActionRepository nextActions;
@@ -35,7 +36,8 @@ public class MyDayService {
 
     MyDayService(Refs refs, AccountDirectory accounts, NextActionRepository nextActions,
             NextActionMapper nextActionMapper, JobOrderRepository jobOrders, JobOrderMapper jobOrderMapper,
-            ActivityRepository activities, ApplicationRepository applications) {
+            ActivityRepository activities, ApplicationRepository applications, CurrentUser currentUser) {
+        this.currentUser = currentUser;
         this.refs = refs;
         this.accounts = accounts;
         this.nextActions = nextActions;
@@ -47,9 +49,9 @@ public class MyDayService {
     }
 
     @Transactional(readOnly = true)
-    public MyDayResponse myDay(Actor actor) {
+    public MyDayResponse myDay() {
         LocalDate today = LocalDate.now();
-        UUID me = actor.id();
+        UUID me = currentUser.id();
         var actions = nextActions.findByOwnerIdAndDoneFalseAndDueOnLessThanEqualOrderByDueOnAsc(me,
                 today.plusDays(7), PageRequest.of(0, 20));
         var mine = jobOrders.findByOwnerIdAndStatusInOrderByOpenedOnDesc(me, AccountDashboardService.OPEN,

@@ -5,7 +5,6 @@ import com.recruiting.platform.pipeline.application.app.ApplicationMapper;
 import com.recruiting.platform.pipeline.application.app.ApplicationService;
 import com.recruiting.platform.pipeline.application.web.dto.ApplicationCreateRequest;
 import com.recruiting.platform.pipeline.application.web.dto.ApplicationResponse;
-import com.recruiting.platform.pipeline.shared.Actor;
 import com.recruiting.platform.pipeline.shared.Refs;
 import com.recruiting.platform.pipeline.shared.dto.PageResponse;
 import com.recruiting.platform.pipeline.shared.dto.PersonSummary;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,9 +45,8 @@ public class JobOrderApplicationController {
 
     @PostMapping("/applications")
     @ResponseStatus(HttpStatus.CREATED)
-    ApplicationResponse add(@PathVariable UUID id, @Valid @RequestBody ApplicationCreateRequest r,
-            Authentication auth) {
-        return mapper.toResponse(service.add(id, r.personId(), Actor.of(auth)));
+    ApplicationResponse add(@PathVariable UUID id, @Valid @RequestBody ApplicationCreateRequest r) {
+        return mapper.toResponse(service.add(id, r.personId()));
     }
 
     @GetMapping("/candidate-suggestions")

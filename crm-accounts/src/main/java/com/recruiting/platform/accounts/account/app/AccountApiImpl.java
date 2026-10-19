@@ -34,7 +34,29 @@ public class AccountApiImpl implements AccountApi {
                 .collect(Collectors.toMap(AccountSummary::id, Function.identity()));
     }
 
+    @Override
+    public java.util.Set<UUID> idsBySectorAndStatus(String sector, com.recruiting.platform.contracts.AccountStatus status) {
+        return accounts.findAll((root, q, cb) -> {
+            var all = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (sector != null) {
+                all.add(cb.equal(cb.lower(root.get("sector")), sector.toLowerCase()));
+            }
+            if (status != null) {
+                all.add(cb.equal(root.get("status"), status));
+            }
+            return cb.and(all.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        }).stream().map(Account::getId).collect(Collectors.toSet());
+    }
+
+    @Override
+    public long countByStatus(com.recruiting.platform.contracts.AccountStatus status) {
+        return accounts.count((root, q, cb) -> cb.equal(root.get("status"), status));
+    }
+
     private static AccountSummary toSummary(Account a) {
-        return new AccountSummary(a.getId(), a.getName(), a.getSector(), a.getStatus(), a.getOwnerId());
+        return new AccountSummary(a.getId(), a.getName(), a.getSector(), a.getStatus(), a.getOwnerId(), a.getCity(),
+                a.getWebsite(), a.getNotes(), a.getStatusChangedAt(), a.getOpenedOn(),
+                a.getOpenJobCount() == null ? 0 : a.getOpenJobCount(), a.getLastActivityAt(), a.getCreatedAt(),
+                a.getUpdatedAt(), a.getVersion());
     }
 }

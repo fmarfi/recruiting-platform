@@ -5,7 +5,6 @@ import com.recruiting.platform.pipeline.proposal.app.ProposalMapper;
 import com.recruiting.platform.pipeline.proposal.app.ProposalService;
 import com.recruiting.platform.pipeline.proposal.web.dto.ProposalCreateRequest;
 import com.recruiting.platform.pipeline.proposal.web.dto.ProposalResponse;
-import com.recruiting.platform.pipeline.shared.Actor;
 import com.recruiting.platform.pipeline.shared.Patch;
 import com.recruiting.platform.pipeline.shared.dto.PageResponse;
 import jakarta.validation.Valid;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,8 +47,8 @@ public class ProposalController {
     }
 
     @PostMapping
-    ResponseEntity<ProposalResponse> create(@Valid @RequestBody ProposalCreateRequest r, Authentication auth) {
-        ProposalResponse out = mapper.toResponse(service.create(r, Actor.of(auth)));
+    ResponseEntity<ProposalResponse> create(@Valid @RequestBody ProposalCreateRequest r) {
+        ProposalResponse out = mapper.toResponse(service.create(r));
         return ResponseEntity.created(URI.create("/api/v1/proposals/" + out.id())).body(out);
     }
 

@@ -4,10 +4,8 @@ import com.recruiting.platform.pipeline.overview.app.AccountDashboardService;
 import com.recruiting.platform.pipeline.overview.app.MyDayService;
 import com.recruiting.platform.pipeline.overview.web.dto.AccountDashboardResponse;
 import com.recruiting.platform.pipeline.overview.web.dto.MyDayResponse;
-import com.recruiting.platform.pipeline.shared.Actor;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,7 +31,7 @@ public class OverviewController {
     }
 
     @GetMapping("/home")
-    MyDayResponse home(Authentication auth) {
-        return myDay.myDay(Actor.of(auth));
+    MyDayResponse home() {
+        return myDay.myDay();
     }
 }
