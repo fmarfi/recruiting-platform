@@ -44,14 +44,14 @@ Shared briefing: `docs/context/wave-1b.md` (ports, shared files, auth, demo logi
 
 | ID | Task | Owner | Status | Blocked by |
 | --- | --- | --- | --- | --- |
-| W1-05 | Settle Wave 1a schema change requests (activity FK vs CHECK; `data_subject_request_aud` purge): update `contracts/schema.md` + migration + IT | architect | in progress | – |
-| W1-10 | Tags Reference data, Accounts (incl. account status A-02), Contacts, People, Network links, Import, Search | backend-accounts | in progress | W1-02 |
-| W1-11 | Tags Job orders, Pipeline, Proposals, Activities, Next actions, Account overview, Home; status transition rules from `docs/status-lifecycles.md`; timeline from events; `DELETE /applications/{id}` only in SOURCED (409 otherwise) | backend-pipeline | in progress | W1-02 |
-| W1-12 | Tags Auth, Users, Audit (session + CSRF, 3 roles, access log); Consent, Public consent, Privacy notices, Retention, Data-subject requests (S-01, S-03, S-04; S-02 is Phase 2); logins written to the access log; consent token masked in logs | security-privacy | todo | W1-02, W1-05 |
-| W1-13 | Shell, My day, Accounts list + Account page, Search, Settings (UX-01, 02, 05, 07–09) | frontend-shell | in progress | W1-03 |
-| W1-14 | Job orders + pipeline board, Network list + Person page, Quick add (UX-03, 04, 06) | frontend-pipeline | in progress | W1-03 |
-| W1-15 | Demo dataset: fictional accounts in every status, people, job orders, pipelines, history; loaded with one command | synthetic-data | in progress | W1-01 |
-| W1-16 | Contract tests (responses validated against openapi.yaml) and Playwright smoke tests against the mock; test plan per Must story | qa-engineer | in progress | W1-03 |
+| W1-05 | Settle Wave 1a schema change requests (activity FK vs CHECK; `data_subject_request_aud` purge): update `contracts/schema.md` + migration + IT | architect | done | – |
+| W1-10 | Tags Reference data, Accounts (incl. account status A-02), Contacts, People, Network links, Import, Search | backend-accounts | done | W1-02 |
+| W1-11 | Tags Job orders, Pipeline, Proposals, Activities, Next actions, Account overview, Home; status transition rules from `docs/status-lifecycles.md`; timeline from events; `DELETE /applications/{id}` only in SOURCED (409 otherwise) | backend-pipeline | done | W1-02 |
+| W1-12 | Tags Auth, Users, Audit (session + CSRF, 3 roles, access log); Consent, Public consent, Privacy notices, Retention, Data-subject requests (S-01, S-03, S-04; S-02 is Phase 2); logins written to the access log; consent token masked in logs | security-privacy | review | W1-02, W1-05 |
+| W1-13 | Shell, My day, Accounts list + Account page, Search, Settings (UX-01, 02, 05, 07–09) | frontend-shell | done | W1-03 |
+| W1-14 | Job orders + pipeline board, Network list + Person page, Quick add (UX-03, 04, 06) | frontend-pipeline | done | W1-03 |
+| W1-15 | Demo dataset: fictional accounts in every status, people, job orders, pipelines, history; loaded with one command | synthetic-data | done | W1-01 |
+| W1-16 | Contract tests (responses validated against openapi.yaml) and Playwright smoke tests against the mock; test plan per Must story | qa-engineer | done | W1-03 |
 
 **Gate 1 → 2**
 - [ ] All Phase 1 Must endpoints and screens merged
@@ -69,6 +69,8 @@ Shared briefing: `docs/context/wave-1b.md` (ports, shared files, auth, demo logi
 **Phase 2 ready**
 - [ ] CRM pilot live
 - [ ] AI evaluation set agreed with the client
+
+**Wave 1b status (2026-10-19):** all builders merged on main except W1-12 follow-ups (security swaps interim adapter, then reviewed). Light enterprise UI redesign merged (design-tokens v1.1.0). Open: real-login check with seeded DB, TOO_MANY_REQUESTS error code, Playwright CI job (devops), person export sections from pipeline.
 
 ## Change requests
 
@@ -102,3 +104,4 @@ From `docs/requirements.md` → Open questions. Agents mark dependent work as AS
 - Hosting location (affects W0-10)
 - CV languages (affects Phase 2 parser)
 - Retention start point: upload or last contact (affects S-03)
+- 2026-10-19 · UI is a light, professional enterprise theme (navy accent, no dark mode); design-tokens.json v1.1.0 changed visually under a contract-freeze exception.
