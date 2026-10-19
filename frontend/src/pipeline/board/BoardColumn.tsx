@@ -26,18 +26,19 @@ export function BoardColumn({
       ref={setNodeRef}
       data-testid={`col-${stage}`}
       data-droppable={legal === undefined ? undefined : String(legal)}
-      p="xs"
+      p="sm"
       style={{
         borderRadius: 'var(--radius-md, 8px)',
-        background: 'var(--color-surface-alt, rgba(128,128,128,0.06))',
+        background: 'var(--color-surface2)',
         outline: legal ? '2px dashed var(--tone-info-dot)' : isOver ? '2px solid var(--tone-info-dot)' : undefined,
         opacity: legal === false ? 0.45 : 1,
         cursor: legal === false ? 'not-allowed' : undefined,
         minHeight: 120,
-        minWidth: 180,
+        minWidth: 0,
+        border: '1px solid var(--color-border)',
       }}
     >
-      <Group justify="space-between" mb="xs">
+      <Group justify="space-between" wrap="nowrap" mb="sm">
         <StatusBadge lifecycle="pipelineStage" value={stage} />
         <Badge variant="light" color="gray" aria-label={`${apps.length}`}>
           {apps.length}
@@ -45,7 +46,7 @@ export function BoardColumn({
       </Group>
       <Stack gap="xs">
         {apps.length === 0 && (
-          <Text size="xs" c="dimmed" ta="center" style={{ border: '1px dashed var(--color-border, #bbb)', borderRadius: 6, padding: 12 }}>
+          <Text size="xs" c="dimmed" ta="center" style={{ border: '1px dashed var(--color-borderStrong)', borderRadius: 6, padding: 12 }}>
             {t('pipeline.emptyColumn')}
           </Text>
         )}

@@ -68,7 +68,7 @@ export function JobOrderPage() {
   const rejectedCount = moves.apps.filter((a) => a.stage === 'REJECTED').length;
 
   return (
-    <Container py="md" fluid>
+    <Container maw="var(--content-max-width)" fluid>
       <Group gap="xs" mb="xs">
         <Anchor component={Link} to={`/accounts/${j.account.id}`} size="sm">
           {j.account.name}

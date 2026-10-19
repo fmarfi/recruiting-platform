@@ -7,7 +7,7 @@ import './i18n';
 
 export function App() {
   return (
-    <MantineProvider theme={theme} defaultColorScheme="auto">
+    <MantineProvider theme={theme} defaultColorScheme="light" forceColorScheme="light">
       <style>{tokenCss()}</style>
       <AppRoutes />
     </MantineProvider>
