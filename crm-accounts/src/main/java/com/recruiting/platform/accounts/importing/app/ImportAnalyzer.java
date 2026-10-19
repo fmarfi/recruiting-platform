@@ -8,7 +8,7 @@ import com.recruiting.platform.accounts.importing.parse.TableReader;
 import com.recruiting.platform.accounts.importing.parse.TableReader.Table;
 import com.recruiting.platform.accounts.importing.web.dto.ImportRowError;
 import com.recruiting.platform.accounts.person.web.dto.PersonCreateRequest;
-import com.recruiting.platform.accounts.shared.UserLookup;
+import com.recruiting.platform.security.UserDirectory;
 import com.recruiting.platform.contracts.ImportKind;
 import com.recruiting.platform.contracts.PersonType;
 import jakarta.validation.ConstraintViolation;
@@ -32,10 +32,10 @@ public class ImportAnalyzer {
 
     private final AccountRepository accounts;
     private final PersonRepository people;
-    private final UserLookup users;
+    private final UserDirectory users;
     private final Validator validator;
 
-    public ImportAnalyzer(AccountRepository accounts, PersonRepository people, UserLookup users,
+    public ImportAnalyzer(AccountRepository accounts, PersonRepository people, UserDirectory users,
             Validator validator) {
         this.accounts = accounts;
         this.people = people;
@@ -135,7 +135,7 @@ public class ImportAnalyzer {
         if (email == null) {
             return null;
         }
-        return users.idByEmail(email).orElseGet(() -> {
+        return users.activeIdByEmail(email).orElseGet(() -> {
             errs.add(new ImportRowError(n, "ownerEmail", "No active user with this e-mail address"));
             return null;
         });

@@ -2,8 +2,8 @@ package com.recruiting.platform.accounts.account.app;
 
 import com.recruiting.platform.accounts.account.web.dto.AccountResponse;
 import com.recruiting.platform.accounts.domain.Account;
-import com.recruiting.platform.accounts.shared.UserLookup;
-import com.recruiting.platform.accounts.shared.dto.UserRef;
+import com.recruiting.platform.security.UserDirectory;
+import com.recruiting.platform.security.UserRef;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -14,9 +14,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class AccountMapper {
 
-    private final UserLookup users;
+    private final UserDirectory users;
 
-    public AccountMapper(UserLookup users) {
+    public AccountMapper(UserDirectory users) {
         this.users = users;
     }
 

@@ -38,6 +38,19 @@ public class UserDirectory {
         return result;
     }
 
+    /** True when the user exists and is active (valid as an owner). */
+    @Transactional(readOnly = true)
+    public boolean isActive(UUID id) {
+        return id != null && users.findById(id).map(AppUser::isActive).orElse(false);
+    }
+
+    /** Id of the active user with this e-mail (case-insensitive), for imports that name owners by e-mail. */
+    @Transactional(readOnly = true)
+    public Optional<UUID> activeIdByEmail(String email) {
+        return email == null ? Optional.empty()
+                : users.findByEmailIgnoreCase(email.trim()).filter(AppUser::isActive).map(AppUser::getId);
+    }
+
     private static UserRef toRef(AppUser user) {
         return new UserRef(user.getId(), user.getName());
     }

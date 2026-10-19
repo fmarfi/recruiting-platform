@@ -6,8 +6,8 @@ import com.recruiting.platform.accounts.domain.PersonEmploymentRepository;
 import com.recruiting.platform.accounts.person.web.dto.Employment;
 import com.recruiting.platform.accounts.person.web.dto.PersonResponse;
 import com.recruiting.platform.accounts.person.web.dto.PersonSummaryResponse;
-import com.recruiting.platform.accounts.shared.UserLookup;
-import com.recruiting.platform.accounts.shared.dto.UserRef;
+import com.recruiting.platform.security.UserDirectory;
+import com.recruiting.platform.security.UserRef;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -18,10 +18,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class PersonMapper {
 
-    private final UserLookup users;
+    private final UserDirectory users;
     private final PersonEmploymentRepository employments;
 
-    public PersonMapper(UserLookup users, PersonEmploymentRepository employments) {
+    public PersonMapper(UserDirectory users, PersonEmploymentRepository employments) {
         this.users = users;
         this.employments = employments;
     }

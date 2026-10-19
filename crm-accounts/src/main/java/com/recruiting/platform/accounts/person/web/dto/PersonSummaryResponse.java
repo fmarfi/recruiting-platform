@@ -1,6 +1,6 @@
 package com.recruiting.platform.accounts.person.web.dto;
 
-import com.recruiting.platform.accounts.shared.dto.UserRef;
+import com.recruiting.platform.security.UserRef;
 import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.PersonType;
 import com.recruiting.platform.contracts.RetentionStatus;

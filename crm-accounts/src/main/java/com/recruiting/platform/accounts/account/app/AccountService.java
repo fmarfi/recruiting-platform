@@ -9,7 +9,7 @@ import com.recruiting.platform.accounts.shared.Actor;
 import com.recruiting.platform.accounts.shared.Events;
 import com.recruiting.platform.accounts.shared.Patch;
 import com.recruiting.platform.accounts.shared.PatchBinder;
-import com.recruiting.platform.accounts.shared.UserLookup;
+import com.recruiting.platform.security.UserDirectory;
 import com.recruiting.platform.accounts.shared.Versions;
 import com.recruiting.platform.contracts.AccountCreated;
 import com.recruiting.platform.contracts.AccountStatus;
@@ -30,10 +30,10 @@ public class AccountService {
 
     private final AccountRepository accounts;
     private final AccountMapper mapper;
-    private final UserLookup users;
+    private final UserDirectory users;
     private final ApplicationEventPublisher events;
 
-    public AccountService(AccountRepository accounts, AccountMapper mapper, UserLookup users,
+    public AccountService(AccountRepository accounts, AccountMapper mapper, UserDirectory users,
             ApplicationEventPublisher events) {
         this.accounts = accounts;
         this.mapper = mapper;
@@ -43,7 +43,7 @@ public class AccountService {
 
     public AccountResponse create(AccountCreateRequest r, Actor actor) {
         UUID ownerId = r.ownerId() != null ? r.ownerId() : actor.id();
-        if (ownerId == null || !users.exists(ownerId)) {
+        if (ownerId == null || !users.isActive(ownerId)) {
             throw PatchBinder.validation("ownerId", "REQUIRED", "an active owner is required");
         }
         failIfNameTaken(r.name(), null);
@@ -91,7 +91,7 @@ public class AccountService {
         }
         boolean ownerChanged = patch.has("ownerId") && !r.ownerId().equals(a.getOwnerId());
         if (ownerChanged) {
-            if (!users.exists(r.ownerId())) {
+            if (!users.isActive(r.ownerId())) {
                 throw PatchBinder.validation("ownerId", "INVALID", "unknown or inactive user");
             }
             a.setOwnerId(r.ownerId());
