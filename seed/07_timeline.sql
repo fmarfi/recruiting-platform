@@ -81,14 +81,19 @@ FROM j_seed j JOIN job_path p ON p.status = j.status;
 -- candidates: added (k=0), then moved to the current stage (k=1)
 INSERT INTO timeline_entry (id, account_id, occurred_at, kind, entity_type, entity_id, from_status, to_status, reason, summary, person_id, job_order_id, actor_id, source_event_id)
 SELECT pg_temp.uid(19, 7000 + s.n * 10 + k.k), pg_temp.uid(2, j.acct),
-       CASE k.k WHEN 0 THEN ap.created_at ELSE ap.stage_changed_at END, 'CANDIDATE', 'APPLICATION', ap.id,
-       CASE k.k WHEN 0 THEN NULL ELSE 'SOURCED' END, CASE k.k WHEN 0 THEN 'SOURCED' ELSE s.stage END,
-       CASE WHEN k.k = 1 THEN s.reason END,
+       -- PLACED is reachable only from OFFER, so a placed candidate gets an OFFER step first (k=1), then PLACED (k=2)
+       CASE k.k WHEN 0 THEN ap.created_at WHEN 2 THEN ap.stage_changed_at
+                ELSE CASE WHEN s.stage = 'PLACED' THEN ap.stage_changed_at - interval '2 days' ELSE ap.stage_changed_at END END,
+       'CANDIDATE', 'APPLICATION', ap.id,
+       CASE k.k WHEN 0 THEN NULL WHEN 1 THEN 'SOURCED' ELSE 'OFFER' END,
+       CASE k.k WHEN 0 THEN 'SOURCED' WHEN 1 THEN CASE WHEN s.stage = 'PLACED' THEN 'OFFER' ELSE s.stage END ELSE 'PLACED' END,
+       CASE WHEN k.k = 1 AND s.stage <> 'PLACED' THEN s.reason END,
        CASE k.k WHEN 0 THEN 'Candidate added: ' || p.name || ' to ' || j.title
-                ELSE 'Candidate ' || p.name || ' moved to ' || s.stage END,
+                ELSE 'Candidate ' || p.name || ' moved to '
+                     || CASE k.k WHEN 1 THEN CASE WHEN s.stage = 'PLACED' THEN 'OFFER' ELSE s.stage END ELSE 'PLACED' END END,
        pg_temp.uid(3, s.person), pg_temp.uid(5, j.n), pg_temp.uid(1, j.owner), pg_temp.uid(18, 7000 + s.n * 10 + k.k)
 FROM app_seed s
 JOIN application ap ON ap.id = pg_temp.uid(6, s.n)
 JOIN j_seed j ON j.n = s.job
 JOIN p_full p ON p.n = s.person
-JOIN generate_series(0, 1) AS k(k) ON (k.k = 0 OR s.stage <> 'SOURCED');
+JOIN generate_series(0, 2) AS k(k) ON (k.k = 0 OR (k.k = 1 AND s.stage <> 'SOURCED') OR (k.k = 2 AND s.stage = 'PLACED'));

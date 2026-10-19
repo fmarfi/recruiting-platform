@@ -16,3 +16,24 @@ app_user 3, account 25 (LEAD 6, PROPOSAL_SENT 4, ACTIVE 9, ON_HOLD 3, CLOSED 3),
 
 **Verified with**
 - `mvn -q install -DskipTests`, app on 8085 against `synthetic_data` (Flyway migrated), then `COMPOSE_PROJECT_NAME=recruiting-platform seed/load.sh synthetic_data` twice and `seed/counts.sql` → counts above; `load.ps1` also run OK.
+
+## Wave 1b (W1-15 finish) · 2026-10-19
+
+**Branch / commits:** `worktree-wave1b-synthetic-data` · merged main, then 1 fix commit
+
+**Done**
+- `seed/07_timeline.sql`: a candidate placed on a job order now gets an OFFER step before PLACED (PLACED is reachable only from OFFER). Timeline is 311 entries.
+- `seed/load.ps1`: sets `$ErrorActionPreference = 'Continue'`; under 'Stop', Windows PowerShell 5.1 turned docker's stderr progress into a terminating error and the load failed.
+- Checked against `docs/status-lifecycles.md`: all 7 account, 7 job order, 7 stage, 4 proposal and 5 consent statuses are present; account, job and stage histories follow legal transitions.
+
+**Not done / left**
+- The app was not started against the seeded DB. The stack's `recruiting` role password is not something I could read (access was denied), so Flyway could not log in. Migrations were applied with `psql` in version order instead (same SQL, no `flyway_schema_history` row). Logging in through the UI still needs one check.
+
+**Others must know**
+- qa-engineer / frontend: demo login is `admin|manager|consultant@demo.example` / `Demo-Password-2026`.
+
+**Verified with**
+- `docker compose exec -T postgres dropdb/createdb synthetic_data`, migrations via psql, then `COMPOSE_PROJECT_NAME=recruiting-platform seed/load.sh synthetic_data` twice → loads, counts unchanged on reload.
+- `seed/load.ps1 -Database synthetic_data` → exit 0.
+- `seed/counts.sql` → 3 users, 25 accounts (all 5 statuses), 80 people, 10 job orders (all 7), 38 applications (all 7 stages), 18 proposals (all 4), 70 activities, 24 next actions, 311 timeline entries; `open_job_count` mismatches 0.
+- BCrypt check with `spring-security-crypto` (`BCrypt.checkpw`) on the stored hash → matches `Demo-Password-2026`, rejects `wrong`.
