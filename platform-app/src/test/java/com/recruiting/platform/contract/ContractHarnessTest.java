@@ -1,9 +1,11 @@
 package com.recruiting.platform.contract;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.atlassian.oai.validator.mockmvc.OpenApiMatchers.OpenApiValidationException;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -51,7 +53,10 @@ class ContractHarnessTest {
 
     @Test
     void nonConformingResponseIsRejected() {
-        assertThrows(Exception.class, () -> mockMvc.perform(get("/api/v1/auth/me").param("broken", ""))
-                .andExpect(ContractAssertions.matchesContract()));
+        OpenApiValidationException failure = assertThrows(OpenApiValidationException.class,
+                () -> mockMvc.perform(get("/api/v1/auth/me").param("broken", ""))
+                        .andExpect(ContractAssertions.matchesContract()));
+        assertTrue(failure.getValidationReport().hasErrors());
+        assertTrue(failure.getMessage().contains("SUPERUSER"), failure.getMessage());
     }
 }
