@@ -7,7 +7,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { Button, Group, SimpleGrid, Text } from '@mantine/core';
+import { Button, Group, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -76,11 +76,11 @@ export function Board(props: BoardProps) {
           ))}
         </Group>
       )}
-      <SimpleGrid cols={phone ? 1 : columns.length} spacing="xs" style={{ overflowX: 'auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: phone ? '1fr' : `repeat(${visible.length}, minmax(220px, 1fr))`, gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
         {visible.map((s) => (
           <BoardColumn key={s} stage={s} apps={props.apps.filter((a) => a.stage === s)} props={guarded} activeApp={activeApp} />
         ))}
-      </SimpleGrid>
+      </div>
       <RejectedLane apps={rejected} props={guarded} activeApp={activeApp} />
       <ReasonDialog
         opened={!!pendingReject}
