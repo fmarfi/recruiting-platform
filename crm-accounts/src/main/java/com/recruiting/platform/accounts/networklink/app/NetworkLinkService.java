@@ -104,7 +104,7 @@ public class NetworkLinkService {
         people.findAllByIdIn(List.of(l.getFromPersonId(), l.getToPersonId())).forEach(p -> found.put(p.getId(), p));
         return new NetworkLinkResponse(l.getId(), ref(found.get(l.getFromPersonId())),
                 ref(found.get(l.getToPersonId())), l.getType(), l.getNote(), l.getCreatedAt(),
-                users.refs(List.of(l.getCreatedBy())).get(l.getCreatedBy()));
+                users.refs(java.util.Collections.singletonList(l.getCreatedBy())).get(l.getCreatedBy()));
     }
 
     private static PersonRef ref(Person p) {
