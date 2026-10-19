@@ -32,6 +32,10 @@
     </dependency>
     <dependency>
       <groupId>com.recruiting</groupId>
+      <artifactId>crm-accounts</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.recruiting</groupId>
       <artifactId>security</artifactId>
     </dependency>
     <dependency>

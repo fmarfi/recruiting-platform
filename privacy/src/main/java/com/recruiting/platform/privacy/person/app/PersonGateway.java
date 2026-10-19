@@ -8,8 +8,8 @@ import java.util.UUID;
 
 /**
  * Everything privacy asks of the person records in accounts. One port so the module does not reach into another
- * module's tables from many places. The shipped adapter is {@link JdbcPersonGateway}; swap it for one built on
- * accounts' {@code PersonApi} / {@code PersonDataApi} when those are merged (see hand-off).
+ * module's tables from many places. The adapter is {@link AccountsPersonGateway}, built on accounts' {@code PersonApi} and
+ * {@code PersonDataApi}.
  */
 public interface PersonGateway {
 

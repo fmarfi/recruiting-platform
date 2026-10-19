@@ -33,6 +33,8 @@ public enum ErrorCode {
     PAYLOAD_TOO_LARGE(413),
     /** Unsupported file type. */
     UNSUPPORTED_MEDIA_TYPE(415),
+    /** Rate limit exceeded (login, public consent link); retry later. */
+    TOO_MANY_REQUESTS(429),
     /** Unexpected server error. */
     INTERNAL_ERROR(500);
 
