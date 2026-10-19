@@ -16,6 +16,9 @@ public interface ActivityRepository extends JpaRepository<Activity, UUID>, JpaSp
 
     Page<Activity> findByPersonIdOrderByOccurredAtDesc(UUID personId, Pageable pageable);
 
+    /** All activities of a person, newest first (person export). */
+    List<Activity> findByPersonIdOrderByOccurredAtDesc(UUID personId);
+
     /** Account ids with the latest activity, newest first (My day, recent accounts). */
     @Query("SELECT a.accountId FROM Activity a WHERE a.accountId IS NOT NULL "
             + "GROUP BY a.accountId ORDER BY MAX(a.occurredAt) DESC")
