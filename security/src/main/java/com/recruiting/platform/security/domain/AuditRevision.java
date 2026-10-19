@@ -19,7 +19,7 @@ import org.hibernate.envers.RevisionTimestamp;
  */
 @Entity
 @Table(name = "revinfo")
-@RevisionEntity
+@RevisionEntity(com.recruiting.platform.security.audit.app.UserRevisionListener.class)
 public class AuditRevision {
 
     @Id

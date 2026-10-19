@@ -8,7 +8,7 @@ import org.testcontainers.utility.DockerImageName;
 
 /** One PostgreSQL container (same image as docker-compose.yml) shared by every persistence IT via the context cache. */
 @TestConfiguration(proxyBeanMethods = false)
-class PostgresTestConfig {
+public class PostgresTestConfig {
 
     @Bean
     @ServiceConnection
