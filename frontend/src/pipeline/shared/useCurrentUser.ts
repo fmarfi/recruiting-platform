@@ -1,19 +1,7 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../api';
+// /auth/me comes from the shell's AuthProvider, so it is fetched once per session.
+import { useAuth } from '../../shell/auth/useAuth';
 import type { Schemas } from './types';
 
-export function useCurrentUser() {
-  const [me, setMe] = useState<Schemas['CurrentUser']>();
-  useEffect(() => {
-    let live = true;
-    api
-      .GET('/auth/me')
-      .then((r) => live && setMe(r.data))
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, []);
-  return me;
+export function useCurrentUser(): Schemas['CurrentUser'] | undefined {
+  return useAuth().user ?? undefined;
 }
-
