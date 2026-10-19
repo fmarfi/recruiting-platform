@@ -1,4 +1,4 @@
-import { ActionIcon, AppShell, Burger, Group, Text } from '@mantine/core';
+import { ActionIcon, AppShell, Group, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,30 +6,37 @@ import { Outlet } from 'react-router-dom';
 import { tokens } from '../../theme/tokens';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 import { GlobalSearch } from '../search/GlobalSearch';
+import { UtilityBar } from '../utility/UtilityBar';
 import { LanguageSwitch } from './LanguageSwitch';
 import { NavItems } from './NavItems';
 import { NewMenu } from './NewMenu';
+import { TabBar } from './TabBar';
 import { UserMenu } from './UserMenu';
 
-/** App frame (UX-09): left nav on laptop, bottom tab bar on phone, top bar with search, + New, TR/EN and user menu. */
+const HEADER_HEIGHT = 48;
+const TAB_BAR_HEIGHT = 40;
+const UTILITY_BAR_HEIGHT = 36;
+
+/**
+ * App frame (UX-09): 48 px global header (name, search, + New, TR/EN, user menu) with a 40 px object tab bar
+ * below it on laptop; bottom tab bar plus + button on phone; utility bar footer on laptop.
+ */
 export function Shell() {
   const { t } = useTranslation();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
-  const [drawer, setDrawer] = useState(false);
   const [fab, setFab] = useState(false);
   const [version, setVersion] = useState(0); // bump to re-mount the screen after a quick add
 
   return (
     <AppShell
-      header={{ height: 56 }}
-      navbar={{ width: tokens.spacing.sidebarWidth, breakpoint: 'sm', collapsed: { mobile: !drawer || !phone, desktop: !!phone } }}
-      footer={{ height: phone ? tokens.layout.bottomTabBarHeight : 0 }}
+      header={{ height: phone ? HEADER_HEIGHT : HEADER_HEIGHT + TAB_BAR_HEIGHT }}
+      footer={{ height: phone ? tokens.layout.bottomTabBarHeight : UTILITY_BAR_HEIGHT }}
       padding="md"
+      styles={{ main: { background: 'var(--color-surface2)' } }}
     >
-      <AppShell.Header>
-        <Group h="100%" px="md" gap="sm" wrap="nowrap">
-          {phone && <Burger opened={drawer} onClick={() => setDrawer((o) => !o)} size="sm" aria-label={t('shell.menu')} />}
-          <Text fw={700} c="brand" visibleFrom="sm" style={{ whiteSpace: 'nowrap' }}>
+      <AppShell.Header style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        <Group h={HEADER_HEIGHT} px="md" gap="sm" wrap="nowrap">
+          <Text fw={700} c="brand" style={{ whiteSpace: 'nowrap' }}>
             {t('app.title')}
           </Text>
           <GlobalSearch />
@@ -37,17 +44,17 @@ export function Shell() {
           <LanguageSwitch />
           <UserMenu />
         </Group>
+        {!phone && <TabBar />}
       </AppShell.Header>
-      <AppShell.Navbar p="md">
-        <NavItems vertical onNavigate={() => setDrawer(false)} />
-      </AppShell.Navbar>
       <AppShell.Main>
         <Outlet key={version} />
       </AppShell.Main>
-      {phone && (
+      {phone ? (
         <AppShell.Footer p={4}>
           <NavItems vertical={false} />
         </AppShell.Footer>
+      ) : (
+        <UtilityBar />
       )}
       {phone && (
         <>

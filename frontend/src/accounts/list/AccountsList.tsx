@@ -1,4 +1,4 @@
-import { Button, Container, Group, Pagination, Stack, Title } from '@mantine/core';
+import { Button, Container, Pagination, Stack } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,13 +7,16 @@ import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
 import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { SkeletonRows } from '../../shell/components/SkeletonRows';
+import { useDensity, useVisibleColumns } from '../../shell/lists/useListPrefs';
+import { PageHeader } from '../../shell/ui/PageHeader';
+import { SectionCard } from '../../shell/ui/SectionCard';
 import { tokens } from '../../theme/tokens';
 import { NewAccountDialog } from '../components/NewAccountDialog';
-import { AccountFilterBar } from './AccountFilterBar';
+import { ACCOUNT_COLUMNS, AccountsToolbar } from './AccountsToolbar';
 import { AccountsTable } from './AccountsTable';
 import { useAccounts, type AccountFilters } from './useAccounts';
 
-/** Accounts list (A-01): owner defaults to Me, status chips filter, sortable columns, pages of 20. */
+/** Accounts list (A-01): list-view toolbar, owner defaults to Me, sortable columns, pages of 20. */
 export function AccountsList() {
   const { t } = useTranslation();
   const { user, isManager } = useAuth();
@@ -22,6 +25,8 @@ export function AccountsList() {
   const meId = user?.id ?? '';
   const [filters, setFilters] = useState<AccountFilters>({ q: '', status: '', ownerId: meId, page: 0, sort: 'lastActivityAt,desc' });
   const [creating, setCreating] = useState(false);
+  const density = useDensity();
+  const [columns, setColumns] = useVisibleColumns('accounts', ACCOUNT_COLUMNS);
   const res = useAccounts(filters);
 
   const change = (patch: Partial<AccountFilters>) => setFilters((f) => ({ ...f, page: 0, ...patch }));
@@ -34,21 +39,31 @@ export function AccountsList() {
 
   return (
     <Container maw="var(--content-max-width)" p={0}>
-      <Group justify="space-between" mb="md">
-        <Title order={1} data-testid="screen-title">
-          {t('nav.accounts')} {d ? `(${d.page.totalElements})` : ''}
-        </Title>
-        <Group>
-          {isManager && (
-            <Button variant="default" onClick={() => nav('/settings/import')}>
-              {t('accounts.import')}
-            </Button>
-          )}
-          {newBtn}
-        </Group>
-      </Group>
+      <PageHeader
+        glyph="C"
+        title={`${t('nav.accounts')} ${d ? `(${d.page.totalElements})` : ''}`}
+        actions={
+          <>
+            {isManager && (
+              <Button variant="default" onClick={() => nav('/settings/import')}>
+                {t('accounts.import')}
+              </Button>
+            )}
+            {newBtn}
+          </>
+        }
+      />
       <Stack>
-        <AccountFilterBar filters={filters} meId={meId} onChange={change} onClear={clear} active={filtered} />
+        <AccountsToolbar
+          filters={filters}
+          meId={meId}
+          total={d?.page.totalElements}
+          onChange={change}
+          onClear={clear}
+          visibleColumns={columns}
+          onColumns={setColumns}
+          density={density}
+        />
         {res.error ? (
           <ErrorBanner onRetry={res.reload} />
         ) : res.loading && !d ? (
@@ -69,7 +84,9 @@ export function AccountsList() {
         ) : (
           d && (
             <>
-              <AccountsTable rows={d.content} sort={filters.sort} onSort={sortBy} phone={!!phone} />
+              <SectionCard flush>
+                <AccountsTable rows={d.content} sort={filters.sort} onSort={sortBy} phone={!!phone} columns={columns} compact={density[0] === 'compact'} />
+              </SectionCard>
               {d.page.totalPages > 1 && <Pagination total={d.page.totalPages} value={d.page.number + 1} onChange={(p) => setFilters((f) => ({ ...f, page: p - 1 }))} />}
             </>
           )
