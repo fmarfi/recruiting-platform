@@ -1,5 +1,7 @@
 {
   "accounts": {
+    "addContact": "Add contact", "endContact": "End", "contactRole": "Role", "contactPrimary": "Primary contact", "pickPerson": "Person", "newJob": "New job", "newProposal": "New proposal",
+    "jobTitle": "Job title", "location": "Location", "openings": "Openings", "proposalTitle": "Proposal title", "terms": "Terms", "fee": "Fee amount", "currency": "Currency",
     "actionTitle": "What needs to be done", "addAction": "Add action", "client": "Client", "due": "Due date", "fillRequired": "Fill in the required fields.", "optional": "optional",
     "activity": { "CALL": "Call", "VISIT": "Visit", "MEETING": "Meeting", "EMAIL": "E-mail", "NOTE": "Note" },
     "activityType": "Type", "logActivity": "Log activity", "note": "Note",

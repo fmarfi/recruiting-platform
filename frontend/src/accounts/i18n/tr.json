@@ -1,5 +1,7 @@
 {
   "accounts": {
+    "addContact": "Kişi ekle", "endContact": "Sonlandır", "contactRole": "Rol", "contactPrimary": "Birincil kişi", "pickPerson": "Kişi", "newJob": "Yeni pozisyon", "newProposal": "Yeni teklif",
+    "jobTitle": "Pozisyon adı", "location": "Konum", "openings": "Açık kadro", "proposalTitle": "Teklif başlığı", "terms": "Şartlar", "fee": "Ücret tutarı", "currency": "Para birimi",
     "actionTitle": "Yapılacak iş", "addAction": "İş ekle", "client": "Müşteri", "due": "Tarih", "fillRequired": "Zorunlu alanları doldurun.", "optional": "isteğe bağlı",
     "activity": { "CALL": "Arama", "VISIT": "Ziyaret", "MEETING": "Toplantı", "EMAIL": "E-posta", "NOTE": "Not" },
     "activityType": "Tür", "logActivity": "Hareket kaydet", "note": "Not",
