@@ -29,10 +29,11 @@ public class JobOrderRefs {
     public Map<UUID, JobOrderRef> load(Collection<UUID> ids) {
         var clean = ids.stream().filter(Objects::nonNull).distinct().toList();
         if (clean.isEmpty()) {
-            return Map.of();
+            return new java.util.HashMap<>();
         }
         return repo.findAllById(clean).stream().collect(
-                Collectors.toMap(JobOrder::getId, j -> new JobOrderRef(j.getId(), j.getTitle(), j.getStatus())));
+                Collectors.toMap(JobOrder::getId, j -> new JobOrderRef(j.getId(), j.getTitle(), j.getStatus()),
+                        (a, b) -> a, java.util.HashMap::new));
     }
 
     /**
