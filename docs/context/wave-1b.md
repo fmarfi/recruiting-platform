@@ -36,5 +36,8 @@ Start a Spring app with `-Dserver.port=<port>`, Prism with `npx prism mock -p <p
 - Passwords use `DelegatingPasswordEncoder`, so stored values look like `{bcrypt}$2a$10$...`.
 - The seed creates three users with the password `Demo-Password-2026`: `admin@demo.example` (ADMIN), `manager@demo.example` (MANAGER) and `consultant@demo.example` (CONSULTANT). Set `must_change_password=false` for the demo users.
 
+## Code structure
+Follow `docs/context/code-structure.md` (package by feature, at most about 8 classes per folder, small classes).
+
 ## Hand-off
 `docs/handoffs/<role>.md` per TEMPLATE (under 40 lines; append a Wave 1b section if the file exists). Final reply to the orchestrator at most 150 words.
