@@ -1,7 +1,12 @@
-# Local development: docker compose up -d, then run with --spring.profiles.active=local
+# Local development: docker compose up -d, then run with mvn spring-boot:run -Dspring-boot.run.profiles=local
 # DB and Mailpit defaults match docker-compose.yml / .env.example.
 spring:
+  config:
+    # reads the compose .env (DB_URL, DB_PASSWORD, MAIL_*) from the repo root or the module folder
+    import: optional:file:../.env[.properties],optional:file:./.env[.properties]
   datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/recruiting} # compose publishes Postgres on 5433
+    username: ${DB_USER:recruiting}
     password: ${DB_PASSWORD:recruiting}
   mail:
     host: localhost
