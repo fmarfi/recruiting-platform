@@ -36,7 +36,19 @@ SELECT pg_temp.uid(19, 2000 + a.n * 10 + p.j), pg_temp.uid(2, a.n),
        now() - make_interval(days => a.opened_days) + make_interval(secs => (a.opened_days - a.status_days) * 86400.0 * p.j / p.s),
        'ACCOUNT_STATUS', 'ACCOUNT', pg_temp.uid(2, a.n), p.frm, p.tto, p.reason,
        'Status changed from ' || p.frm || ' to ' || p.tto, pg_temp.uid(1, a.owner), pg_temp.uid(18, 2000 + a.n * 10 + p.j)
-FROM acct_seed a JOIN acct_path p ON p.status = a.status;
+FROM acct_seed a JOIN acct_path p ON p.status = a.status WHERE a.n NOT IN (6, 24);
+-- accounts 6 and 24 went through a rejected proposal without a win, so they never became ACTIVE
+INSERT INTO timeline_entry (id, account_id, occurred_at, kind, entity_type, entity_id, from_status, to_status, reason, summary, actor_id, source_event_id)
+SELECT pg_temp.uid(19, 2000 + a.n * 10 + s.k), pg_temp.uid(2, a.n), now() - make_interval(days => s.days),
+       'ACCOUNT_STATUS', 'ACCOUNT', pg_temp.uid(2, a.n), s.frm, s.tto, s.reason,
+       'Status changed from ' || s.frm || ' to ' || s.tto, pg_temp.uid(1, a.owner), pg_temp.uid(18, 2000 + a.n * 10 + s.k)
+FROM acct_seed a
+JOIN (VALUES (6, 1, 'LEAD', 'PROPOSAL_SENT', NULL::text, 30),
+             (6, 2, 'PROPOSAL_SENT', 'LEAD', NULL::text, 20),
+             (24, 1, 'LEAD', 'PROPOSAL_SENT', NULL::text, 300),
+             (24, 2, 'PROPOSAL_SENT', 'CLOSED', 'Proposal rejected by the client; relationship closed', 280))
+     AS s(n, k, frm, tto, reason, days) ON s.n = a.n;
+
 
 -- contacts
 INSERT INTO timeline_entry (id, account_id, occurred_at, kind, entity_type, entity_id, summary, person_id, actor_id, source_event_id)

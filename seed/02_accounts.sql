@@ -1,4 +1,5 @@
 -- 02: 25 fictional client accounts covering every account status
+-- Accounts 6 (lead again after a rejected proposal) and 24 (closed after a rejected proposal) are never ACTIVE.
 -- (6 LEAD, 4 PROPOSAL_SENT, 9 ACTIVE, 3 ON_HOLD, 3 CLOSED). Id: uid(2, n).
 -- opened_days / status_days are "days ago"; the timeline in 07 is derived from them.
 CREATE TEMP TABLE acct_seed (n int, name text, sector text, city text, status text, owner int,
@@ -9,7 +10,7 @@ INSERT INTO acct_seed (n, name, sector, city, status, owner, opened_days, status
  (3,  'Aurelia Pharma',                 'Pharma',          'İstanbul', 'LEAD',          2,  35,  35),
  (4,  'Brightvale Software',            'Software',        'İstanbul', 'LEAD',          3,   9,   9),
  (5,  'Tamarind Retail Group',          'Retail',          'İstanbul', 'LEAD',          2,  50,  50),
- (6,  'Çınaraltı Tekstil',              'Textile',         'Bursa',    'LEAD',          3,  60,  60),
+ (6,  'Çınaraltı Tekstil',              'Textile',         'Bursa',    'LEAD',          3,  60,  20),
  (7,  'Ormanlı Lojistik',               'Logistics',       'Kocaeli',  'PROPOSAL_SENT', 3,  70,  12),
  (8,  'Silverline Telecom',             'Telecom',         'İstanbul', 'PROPOSAL_SENT', 2,  80,  18),
  (9,  'Güneybatı Sağlık Grubu',         'Healthcare',      'Antalya',  'PROPOSAL_SENT', 3,  55,   6),
@@ -27,7 +28,7 @@ INSERT INTO acct_seed (n, name, sector, city, status, owner, opened_days, status
  (21, 'Cedarwood Hospitality',          'Tourism',         'Antalya',  'ON_HOLD',       2, 190,  45),
  (22, 'Işıkkent Eğitim Kurumları',      'Education',       'İzmir',    'ON_HOLD',       3, 170,  20),
  (23, 'Tuzlu Deniz Denizcilik',         'Logistics',       'İstanbul', 'CLOSED',        3, 500, 150),
- (24, 'Pinewood Packaging',             'Manufacturing',   'Bursa',    'CLOSED',        2, 420,  90),
+ (24, 'Pinewood Packaging',             'Manufacturing',   'Bursa',    'CLOSED',        2, 420, 280),
  (25, 'Akçalı Madencilik',              'Mining',          'Ankara',   'CLOSED',        3, 380, 200);
 UPDATE acct_seed SET slug = pg_temp.slug(name);
 
