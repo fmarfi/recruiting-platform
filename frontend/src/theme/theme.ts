@@ -37,7 +37,11 @@ export const theme = createTheme({
   fontSizes: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem', lg: '1.0625rem', xl: '1.25rem' },
   lineHeights: { xs: '1.45', sm: '1.5', md: '1.55', lg: '1.55', xl: '1.5' },
   shadows: { xs: 'none', sm: '0 1px 2px rgba(15,26,43,.05)', md: tokens.shadow.pop.light, lg: tokens.shadow.pop.light, xl: tokens.shadow.pop.light },
-  colors: { brand },
+  colors: {
+    brand,
+    red: ['#fdecea', '#fbd9d5', '#f5b5ae', '#ee8b81', '#e0645a', '#cf4a40', '#b42318', '#9a1d14', '#82170f', '#6b120b'],
+    gray: ['#f6f7f9', '#f1f3f7', '#e7ebf1', '#e1e5ec', '#c5ccd8', '#a3acb9', '#566175', '#364154', '#1f2a3b', '#0f1a2b'],
+  },
   fontFamily: tokens.typography.fontSans,
   fontFamilyMonospace: tokens.typography.fontMono,
   defaultRadius: 'md',
@@ -65,6 +69,7 @@ export const theme = createTheme({
     },
   },
   components: {
+    Container: { defaultProps: { px: 0 } },
     Button: { defaultProps: { radius: 'md' }, styles: { root: { fontWeight: 500 } } },
     ActionIcon: { defaultProps: { radius: 'md' } },
     TextInput: { defaultProps: { radius: 'md' }, styles: { label: { fontWeight: 500, color: c.ink2, marginBottom: 4 } } },

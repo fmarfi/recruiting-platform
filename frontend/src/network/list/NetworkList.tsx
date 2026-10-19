@@ -32,7 +32,7 @@ export function NetworkList() {
   const filtered = !!(q || types.length || mine || consent || staleDays);
 
   return (
-    <Container py="md" fluid>
+    <Container maw="var(--content-max-width)" fluid>
       <Group justify="space-between" mb="md">
         <Title order={1} data-testid="screen-title">
           {t('nav.network')}

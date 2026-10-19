@@ -49,7 +49,7 @@ export function PersonPage() {
   const blocked = p.consentStatus === 'REFUSED' || p.consentStatus === 'WITHDRAWN';
 
   return (
-    <Container py="md" fluid>
+    <Container maw="var(--content-max-width)" fluid>
       <Anchor component={Link} to="/network" size="sm">
         {t('nav.network')}
       </Anchor>{' '}
