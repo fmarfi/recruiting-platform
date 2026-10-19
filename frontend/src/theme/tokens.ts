@@ -44,8 +44,11 @@ function staticVars(): string {
 export function tokenCss(): string {
   return [
     `:root{${staticVars()}${schemeVars('light')}}`,
-    `:root[data-mantine-color-scheme="dark"]{${schemeVars('dark')}}`,
-    `body{background:var(--color-bg);color:var(--color-ink);}`,
+    `body{background:var(--color-bg);color:var(--color-ink);font-size:${tokens.typography.base.desktop};line-height:${tokens.typography.base.lineHeight};-webkit-font-smoothing:antialiased;}`,
+    `h1,h2,h3,h4{letter-spacing:-0.01em;color:var(--color-ink);}`,
+    `.mantine-Paper-root,.mantine-Card-root{border-color:var(--color-border);}`,
+    `.mantine-Table-tr:hover{background:var(--color-surface2);}`,
+    `@media (max-width:${tokens.breakpoints.phone}px){body{font-size:${tokens.typography.base.phone};}}`,
     `.tone-badge{display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius-pill);font-weight:${tokens.badge.fontWeight};}`,
     ...Object.keys(tokens.tone.light).map(
       (t) => `.tone-${t.toLowerCase()}{background:var(--tone-${t.toLowerCase()}-bg);color:var(--tone-${t.toLowerCase()}-fg);}`,
