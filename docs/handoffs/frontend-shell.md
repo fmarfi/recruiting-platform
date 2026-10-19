@@ -1,6 +1,6 @@
 # Hand-off: frontend-shell · W1-13 · 2026-10-19
 
-**Branch / commits:** `worktree-wave1b-frontend-shell` · 3 commits (shell+accounts, i18n+settings+routes, tests+hand-off)
+**Branch / commits:** `worktree-wave1b-frontend-shell` · 1 commit (43acc00)
 
 **Done**
 - shell/: AuthProvider, RequireAuth, /login, layout (sidebar on laptop, bottom tabs on phone, search, + New, TR/EN, user menu), reference-data provider, shared badges/states.
