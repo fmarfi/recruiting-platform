@@ -1,5 +1,5 @@
 -- 00: helper functions and clearing of all data tables (idempotent reload).
--- Keeps flyway_schema_history, revinfo and the retention_settings row (reset in 08_privacy.sql).
+-- Keeps flyway_schema_history and the retention_settings row (reset in 08_privacy.sql).
 --   pg_temp.uid(kind, n) -> fixed v7-shaped UUID 01930000-<kind:4>-7000-8000-<n:12>
 --   pg_temp.slug(text)   -> lower-case ASCII slug (Turkish letters folded)
 CREATE FUNCTION pg_temp.uid(k int, n int) RETURNS uuid LANGUAGE sql IMMUTABLE AS
@@ -42,6 +42,7 @@ DELETE FROM activity_aud;
 DELETE FROM next_action_aud;
 DELETE FROM person_privacy_aud;
 DELETE FROM data_subject_request_aud;
+DELETE FROM retention_settings_aud;
+DELETE FROM revinfo;
 UPDATE retention_settings SET created_by = NULL, updated_by = NULL;
-UPDATE revinfo SET user_id = NULL;
 DELETE FROM app_user;
