@@ -7,10 +7,12 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface PersonRepository extends JpaRepository<Person, UUID> {
+public interface PersonRepository extends JpaRepository<Person, UUID>, JpaSpecificationExecutor<Person> {
 
     Optional<Person> findByEmailIgnoreCase(String email);
 
@@ -25,4 +27,19 @@ public interface PersonRepository extends JpaRepository<Person, UUID> {
             + "OR immutable_unaccent(lower(email)) LIKE '%' || immutable_unaccent(lower(:q)) || '%' "
             + "ORDER BY name LIMIT :limit", nativeQuery = true)
     List<Person> searchText(@Param("q") String q, @Param("limit") int limit);
+
+    @Query("SELECT p FROM Person p WHERE p.id IN :ids")
+    List<Person> findAllByIdIn(@Param("ids") java.util.Collection<UUID> ids);
+
+    @Modifying
+    @Query("UPDATE Person p SET p.lastContactAt = :at WHERE p.id = :id AND (p.lastContactAt IS NULL OR p.lastContactAt < :at)")
+    int bumpLastContact(@Param("id") UUID id, @Param("at") java.time.Instant at);
+
+    @Modifying
+    @Query("UPDATE Person p SET p.consentStatus = :status WHERE p.id = :id")
+    int updateConsentStatus(@Param("id") UUID id, @Param("status") com.recruiting.platform.contracts.ConsentStatus status);
+
+    @Modifying
+    @Query("UPDATE Person p SET p.retentionStatus = :status WHERE p.id = :id AND p.retentionStatus <> com.recruiting.platform.contracts.RetentionStatus.ANONYMISED")
+    int updateRetentionStatus(@Param("id") UUID id, @Param("status") com.recruiting.platform.contracts.RetentionStatus status);
 }

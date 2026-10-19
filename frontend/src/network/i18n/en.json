@@ -1,0 +1,18 @@
+{
+  "network": {
+    "accounts": "Accounts", "addAction": "Add action", "addConnection": "Add connection", "addToJob": "Add to a job", "all": "All", "career": "Career", "clear": "Clear",
+    "consentFailed": "Could not send the consent request.", "consentNoEmail": "This person has no email address.", "consentTo": "A consent request will be sent to {{email}}.",
+    "createFailed": "Could not create the person.", "daysAgo": "{{count}} days", "daysShort": "{{count}} d ago",
+    "doNotContact": "Do not contact for new roles; data scheduled for deletion.",
+    "fields": { "city": "City", "company": "Company", "consent": "Consent", "email": "Email", "howWeKnow": "How we know them", "lastContact": "Last contact", "name": "Name", "owner": "Relationship owner", "title": "Title", "titleCompany": "Title and company", "type": "Type" },
+    "filterNotContacted": "Not contacted since", "formerRoles": "Former roles", "linkFailed": "Could not add the connection.", "linkType": "Connection type",
+    "linkTypes": { "KNOWS": "Knows", "WORKED_WITH": "Worked with", "INTRODUCED": "Introduced", "REFERRED": "Referred", "REPORTS_TO": "Reports to" },
+    "loadFailed": "Could not load the network.", "logActivity": "Log activity", "mine": "Mine", "never": "Never", "newPerson": "New person", "nextActions": "Next actions",
+    "noActivity": "No contact logged. Log your first call or meeting.", "noConnections": "Who introduced you? Add the first connection.",
+    "noOpenJobs": "No open jobs available.", "noPipelines": "Not on any job yet.", "note": "Note", "notFound": "Person not found.", "openExisting": "Open existing",
+    "person": "Person", "pipelines": "Pipelines", "privacy": "Privacy", "privacyUnavailable": "Privacy details are not available.",
+    "retention": "Retention ends {{date}}", "retentionWarning": "Data scheduled for deletion.", "search": "Search people", "sendConsent": "Send consent request",
+    "tabs": { "activity": "Activity", "connections": "Connections", "jobs": "Clients and jobs", "overview": "Overview", "privacy": "Privacy" },
+    "types": { "EXECUTIVE": "Executive", "CLIENT_CONTACT": "Client contact", "REFERRER": "Referrer", "CANDIDATE": "Candidate" }
+  }
+}

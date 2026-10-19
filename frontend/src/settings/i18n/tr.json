@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "title": "Ayarlar", "noAccess": "Ayarlara erişiminiz yok. Sistem yöneticisine başvurun.", "home": "Ana sayfaya dön", "soon": "Bu bölüm bu sürümde yok.",
+    "sec": { "users": "Kullanıcılar", "roles": "Roller", "statuses": "Durum listeleri", "import": "İçe aktarma", "retention": "Saklama", "audit": "Denetim kaydı" },
+    "users": { "title": "Kullanıcılar", "invite": "Kullanıcı davet et", "name": "Ad", "email": "E-posta", "role": "Rol", "state": "Durum", "password": "İlk parola", "search": "Kullanıcı ara", "adminOnly": "Kullanıcıları yalnızca sistem yöneticisi değiştirebilir.", "empty": "Kullanıcı bulunamadı." },
+    "role": { "CONSULTANT": "Danışman", "MANAGER": "Yönetici", "ADMIN": "Sistem yöneticisi" },
+    "state": { "active": "Aktif", "disabled": "Devre dışı" },
+    "roles": { "title": "Roller", "capability": "Yetki", "c1": "Kendi ve ekip kayıtlarını okuma ve yazma", "c2": "Tüm kayıtlar, sorumlu atama, içe aktarma", "c3": "Kullanıcıları ve denetim kaydını görme", "c4": "Kullanıcı, saklama ve erişim kaydı yönetimi" },
+    "statuses": { "hint": "Durum listeleri bu sürümde sabittir. Değişiklik için destek ile iletişime geçin.", "reason": "neden gerekli", "manager": "yalnızca yönetici", "terminal": "son durum",
+      "lifecycle": { "account": "Müşteriler", "proposal": "Teklifler", "jobOrder": "Pozisyonlar", "pipelineStage": "Aday aşamaları", "consent": "Onay", "dataSubjectRequest": "Veri talepleri" } }
+  }
+}

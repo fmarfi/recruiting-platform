@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "title": "Settings", "noAccess": "You do not have access to Settings. Ask an administrator.", "home": "Back to home", "soon": "This section is not available in this version.",
+    "sec": { "users": "Users", "roles": "Roles", "statuses": "Status lists", "import": "Import", "retention": "Retention", "audit": "Audit log" },
+    "users": { "title": "Users", "invite": "Invite user", "name": "Name", "email": "E-mail", "role": "Role", "state": "State", "password": "Initial password", "search": "Search users", "adminOnly": "Only administrators can change users.", "empty": "No users found." },
+    "role": { "CONSULTANT": "Consultant", "MANAGER": "Manager", "ADMIN": "Administrator" },
+    "state": { "active": "Active", "disabled": "Disabled" },
+    "roles": { "title": "Roles", "capability": "Capability", "c1": "Read and write own and team records", "c2": "All records, reassign owners, import", "c3": "View users and audit log", "c4": "Manage users, retention, access log" },
+    "statuses": { "hint": "Status lists are fixed in this version. Contact support to request a change.", "reason": "reason required", "manager": "manager only", "terminal": "final",
+      "lifecycle": { "account": "Clients", "proposal": "Proposals", "jobOrder": "Job orders", "pipelineStage": "Candidate stages", "consent": "Consent", "dataSubjectRequest": "Data requests" } }
+  }
+}
