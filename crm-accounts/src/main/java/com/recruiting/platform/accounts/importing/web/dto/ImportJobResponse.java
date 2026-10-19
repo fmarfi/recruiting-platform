@@ -1,6 +1,6 @@
 package com.recruiting.platform.accounts.importing.web.dto;
 
-import com.recruiting.platform.accounts.shared.dto.UserRef;
+import com.recruiting.platform.security.UserRef;
 import com.recruiting.platform.contracts.ImportKind;
 import com.recruiting.platform.contracts.ImportStatus;
 import java.time.Instant;

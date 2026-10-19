@@ -4,7 +4,8 @@ import com.recruiting.platform.accounts.contact.app.ContactService;
 import com.recruiting.platform.accounts.contact.web.dto.ContactCreateRequest;
 import com.recruiting.platform.accounts.contact.web.dto.ContactResponse;
 import com.recruiting.platform.accounts.contact.web.dto.ContactUpdateRequest;
-import com.recruiting.platform.accounts.shared.ActorResolver;
+import com.recruiting.platform.accounts.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.accounts.shared.PatchBinder;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -31,12 +32,12 @@ public class ContactController {
 
     private final ContactService service;
     private final PatchBinder binder;
-    private final ActorResolver actors;
+    private final CurrentUser currentUser;
 
-    public ContactController(ContactService service, PatchBinder binder, ActorResolver actors) {
+    public ContactController(ContactService service, PatchBinder binder, CurrentUser currentUser) {
         this.service = service;
         this.binder = binder;
-        this.actors = actors;
+        this.currentUser = currentUser;
     }
 
     @GetMapping
@@ -48,7 +49,7 @@ public class ContactController {
     @PostMapping
     public ResponseEntity<ContactResponse> add(@PathVariable UUID accountId,
             @Valid @RequestBody ContactCreateRequest request) {
-        ContactResponse created = service.add(accountId, request, actors.current());
+        ContactResponse created = service.add(accountId, request, Actor.of(currentUser));
         return ResponseEntity.created(URI.create("/api/v1/accounts/" + accountId + "/contacts/" + created.id()))
                 .body(created);
     }
@@ -61,6 +62,6 @@ public class ContactController {
 
     @DeleteMapping("/{contactId}")
     public ContactResponse end(@PathVariable UUID accountId, @PathVariable UUID contactId) {
-        return service.end(accountId, contactId, actors.current());
+        return service.end(accountId, contactId, Actor.of(currentUser));
     }
 }

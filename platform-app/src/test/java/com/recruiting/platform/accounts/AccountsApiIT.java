@@ -1,8 +1,6 @@
 package com.recruiting.platform.accounts;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -11,105 +9,55 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.recruiting.platform.contracts.ApiException;
-import com.recruiting.platform.security.domain.AppUser;
-import com.recruiting.platform.security.domain.AppUserRepository;
-import com.recruiting.platform.contracts.Language;
+import com.recruiting.platform.api.AbstractApiIT;
 import com.recruiting.platform.contracts.Role;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
+import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * End-to-end test of the accounts endpoints (W1-10) on a real PostgreSQL: reference data, accounts and status,
- * people, contacts, network links, search and the CSV import. Security is the default chain with a mock user whose
- * name is the user id (the real SecurityFilterChain comes from security-privacy).
+ * people, contacts, network links, search, the CSV import, the person data export and PersonDataApi. Users log in
+ * through the real filter chain, so method security (the MANAGER-only import rule) is enforced.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import({AccountsApiIT.Postgres.class, AccountsApiIT.ProblemAdvice.class})
-class AccountsApiIT {
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class Postgres {
-        @Bean
-        @ServiceConnection
-        PostgreSQLContainer postgres() {
-            return new PostgreSQLContainer(
-                    DockerImageName.parse("pgvector/pgvector:0.8.7-pg17").asCompatibleSubstituteFor("postgres"));
-        }
-    }
-
-    /** Stand-in for the platform-wide problem handler (ADR 0006), which lives in platform-app later. */
-    @RestControllerAdvice
-    static class ProblemAdvice {
-        @ExceptionHandler(ApiException.class)
-        ResponseEntity<Map<String, Object>> handle(ApiException e) {
-            Map<String, Object> body = new java.util.HashMap<>(e.properties());
-            body.put("code", e.code().name());
-            return ResponseEntity.status(HttpStatus.valueOf(e.code().httpStatus())).body(body);
-        }
-    }
+class AccountsApiIT extends AbstractApiIT {
 
     @Autowired
-    MockMvc mvc;
+    PersonDataApi personData;
     @Autowired
-    AppUserRepository users;
+    org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     private final JsonMapper json = JsonMapper.builder().build();
-    private UUID userId;
+    private Client manager;
+    private Client consultant;
     private String userEmail;
 
     @BeforeEach
-    void createUser() {
-        AppUser u = new AppUser();
-        userEmail = "u-" + UUID.randomUUID() + "@example.test";
-        u.setEmail(userEmail);
-        u.setName("Test Manager");
-        u.setRole(Role.MANAGER);
-        u.setActive(true);
-        u.setLanguage(Language.EN);
-        u.setMustChangePassword(false);
-        userId = users.saveAndFlush(u).getId();
+    void logIn() throws Exception {
+        var user = createUser(Role.MANAGER);
+        userEmail = user.getEmail();
+        manager = login(user);
+        consultant = login(Role.CONSULTANT);
     }
 
-    private RequestPostProcessor manager() {
-        return user(userId.toString()).roles("MANAGER");
+    private static AbstractMockHttpServletRequestBuilder<?> as(Client client, AbstractMockHttpServletRequestBuilder<?> b) {
+        return b.session(client.session()).cookie(new jakarta.servlet.http.Cookie("XSRF-TOKEN", client.csrf()))
+                .header("X-XSRF-TOKEN", client.csrf());
     }
 
-    private RequestPostProcessor consultant() {
-        return user(userId.toString()).roles("CONSULTANT");
+    private JsonNode send(AbstractMockHttpServletRequestBuilder<?> b, int expected) throws Exception {
+        return send(manager, b, expected);
     }
 
-    private org.springframework.test.web.servlet.RequestBuilder asManager(
-            org.springframework.test.web.servlet.RequestBuilder b) {
-        return ctx -> csrf().postProcessRequest(manager().postProcessRequest(b.buildRequest(ctx)));
-    }
-
-    private JsonNode send(org.springframework.test.web.servlet.RequestBuilder b,
-            int expected) throws Exception {
-        String body = mvc.perform(asManager(b)).andExpect(status().is(expected)).andReturn()
+    private JsonNode send(Client client, AbstractMockHttpServletRequestBuilder<?> b, int expected) throws Exception {
+        String body = mvc.perform(as(client, b)).andExpect(status().is(expected)).andReturn()
                 .getResponse().getContentAsString(StandardCharsets.UTF_8);
         return body.isBlank() ? null : json.readTree(body);
     }
@@ -124,7 +72,7 @@ class AccountsApiIT {
 
     @Test
     void referenceDataComesFromTheLifecycleEnums() throws Exception {
-        mvc.perform(get("/api/v1/reference-data").with(consultant()))
+        mvc.perform(as(consultant, get("/api/v1/reference-data")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lifecycles.account.initial").value("LEAD"))
                 .andExpect(jsonPath("$.lifecycles.account.statuses[0].next[0].to").value("PROPOSAL_SENT"))
@@ -215,8 +163,48 @@ class AccountsApiIT {
                 .asText()).isEqualTo("FAILED");
         MockMultipartFile pdf = new MockMultipartFile("file", "x.pdf", "application/pdf", new byte[] {1});
         send(multipart("/api/v1/imports").file(pdf).param("kind", "ACCOUNTS"), 415);
-        mvc.perform(get("/api/v1/imports").with(consultant())).andExpect(status().isOk());
-        assertThat(mvc.perform(get("/api/v1/import-templates/PEOPLE").with(manager())).andExpect(status().isOk())
+        send(consultant, get("/api/v1/imports"), 403);
+        send(consultant, get("/api/v1/import-templates/PEOPLE"), 403);
+        send(consultant, multipart("/api/v1/imports").file(file).param("kind", "ACCOUNTS"), 403);
+        send(consultant, post("/api/v1/imports/" + id + "/commit"), 403);
+        send(consultant, delete("/api/v1/imports/" + id), 403);
+        assertThat(mvc.perform(as(manager, get("/api/v1/import-templates/PEOPLE"))).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString()).startsWith("name,type,");
+    }
+
+    @Test
+    void exportIsManagerOnlyAndLoggedAndAnonymiseAndDeleteWork() throws Exception {
+        String email = unique("e") + "@example.test";
+        JsonNode created = postJson("/api/v1/people",
+                "{\"name\":\"Deniz Kara\",\"type\":\"EXECUTIVE\",\"email\":\"" + email + "\",\"notes\":\"private\"}", 201);
+        UUID id = UUID.fromString(created.get("id").asText());
+        String other = postJson("/api/v1/people",
+                "{\"name\":\"Mert Ak\",\"type\":\"EXECUTIVE\"}", 201).get("id").asText();
+        postJson("/api/v1/network-links", "{\"fromPersonId\":\"" + id + "\",\"toPersonId\":\"" + other
+                + "\",\"type\":\"KNOWS\"}", 201);
+
+        send(consultant, get("/api/v1/people/" + id + "/export"), 403);
+        mvc.perform(get("/api/v1/people/" + id + "/export")).andExpect(status().isUnauthorized());
+        send(get("/api/v1/people/" + UUID.randomUUID() + "/export"), 404);
+        var res = mvc.perform(as(manager, get("/api/v1/people/" + id + "/export"))).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Content-Disposition", "attachment; filename=\"person-" + id + ".json\""))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        JsonNode export = json.readTree(res);
+        assertThat(export.get("person").get("email").asText()).isEqualTo(email);
+        assertThat(export.get("exportedBy").get("id").asText()).isEqualTo(manager.userId().toString());
+        assertThat(export.get("links")).hasSize(1);
+        assertThat(export.get("activities")).isEmpty();
+        assertThat(jdbc.queryForObject("select count(*) from access_log where entity_id = ? and action = 'EXPORT'",
+                Long.class, id)).isEqualTo(1L);
+
+        personData.anonymise(id, manager.userId());
+        JsonNode anon = send(get("/api/v1/people/" + id), 200);
+        assertThat(anon.get("name").asText()).isEqualTo("Anonymised person");
+        assertThat(anon.get("email").isNull()).isTrue();
+        assertThat(send(get("/api/v1/people/" + other + "/links"), 200)).isEmpty();
+
+        personData.delete(id, manager.userId());
+        send(get("/api/v1/people/" + id), 404);
     }
 }

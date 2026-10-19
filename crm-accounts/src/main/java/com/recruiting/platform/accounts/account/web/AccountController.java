@@ -5,7 +5,8 @@ import com.recruiting.platform.accounts.account.app.AccountService;
 import com.recruiting.platform.accounts.account.web.dto.AccountCreateRequest;
 import com.recruiting.platform.accounts.account.web.dto.AccountResponse;
 import com.recruiting.platform.accounts.account.web.dto.AccountUpdateRequest;
-import com.recruiting.platform.accounts.shared.ActorResolver;
+import com.recruiting.platform.accounts.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.accounts.shared.Paging;
 import com.recruiting.platform.accounts.shared.PatchBinder;
 import com.recruiting.platform.accounts.shared.dto.PageResponse;
@@ -40,14 +41,14 @@ public class AccountController {
     private final AccountService service;
     private final AccountQueryService queries;
     private final PatchBinder binder;
-    private final ActorResolver actors;
+    private final CurrentUser currentUser;
 
     public AccountController(AccountService service, AccountQueryService queries, PatchBinder binder,
-            ActorResolver actors) {
+            CurrentUser currentUser) {
         this.service = service;
         this.queries = queries;
         this.binder = binder;
-        this.actors = actors;
+        this.currentUser = currentUser;
     }
 
     @GetMapping
@@ -61,7 +62,7 @@ public class AccountController {
 
     @PostMapping
     public ResponseEntity<AccountResponse> create(@Valid @RequestBody AccountCreateRequest request) {
-        AccountResponse created = service.create(request, actors.current());
+        AccountResponse created = service.create(request, Actor.of(currentUser));
         return ResponseEntity.created(URI.create("/api/v1/accounts/" + created.id())).body(created);
     }
 
@@ -72,6 +73,6 @@ public class AccountController {
 
     @PatchMapping("/{id}")
     public AccountResponse update(@PathVariable UUID id, @RequestBody JsonNode body) {
-        return service.update(id, binder.bind(body, AccountUpdateRequest.class), actors.current());
+        return service.update(id, binder.bind(body, AccountUpdateRequest.class), Actor.of(currentUser));
     }
 }
