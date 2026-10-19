@@ -41,7 +41,7 @@ test.describe('A-06 / A-07 / UX-04 pipeline board', () => {
     // fixme: board (frontend-pipeline) + PATCH /applications/{id}/stage (backend-pipeline) + login. Uses the Move menu, not drag.
     await login(page);
     await page.goto('/job-orders');
-    await page.getByRole('row').nth(1).getByRole('link').first().click();
+    await page.getByRole('row', { name: /Supply Chain Director/ }).getByRole('link').first().click();
     const sourced = page.getByRole('region', { name: /sourced/i });
     const card = sourced.getByRole('listitem').first();
     const name = (await card.getByRole('link').first().innerText()).trim();
