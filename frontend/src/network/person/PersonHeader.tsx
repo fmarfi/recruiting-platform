@@ -1,6 +1,8 @@
-// Person header: name, type, contact data, owner, last contact and the consent status badge (S-01).
-import { Anchor, Avatar, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
+// Person header: name and actions, consent strip and the highlights panel (S-01, lightning-style P4).
+import { Anchor, Avatar, Button, Group, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+import { Path } from '../../common/path/Path';
+import { Highlights } from '../../common/record/Highlights';
 import { StatusBadge, useFormat, type Schemas } from '../../pipeline/shared';
 
 export function PersonHeader({
@@ -16,41 +18,18 @@ export function PersonHeader({
   const fmt = useFormat();
   const days = person.lastContactAt ? Math.floor((Date.now() - new Date(person.lastContactAt).getTime()) / 86_400_000) : undefined;
   return (
-    <Card withBorder mb="md">
-      <Group justify="space-between" align="flex-start">
+    <>
+      <Group justify="space-between" align="flex-start" mb="sm">
         <Group align="flex-start">
           <Avatar color="blue">{person.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</Avatar>
-          <Stack gap={2}>
-            <Group gap="xs">
-              <Title order={1} size="h3" data-testid="screen-title">
-                {person.name}
-              </Title>
-              <Text size="sm" c="dimmed">
-                {t(`network.types.${person.type}`)}
-              </Text>
-            </Group>
-            <Text size="sm">{[person.title, person.company, person.city].filter(Boolean).join(' - ')}</Text>
-            <Group gap="sm">
-              {person.email && <Anchor href={`mailto:${person.email}`} size="sm">{person.email}</Anchor>}
-              {person.phone && <Anchor href={`tel:${person.phone}`} size="sm">{person.phone}</Anchor>}
-              {person.linkedinUrl && <Anchor href={person.linkedinUrl} target="_blank" rel="noreferrer" size="sm">LinkedIn</Anchor>}
-            </Group>
+          <div>
+            <Title order={1} size="h3" data-testid="screen-title">
+              {person.name}
+            </Title>
             <Text size="sm" c="dimmed">
-              {t('network.fields.owner')}: {person.owner.name}
+              {t(`network.types.${person.type}`)}
             </Text>
-            {person.howWeKnow && (
-              <Text size="sm">
-                {t('network.fields.howWeKnow')}: {person.howWeKnow}
-              </Text>
-            )}
-            <Group gap="sm">
-              <Text size="sm">
-                {t('network.fields.lastContact')}: {person.lastContactAt ? `${fmt.dateLong(person.lastContactAt)} (${t('network.daysShort', { count: days })})` : t('network.never')}
-              </Text>
-              <Text size="sm">{t('network.privacy')}:</Text>
-              <StatusBadge lifecycle="consent" value={person.consentStatus} testId="consent-badge" />
-            </Group>
-          </Stack>
+          </div>
         </Group>
         <Group gap="xs">
           <Button onClick={onLog}>{t('network.logActivity')}</Button>
@@ -59,6 +38,52 @@ export function PersonHeader({
           </Button>
         </Group>
       </Group>
-    </Card>
+      {/* Consent as a read-only strip; sending the request stays on the Privacy tab. */}
+      <div style={{ marginBottom: 12 }} data-testid="consent-path" data-value={person.consentStatus}>
+        <Path lifecycle="consent" value={person.consentStatus} isManager={false} disabled onChoose={() => undefined} />
+      </div>
+      <Highlights
+        items={[
+          { label: t('network.fields.type'), value: t(`network.types.${person.type}`) },
+          { label: t('network.fields.titleCompany'), value: [person.title, person.company].filter(Boolean).join(', ') },
+          { label: t('network.fields.city'), value: person.city },
+          { label: t('network.fields.owner'), value: person.owner.name },
+          {
+            label: t('network.fields.lastContact'),
+            value: person.lastContactAt
+              ? `${fmt.dateLong(person.lastContactAt)} (${t('network.daysShort', { count: days })})`
+              : t('network.never'),
+          },
+          { label: t('network.fields.consent'), value: <StatusBadge lifecycle="consent" value={person.consentStatus} testId="consent-badge" /> },
+          {
+            label: t('network.fields.email'),
+            value: (
+              <Stack gap={0}>
+                {person.email && (
+                  <Anchor href={`mailto:${person.email}`} size="sm">
+                    {person.email}
+                  </Anchor>
+                )}
+                {person.phone && (
+                  <Anchor href={`tel:${person.phone}`} size="sm">
+                    {person.phone}
+                  </Anchor>
+                )}
+                {person.linkedinUrl && (
+                  <Anchor href={person.linkedinUrl} target="_blank" rel="noreferrer" size="sm">
+                    LinkedIn
+                  </Anchor>
+                )}
+              </Stack>
+            ),
+          },
+        ]}
+      />
+      {person.howWeKnow && (
+        <Text size="sm" mb="md">
+          {t('network.fields.howWeKnow')}: {person.howWeKnow}
+        </Text>
+      )}
+    </>
   );
 }

@@ -1,0 +1,11 @@
+.record-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.record-main, .record-aside { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (max-width: 960px) { .record-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.highlights { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 16px; }
+.highlights dt { font-size: 12px; color: var(--color-ink3); margin: 0 0 2px; }
+.highlights dd { margin: 0; font-size: 14px; color: var(--color-ink); overflow-wrap: anywhere; }
+@media (max-width: 720px) { .highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.related-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--color-border); }
+.related-row:first-of-type { border-top: 0; }

@@ -1,0 +1,10 @@
+{
+  "path": { "changeStatus": "Durumu değiştir", "label": "Durum yolu", "managerOnly": "Bu adımı yalnızca yöneticiler atabilir", "stepOf": "Adım {{n}} / {{total}}" },
+  "record": { "details": "Ayrıntılar", "new": "Yeni", "related": "İlişkili", "showLess": "Daha az göster", "viewAll": "Tümünü gör", "activity": "Etkinlik" },
+  "activity": {
+    "composer": { "call": "Arama kaydet", "email": "E-posta", "note": "Not", "task": "Yeni görev" },
+    "empty": "Henüz etkinlik yok. Yukarıdan bir arama veya not kaydedin.",
+    "filter": { "ALL": "Tümü", "CALL": "Aramalar", "EMAIL": "E-postalar", "MEETING": "Görüşmeler", "NOTE": "Notlar" },
+    "overdue": "Gecikmiş", "upcoming": "Yaklaşan ve geciken"
+  }
+}
