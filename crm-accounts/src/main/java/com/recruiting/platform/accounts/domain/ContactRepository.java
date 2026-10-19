@@ -12,4 +12,6 @@ public interface ContactRepository extends JpaRepository<Contact, UUID> {
     List<Contact> findByPersonId(UUID personId);
 
     Optional<Contact> findByAccountIdAndPersonIdAndEndedOnIsNull(UUID accountId, UUID personId);
+
+    List<Contact> findByAccountId(UUID accountId);
 }

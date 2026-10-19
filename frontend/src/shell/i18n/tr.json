@@ -1,0 +1,24 @@
+{
+  "shell": {
+    "cancel": "Vazgeç", "save": "Kaydet", "saveError": "Kaydedilemedi. Tekrar deneyin.", "loadError": "Bu ekran yüklenemedi.", "retry": "Tekrar dene",
+    "undo": "Geri al", "new": "Yeni", "menu": "Menü", "mainNav": "Ana gezinme", "logout": "Çıkış yap", "userMenu": "Kullanıcı menüsü",
+    "changeStatus": "Durumu değiştir", "managerOnly": "Yalnızca yöneticiler {{action}} yapabilir",
+    "recentSearches": "Son aramalar", "searchNone": "\"{{q}}\" için sonuç yok", "searchPlaceholder": "Müşteri, kişi, pozisyon ara", "seeAll": "\"{{q}}\" için tüm sonuçlar"
+  },
+  "login": { "title": "Giriş yap", "email": "E-posta", "password": "Parola", "submit": "Giriş yap", "invalid": "E-posta veya parola hatalı.", "error": "Giriş şu anda yapılamıyor. Tekrar deneyin." },
+  "myday": {
+    "greeting": "Merhaba, {{name}}", "summary": "{{overdue}} geciken, bugün {{today}} iş", "welcome": "Hoş geldiniz", "welcomeHint": "Başlamak için ilk müşterinizi ekleyin veya CSV içe aktarın.",
+    "addFirst": "İlk müşterinizi ekleyin", "import": "CSV içe aktar", "loadError": "Gününüz yüklenemedi.",
+    "actions": "Sıradaki işler", "caughtUp": "Her şey tamam", "caughtUpHint": "Bekleyen iş yok. İleri planlamak için iş ekleyin.",
+    "group": { "overdue": "Geciken", "today": "Bugün", "upcoming": "Yaklaşan" },
+    "overdueBy": "{{n}} gün gecikti", "snooze": "Ertele", "snoozeTomorrow": "Yarın", "snoozeWeek": "Gelecek hafta", "doneToast": "Tamamlandı: {{title}}",
+    "stat": { "activeAccounts": "Aktif müşteri", "openJobs": "Açık pozisyon", "inProcess": "Süreçteki aday", "placed": "Bu yıl yerleşen" },
+    "jobs": "Açık pozisyonlar", "noJobs": "Açık pozisyon yok", "noJobsHint": "Bir müşteri pozisyon açtığında burada görünür.", "recent": "Son müşteriler",
+    "daysOpen": "{{n}} gündür açık", "candidates": "{{n}} aday"
+  },
+  "search": {
+    "results": "\"{{q}}\" sonuçları", "all": "Tümü", "clear": "Temizle", "showAll": "Tümünü göster ({{n}})", "none": "\"{{q}}\" için sonuç yok", "noneHint": "Yazımı kontrol edin veya daha kısa bir sözcük deneyin.",
+    "addClient": "\"{{q}}\" adlı yeni müşteri ekle", "start": "Ara", "startHint": "En az iki karakter yazın.", "sector": "Sektör", "status": "Durum",
+    "group": { "accounts": "Müşteriler", "people": "Kişiler", "jobs": "Pozisyonlar" }
+  }
+}
