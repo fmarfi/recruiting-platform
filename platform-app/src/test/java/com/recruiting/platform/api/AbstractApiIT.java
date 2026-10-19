@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(PostgresTestConfig.class)
-@org.springframework.test.context.TestPropertySource(properties = "app.security.login-rate-per-minute=10000")
+@org.springframework.test.context.TestPropertySource(properties = {"app.security.login-rate-per-minute=10000", "app.privacy.hmac-key=test-hmac-key"})
 public abstract class AbstractApiIT {
 
     public static final String PASSWORD = "Test-Password-2026";
