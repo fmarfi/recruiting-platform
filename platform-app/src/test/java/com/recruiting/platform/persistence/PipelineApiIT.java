@@ -2,8 +2,8 @@ package com.recruiting.platform.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -17,67 +17,41 @@ import com.recruiting.platform.accounts.domain.AccountRepository;
 import com.recruiting.platform.accounts.domain.Person;
 import com.recruiting.platform.accounts.domain.PersonRepository;
 import com.recruiting.platform.contracts.AccountStatus;
-import com.recruiting.platform.contracts.ApiException;
 import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.PersonAnonymised;
 import com.recruiting.platform.contracts.PersonType;
 import com.recruiting.platform.contracts.RetentionFlagged;
 import com.recruiting.platform.contracts.RetentionStatus;
 import com.recruiting.platform.pipeline.domain.NextActionRepository;
+import com.recruiting.platform.security.IdentifiedUser;
 import com.recruiting.platform.security.domain.AppUser;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
  * W1-11 end-to-end checks of the pipeline endpoints through MockMvc on a real PostgreSQL: status rules, guards,
- * reasons, roles, timeline from events, follow-ups, activities, dashboard and My day. The error mapping and the
- * role hierarchy are provided here until security-privacy merges the real ones.
+ * reasons, roles, timeline from events, follow-ups, activities, dashboard and My day, and job orders in /search.
+ * Runs through the real filter chain, error mapping and method security; only the login step is replaced by
+ * a ready authentication whose principal carries the user id (as the session principal does).
  */
 @AutoConfigureMockMvc
-@Import({PipelineApiIT.TestWeb.class})
 class PipelineApiIT extends AbstractPersistenceIT {
 
-    /** Stand-ins for what security-privacy delivers: method security, role hierarchy, ApiException mapping. */
-    @TestConfiguration(proxyBeanMethods = false)
-    @EnableMethodSecurity
-    static class TestWeb {
-        @Bean
-        RoleHierarchy testRoleHierarchy() {
-            return RoleHierarchyImpl.fromHierarchy("ROLE_ADMIN > ROLE_MANAGER\nROLE_MANAGER > ROLE_CONSULTANT");
-        }
-
-        @Bean
-        TestErrors testErrors() {
-            return new TestErrors();
-        }
-    }
-
-    @RestControllerAdvice
-    static class TestErrors {
-        @ExceptionHandler(ApiException.class)
-        ResponseEntity<Map<String, Object>> api(ApiException e) {
-            return ResponseEntity.status(e.code().httpStatus()).body(Map.of("code", e.code().name()));
-        }
+    private record Principal(UUID userId) implements IdentifiedUser {
     }
 
     @Autowired
@@ -128,7 +102,8 @@ class PipelineApiIT extends AbstractPersistenceIT {
     }
 
     private RequestPostProcessor as(UUID id, String role) {
-        return user(id.toString()).roles(role);
+        return authentication(new UsernamePasswordAuthenticationToken(new Principal(id), "n/a",
+                List.of(new SimpleGrantedAuthority("ROLE_" + role))));
     }
 
     private ResultActions call(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder b,
@@ -176,6 +151,22 @@ class PipelineApiIT extends AbstractPersistenceIT {
                 .andExpect(jsonPath("$.stageCounts.SOURCED").value(0));
         call(get("/api/v1/job-orders").param("accountId", accountId.toString()), consultant, "CONSULTANT", null)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(1));
+    }
+
+    @Test
+    void searchFindsJobOrdersAndUnknownAccountIs404() throws Exception {
+        String token = "Zeppelin" + UUID.randomUUID().toString().substring(0, 8);
+        call(post("/api/v1/job-orders"), consultant, "CONSULTANT",
+                "{\"accountId\":\"" + accountId + "\",\"title\":\"" + token + " director\"}")
+                .andExpect(status().isCreated());
+        call(get("/api/v1/search").param("q", token.toLowerCase()).param("types", "JOB_ORDER"), consultant,
+                "CONSULTANT", null).andExpect(status().isOk()).andExpect(jsonPath("$.jobOrders.length()").value(1))
+                .andExpect(jsonPath("$.totals.jobOrders").value(1));
+        call(get("/api/v1/search").param("q", token).param("sector", "Mining"), consultant, "CONSULTANT", null)
+                .andExpect(jsonPath("$.totals.jobOrders").value(0));
+        call(post("/api/v1/job-orders"), consultant, "CONSULTANT",
+                "{\"accountId\":\"" + UUID.randomUUID() + "\",\"title\":\"Ghost account\"}")
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -355,7 +346,7 @@ class PipelineApiIT extends AbstractPersistenceIT {
     @Test
     void anonymousAndWrongRoleAreRejected() throws Exception {
         mvc.perform(get("/api/v1/home")).andExpect(status().is4xxClientError());
-        mvc.perform(get("/api/v1/home").with(user(consultant.toString()).roles("NOBODY")))
+        mvc.perform(get("/api/v1/home").with(as(consultant, "NOBODY")))
                 .andExpect(status().isForbidden());
     }
 }

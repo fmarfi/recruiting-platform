@@ -9,7 +9,7 @@ import com.recruiting.platform.pipeline.domain.Application;
 import com.recruiting.platform.pipeline.domain.ApplicationRepository;
 import com.recruiting.platform.pipeline.domain.JobOrder;
 import com.recruiting.platform.pipeline.domain.JobOrderRepository;
-import com.recruiting.platform.pipeline.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.pipeline.shared.Refs;
 import com.recruiting.platform.pipeline.shared.Transitions;
 import com.recruiting.platform.pipeline.shared.Uuids;
@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ApplicationService {
 
+    private final CurrentUser currentUser;
     private final ApplicationRepository repo;
     private final JobOrderRepository jobOrders;
     private final Refs refs;
@@ -38,7 +39,8 @@ public class ApplicationService {
     private final ApplicationEventPublisher events;
 
     ApplicationService(ApplicationRepository repo, JobOrderRepository jobOrders, Refs refs, PersonDirectory people,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, CurrentUser currentUser) {
+        this.currentUser = currentUser;
         this.repo = repo;
         this.jobOrders = jobOrders;
         this.refs = refs;
@@ -68,7 +70,7 @@ public class ApplicationService {
     }
 
     @Transactional
-    public Application add(UUID jobOrderId, UUID personId, Actor actor) {
+    public Application add(UUID jobOrderId, UUID personId) {
         JobOrder job = requireJob(jobOrderId);
         if (!job.getStatus().isOpen()) {
             throw new ApiException(ErrorCode.TRANSITION_GUARD_FAILED,
@@ -89,7 +91,7 @@ public class ApplicationService {
         a.setStage(PipelineStage.INITIAL);
         a.setStageChangedAt(Instant.now());
         repo.saveAndFlush(a);
-        events.publishEvent(new ApplicationCreated(Uuids.v7(), Instant.now(), actor.id(), a.getId(), jobOrderId,
+        events.publishEvent(new ApplicationCreated(Uuids.v7(), Instant.now(), currentUser.id(), a.getId(), jobOrderId,
                 job.getAccountId(), personId, a.getStage()));
         return a;
     }

@@ -7,7 +7,8 @@ import com.recruiting.platform.contracts.ErrorCode;
 import com.recruiting.platform.pipeline.activity.web.dto.ActivityCreateRequest;
 import com.recruiting.platform.pipeline.domain.Activity;
 import com.recruiting.platform.pipeline.domain.ActivityRepository;
-import com.recruiting.platform.pipeline.shared.Actor;
+import com.recruiting.platform.contracts.Role;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.pipeline.shared.JobOrderRefs;
 import com.recruiting.platform.pipeline.shared.Patch;
 import com.recruiting.platform.pipeline.shared.Refs;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ActivityService {
 
+    private final CurrentUser currentUser;
     private static final Map<String, String> SORTABLE = Map.of("occurredAt", "occurredAt", "createdAt", "createdAt",
             "type", "type");
 
@@ -37,7 +39,8 @@ public class ActivityService {
     private final JobOrderRefs jobs;
     private final ApplicationEventPublisher events;
 
-    ActivityService(ActivityRepository repo, Refs refs, JobOrderRefs jobs, ApplicationEventPublisher events) {
+    ActivityService(ActivityRepository repo, Refs refs, JobOrderRefs jobs, ApplicationEventPublisher events, CurrentUser currentUser) {
+        this.currentUser = currentUser;
         this.repo = repo;
         this.refs = refs;
         this.jobs = jobs;
@@ -56,7 +59,7 @@ public class ActivityService {
     }
 
     @Transactional
-    public Activity log(ActivityCreateRequest r, Actor actor) {
+    public Activity log(ActivityCreateRequest r) {
         if (r.accountId() == null && r.personId() == null) {
             throw Transitions.invalid("accountId", "Give an accountId or a personId.");
         }
@@ -78,16 +81,16 @@ public class ActivityService {
         a.setAccountId(r.accountId());
         a.setPersonId(r.personId());
         a.setJobOrderId(r.jobOrderId());
-        a.setUserId(actor.id());
+        a.setUserId(currentUser.id());
         repo.saveAndFlush(a);
-        publish(a, actor);
+        publish(a);
         return a;
     }
 
     @Transactional
-    public Activity update(UUID id, Patch patch, Actor actor) {
+    public Activity update(UUID id, Patch patch) {
         Activity a = get(id);
-        requireAuthor(a, actor);
+        requireAuthor(a);
         Transitions.checkVersion(patch.version(), a.getVersion());
         if (patch.has("type")) {
             try {
@@ -109,19 +112,19 @@ public class ActivityService {
             a.setOccurredAt(at);
         }
         repo.saveAndFlush(a);
-        publish(a, actor);
+        publish(a);
         return a;
     }
 
     @Transactional
-    public void delete(UUID id, Actor actor) {
+    public void delete(UUID id) {
         Activity a = get(id);
-        requireAuthor(a, actor);
+        requireAuthor(a);
         repo.delete(a);
     }
 
-    private void publish(Activity a, Actor actor) {
-        events.publishEvent(new ActivityLogged(Uuids.v7(), Instant.now(), actor.id(), a.getId(), a.getType(),
+    private void publish(Activity a) {
+        events.publishEvent(new ActivityLogged(Uuids.v7(), Instant.now(), currentUser.id(), a.getId(), a.getType(),
                 a.getOccurredAt(), a.getAccountId(), a.getPersonId(), a.getJobOrderId()));
     }
 
@@ -131,8 +134,8 @@ public class ActivityService {
         }
     }
 
-    private static void requireAuthor(Activity a, Actor actor) {
-        if (!actor.elevated() && !actor.id().equals(a.getUserId())) {
+    private void requireAuthor(Activity a) {
+        if (!currentUser.hasAtLeast(Role.MANAGER) && !currentUser.id().equals(a.getUserId())) {
             throw new ApiException(ErrorCode.FORBIDDEN, "Only the author, a manager or an admin may change this.");
         }
     }

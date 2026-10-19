@@ -8,8 +8,7 @@ import com.recruiting.platform.pipeline.shared.ref.AccountDirectory;
 import com.recruiting.platform.pipeline.shared.ref.AccountInfo;
 import com.recruiting.platform.pipeline.shared.ref.PersonDirectory;
 import com.recruiting.platform.pipeline.shared.ref.PersonInfo;
-import com.recruiting.platform.pipeline.shared.ref.UserDirectory;
-import com.recruiting.platform.pipeline.shared.ref.UserInfo;
+import com.recruiting.platform.security.UserDirectory;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,9 +38,9 @@ public class Refs {
     public final class Lookup {
         private final Map<UUID, AccountInfo> acc;
         private final Map<UUID, PersonInfo> per;
-        private final Map<UUID, UserInfo> usr;
+        private final Map<UUID, com.recruiting.platform.security.UserRef> usr;
 
-        Lookup(Map<UUID, AccountInfo> acc, Map<UUID, PersonInfo> per, Map<UUID, UserInfo> usr) {
+        Lookup(Map<UUID, AccountInfo> acc, Map<UUID, PersonInfo> per, Map<UUID, com.recruiting.platform.security.UserRef> usr) {
             this.acc = acc;
             this.per = per;
             this.usr = usr;
@@ -68,7 +67,7 @@ public class Refs {
         }
 
         public UserRef user(UUID id) {
-            UserInfo u = id == null ? null : usr.get(id);
+            com.recruiting.platform.security.UserRef u = id == null ? null : usr.get(id);
             return u == null ? null : new UserRef(u.id(), u.name());
         }
     }
@@ -84,12 +83,12 @@ public class Refs {
     public Lookup load(Collection<UUID> accountIds, Collection<UUID> personIds, Collection<UUID> userIds) {
         Map<UUID, AccountInfo> acc = accountIds.isEmpty() ? Map.of() : accounts.accounts(clean(accountIds));
         Map<UUID, PersonInfo> per = personIds.isEmpty() ? Map.of() : people.people(clean(personIds));
-        Map<UUID, UserInfo> usr = new HashMap<>();
+        Map<UUID, com.recruiting.platform.security.UserRef> usr = new HashMap<>();
         Collection<UUID> uids = new java.util.HashSet<>(userIds);
         per.values().forEach(p -> uids.add(p.ownerId()));
         acc.values().forEach(a -> uids.add(a.ownerId()));
         if (!clean(uids).isEmpty()) {
-            usr.putAll(users.users(clean(uids)));
+            usr.putAll(users.refs(clean(uids)));
         }
         return new Lookup(acc, per, usr);
     }
@@ -125,7 +124,7 @@ public class Refs {
      * @param id user id
      */
     public void requireUser(UUID id) {
-        if (!users.users(java.util.List.of(id)).containsKey(id)) {
+        if (!users.refs(java.util.List.of(id)).containsKey(id)) {
             throw Transitions.notFound("User");
         }
     }

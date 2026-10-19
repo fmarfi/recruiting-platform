@@ -5,13 +5,11 @@ import com.recruiting.platform.pipeline.application.app.ApplicationService;
 import com.recruiting.platform.pipeline.application.app.ApplicationStageService;
 import com.recruiting.platform.pipeline.application.web.dto.ApplicationResponse;
 import com.recruiting.platform.pipeline.application.web.dto.StageChangeRequest;
-import com.recruiting.platform.pipeline.shared.Actor;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -49,9 +47,8 @@ public class ApplicationController {
     }
 
     @PatchMapping("/applications/{id}/stage")
-    ApplicationResponse changeStage(@PathVariable UUID id, @Valid @RequestBody StageChangeRequest r,
-            Authentication auth) {
-        return mapper.toResponse(stages.change(id, r.stage(), r.reason(), r.version(), Actor.of(auth)));
+    ApplicationResponse changeStage(@PathVariable UUID id, @Valid @RequestBody StageChangeRequest r) {
+        return mapper.toResponse(stages.change(id, r.stage(), r.reason(), r.version()));
     }
 
     @GetMapping("/people/{id}/applications")

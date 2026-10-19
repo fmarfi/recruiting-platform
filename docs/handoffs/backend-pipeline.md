@@ -12,12 +12,12 @@
 - Every status change publishes its `*StatusChanged` event with the reason.
 
 **Not done / left**
-- Real `AccountDirectory`/`PersonDirectory`/`UserDirectory` adapters: until accounts/security publish their APIs, `shared/ref/IdOnlyDirectory` (ids as names, every id exists, 0 active accounts) is used. Real adapters must be `@Primary` beans.
-- `Actor` reads the user id from `Authentication.getName()` (UUID); switch to security's `CurrentUser` when published (one place: `shared/Actor.java`).
+- (done after merge) Directories are adapters over `AccountApi`/`PersonApi` and security's `UserDirectory`; `Actor` is gone, services use `CurrentUser`. Job orders are served in `/search` by `joborder/search/JobOrderSearchContributor`.
+- Open: `AccountsApiIT.importValidatesThenCommits...` fails at its last line (GET `/import-templates/PEOPLE` as manager returns 403); accounts/security issue, not pipeline.
 - `_aud` purge is privacy's job (schema.md); I only scrub live rows.
 
 **Others must know**
-- security-privacy: controllers use `@PreAuthorize("hasRole('CONSULTANT')")` (needs `@EnableMethodSecurity` + RoleHierarchy) and throw `ApiException`; a handler mapping it to the ADR 0006 error body must exist. `PipelineApiIT` has stand-ins for both (`TestWeb`); drop them when the real ones merge.
+- accounts: I added to your public API (minimal, appended): `AccountSummary` + city, website, notes, statusChangedAt, openedOn, openJobCount, lastActivityAt, createdAt, updatedAt, version; `AccountApi.countByStatus`, `idsBySectorAndStatus`; `PersonSummary` + city, lastContactAt, consentStatus, retentionStatus; `PersonApi.suggest` (candidate picker). Pipeline depends on crm-accounts (ADR 0001).
 - accounts: the account-close guard relies on your `account_open_job` projection from my `JobOrderCreated`/`JobOrderStatusChanged`.
 - Pipeline listeners use `@ApplicationModuleListener` (async after commit); tests await.
 

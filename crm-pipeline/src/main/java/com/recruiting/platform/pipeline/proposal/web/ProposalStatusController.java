@@ -4,11 +4,9 @@ import com.recruiting.platform.pipeline.proposal.app.ProposalMapper;
 import com.recruiting.platform.pipeline.proposal.app.ProposalStatusService;
 import com.recruiting.platform.pipeline.proposal.web.dto.ProposalResponse;
 import com.recruiting.platform.pipeline.proposal.web.dto.ProposalStatusChangeRequest;
-import com.recruiting.platform.pipeline.shared.Actor;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,8 +28,7 @@ public class ProposalStatusController {
     }
 
     @PatchMapping
-    ProposalResponse change(@PathVariable UUID id, @Valid @RequestBody ProposalStatusChangeRequest r,
-            Authentication auth) {
-        return mapper.toResponse(service.change(id, r.status(), r.reason(), r.version(), Actor.of(auth)));
+    ProposalResponse change(@PathVariable UUID id, @Valid @RequestBody ProposalStatusChangeRequest r) {
+        return mapper.toResponse(service.change(id, r.status(), r.reason(), r.version()));
     }
 }

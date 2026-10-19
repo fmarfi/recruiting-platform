@@ -6,7 +6,8 @@ import com.recruiting.platform.pipeline.domain.Application;
 import com.recruiting.platform.pipeline.domain.ApplicationRepository;
 import com.recruiting.platform.pipeline.domain.JobOrder;
 import com.recruiting.platform.pipeline.domain.JobOrderRepository;
-import com.recruiting.platform.pipeline.shared.Actor;
+import com.recruiting.platform.contracts.Role;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.pipeline.shared.Transitions;
 import com.recruiting.platform.pipeline.shared.Uuids;
 import java.time.Instant;
@@ -19,23 +20,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ApplicationStageService {
 
+    private final CurrentUser currentUser;
     private final ApplicationRepository repo;
     private final JobOrderRepository jobOrders;
     private final ApplicationEventPublisher events;
 
     ApplicationStageService(ApplicationRepository repo, JobOrderRepository jobOrders,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, CurrentUser currentUser) {
+        this.currentUser = currentUser;
         this.repo = repo;
         this.jobOrders = jobOrders;
         this.events = events;
     }
 
     @Transactional
-    public Application change(UUID id, PipelineStage to, String reason, Long version, Actor actor) {
+    public Application change(UUID id, PipelineStage to, String reason, Long version) {
         Application a = repo.findById(id).orElseThrow(() -> Transitions.notFound("Application"));
         Transitions.checkVersion(version, a.getVersion());
         PipelineStage from = a.getStage();
-        String clean = Transitions.check(from, to, reason, actor.elevated());
+        String clean = Transitions.check(from, to, reason, currentUser.hasAtLeast(Role.MANAGER));
         JobOrder job = jobOrders.findById(a.getJobOrderId()).orElseThrow(() -> Transitions.notFound("Job order"));
         if (!job.getStatus().isOpen()) {
             throw Transitions.guardFailed(from, to,
@@ -45,7 +48,7 @@ public class ApplicationStageService {
         a.setStageChangedAt(Instant.now());
         a.setRejectionReason(to == PipelineStage.REJECTED ? clean : null);
         repo.saveAndFlush(a);
-        events.publishEvent(new ApplicationStageChanged(Uuids.v7(), Instant.now(), actor.id(), a.getId(),
+        events.publishEvent(new ApplicationStageChanged(Uuids.v7(), Instant.now(), currentUser.id(), a.getId(),
                 a.getJobOrderId(), job.getAccountId(), a.getPersonId(), from, to, clean));
         return a;
     }

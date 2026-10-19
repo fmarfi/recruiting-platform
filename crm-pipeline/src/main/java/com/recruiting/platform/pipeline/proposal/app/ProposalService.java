@@ -7,7 +7,7 @@ import com.recruiting.platform.contracts.ProposalStatus;
 import com.recruiting.platform.pipeline.domain.Proposal;
 import com.recruiting.platform.pipeline.domain.ProposalRepository;
 import com.recruiting.platform.pipeline.proposal.web.dto.ProposalCreateRequest;
-import com.recruiting.platform.pipeline.shared.Actor;
+import com.recruiting.platform.security.CurrentUser;
 import com.recruiting.platform.pipeline.shared.Patch;
 import com.recruiting.platform.pipeline.shared.Refs;
 import com.recruiting.platform.pipeline.shared.Sorts;
@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ProposalService {
 
+    private final CurrentUser currentUser;
     private static final Map<String, String> SORTABLE = Map.of("title", "title", "status", "status",
             "createdAt", "createdAt", "updatedAt", "updatedAt", "statusChangedAt", "statusChangedAt");
     private static final Pattern AMOUNT = Pattern.compile("^\\d+(\\.\\d{1,2})?$");
@@ -42,7 +43,8 @@ public class ProposalService {
     private final Refs refs;
     private final ApplicationEventPublisher events;
 
-    ProposalService(ProposalRepository repo, Refs refs, ApplicationEventPublisher events) {
+    ProposalService(ProposalRepository repo, Refs refs, ApplicationEventPublisher events, CurrentUser currentUser) {
+        this.currentUser = currentUser;
         this.repo = repo;
         this.refs = refs;
         this.events = events;
@@ -74,9 +76,9 @@ public class ProposalService {
     }
 
     @Transactional
-    public Proposal create(ProposalCreateRequest r, Actor actor) {
+    public Proposal create(ProposalCreateRequest r) {
         refs.requireAccount(r.accountId());
-        UUID owner = r.ownerId() != null ? r.ownerId() : actor.id();
+        UUID owner = r.ownerId() != null ? r.ownerId() : currentUser.id();
         if (r.ownerId() != null) {
             refs.requireUser(owner);
         }
@@ -90,7 +92,7 @@ public class ProposalService {
         p.setStatus(ProposalStatus.INITIAL);
         p.setStatusChangedAt(Instant.now());
         repo.saveAndFlush(p);
-        events.publishEvent(new ProposalCreated(Uuids.v7(), Instant.now(), actor.id(), p.getId(), p.getAccountId(),
+        events.publishEvent(new ProposalCreated(Uuids.v7(), Instant.now(), currentUser.id(), p.getId(), p.getAccountId(),
                 p.getTitle()));
         return p;
     }

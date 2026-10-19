@@ -5,7 +5,6 @@ import com.recruiting.platform.pipeline.joborder.app.JobOrderMapper;
 import com.recruiting.platform.pipeline.joborder.app.JobOrderService;
 import com.recruiting.platform.pipeline.joborder.web.dto.JobOrderCreateRequest;
 import com.recruiting.platform.pipeline.joborder.web.dto.JobOrderResponse;
-import com.recruiting.platform.pipeline.shared.Actor;
 import com.recruiting.platform.pipeline.shared.Patch;
 import com.recruiting.platform.pipeline.shared.dto.PageResponse;
 import jakarta.validation.Valid;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,8 +48,8 @@ public class JobOrderController {
     }
 
     @PostMapping
-    ResponseEntity<JobOrderResponse> create(@Valid @RequestBody JobOrderCreateRequest request, Authentication auth) {
-        JobOrderResponse r = mapper.toResponse(service.create(request, Actor.of(auth)));
+    ResponseEntity<JobOrderResponse> create(@Valid @RequestBody JobOrderCreateRequest request) {
+        JobOrderResponse r = mapper.toResponse(service.create(request));
         return ResponseEntity.created(URI.create("/api/v1/job-orders/" + r.id())).body(r);
     }
 
