@@ -23,7 +23,7 @@ export function JobOrdersList() {
   return (
     <Container py="md" fluid>
       <Title order={1} data-testid="screen-title" mb="md">
-        {t('nav.jobOrders')}
+        {t('pipeline.list.title')}
       </Title>
       <Group mb="sm" align="flex-end">
         <TextInput
