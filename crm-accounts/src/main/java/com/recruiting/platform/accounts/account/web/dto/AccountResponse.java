@@ -1,6 +1,6 @@
 package com.recruiting.platform.accounts.account.web.dto;
 
-import com.recruiting.platform.accounts.shared.dto.UserRef;
+import com.recruiting.platform.security.UserRef;
 import com.recruiting.platform.contracts.AccountStatus;
 import java.time.Instant;
 import java.time.LocalDate;

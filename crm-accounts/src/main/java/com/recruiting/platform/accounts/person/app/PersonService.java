@@ -12,7 +12,7 @@ import com.recruiting.platform.accounts.shared.Actor;
 import com.recruiting.platform.accounts.shared.Events;
 import com.recruiting.platform.accounts.shared.Patch;
 import com.recruiting.platform.accounts.shared.PatchBinder;
-import com.recruiting.platform.accounts.shared.UserLookup;
+import com.recruiting.platform.security.UserDirectory;
 import com.recruiting.platform.accounts.shared.Versions;
 import com.recruiting.platform.contracts.ApiException;
 import com.recruiting.platform.contracts.ErrorCode;
@@ -34,11 +34,11 @@ public class PersonService {
     private final PersonRepository people;
     private final PersonEmploymentRepository employments;
     private final PersonMapper mapper;
-    private final UserLookup users;
+    private final UserDirectory users;
     private final ApplicationEventPublisher events;
 
     public PersonService(PersonRepository people, PersonEmploymentRepository employments, PersonMapper mapper,
-            UserLookup users, ApplicationEventPublisher events) {
+            UserDirectory users, ApplicationEventPublisher events) {
         this.people = people;
         this.employments = employments;
         this.mapper = mapper;
@@ -53,7 +53,7 @@ public class PersonService {
     /** Also used by contact creation and import; {@code importId} is null for single adds. */
     public Person createEntity(PersonCreateRequest r, Actor actor, UUID importId) {
         UUID ownerId = r.ownerId() != null ? r.ownerId() : actor.id();
-        if (ownerId == null || !users.exists(ownerId)) {
+        if (ownerId == null || !users.isActive(ownerId)) {
             throw PatchBinder.validation("ownerId", "REQUIRED", "an active owner is required");
         }
         String email = blankToNull(r.email());
@@ -127,7 +127,7 @@ public class PersonService {
             p.setNotes(r.notes());
         }
         if (patch.has("ownerId")) {
-            if (!users.exists(r.ownerId())) {
+            if (!users.isActive(r.ownerId())) {
                 throw PatchBinder.validation("ownerId", "INVALID", "unknown or inactive user");
             }
             p.setOwnerId(r.ownerId());

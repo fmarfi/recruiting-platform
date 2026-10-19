@@ -9,7 +9,7 @@ import com.recruiting.platform.accounts.networklink.web.dto.NetworkLinkResponse;
 import com.recruiting.platform.accounts.networklink.web.dto.NetworkLinkUpdateRequest;
 import com.recruiting.platform.accounts.shared.Patch;
 import com.recruiting.platform.accounts.shared.PatchBinder;
-import com.recruiting.platform.accounts.shared.UserLookup;
+import com.recruiting.platform.security.UserDirectory;
 import com.recruiting.platform.accounts.shared.dto.PersonRef;
 import com.recruiting.platform.contracts.ApiException;
 import com.recruiting.platform.contracts.ErrorCode;
@@ -29,9 +29,9 @@ public class NetworkLinkService {
 
     private final NetworkLinkRepository links;
     private final PersonRepository people;
-    private final UserLookup users;
+    private final UserDirectory users;
 
-    public NetworkLinkService(NetworkLinkRepository links, PersonRepository people, UserLookup users) {
+    public NetworkLinkService(NetworkLinkRepository links, PersonRepository people, UserDirectory users) {
         this.links = links;
         this.people = people;
         this.users = users;
