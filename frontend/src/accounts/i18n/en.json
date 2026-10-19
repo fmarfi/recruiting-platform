@@ -1,0 +1,21 @@
+{
+  "accounts": {
+    "actionTitle": "What needs to be done", "addAction": "Add action", "client": "Client", "due": "Due date", "fillRequired": "Fill in the required fields.", "optional": "optional",
+    "activity": { "CALL": "Call", "VISIT": "Visit", "MEETING": "Meeting", "EMAIL": "E-mail", "NOTE": "Note" },
+    "activityType": "Type", "logActivity": "Log activity", "note": "Note",
+    "city": "City", "duplicate": "A client with this name already exists.", "name": "Name", "newAccount": "New client", "sector": "Sector",
+    "reason": "Reason", "reasonTitle": "Reason for moving to {{status}}", "openJobsBlock": "This client still has open job orders.",
+    "clientSince": "client since {{date}}", "closedBanner": "This client is closed.", "ownerIs": "owner {{name}}",
+    "backToList": "Back to clients", "notFound": "Client not found.",
+    "tab": { "jobs": "Job orders", "contacts": "Contacts", "proposals": "Proposals", "timeline": "Timeline" },
+    "consent": { "NOT_SENT": "Consent not sent", "SENT": "Consent sent", "GIVEN": "Consent given", "REFUSED": "Consent refused", "WITHDRAWN": "Consent withdrawn" },
+    "emptyContacts": "No contacts yet", "emptyContactsHint": "Add the people you work with at this client.", "endedOn": "ended {{date}}", "primary": "Primary", "showEnded": "Show ended",
+    "dash": { "avgDays": "Avg. days open", "candidates": "Candidates", "nextAction": "Next action", "openJobs": "Open jobs" }, "setNextAction": "Set next action",
+    "emptyJobs": "No job orders yet", "emptyJobsHint": "Job orders for this client appear here.", "emptyProposals": "No proposals yet", "emptyProposalsHint": "Proposals for this client appear here.",
+    "kind": { "ACCOUNT_STATUS": "Status", "ACTIVITY": "Activity", "PROPOSAL": "Proposal", "JOB_ORDER": "Job order", "CONTACT": "Contact", "CANDIDATE": "Candidate" },
+    "all": "All", "emptyTimeline": "Nothing has happened yet.", "system": "System",
+    "tl": { "ACCOUNT_STATUS": "Status changed to {{to}}", "PROPOSAL": "Proposal moved to {{to}}", "JOB_ORDER": "Job order: {{title}}", "CANDIDATE": "Candidate: {{name}}" },
+    "clear": "Clear filters", "filterName": "Filter by name", "mine": "Mine", "emptyFilter": "No clients match these filters", "emptyHint": "Add your first client or import a CSV.", "emptyTitle": "Add your first client", "import": "Import CSV",
+    "jobs": "Jobs", "jobsCount": "{{n}} open jobs", "lastActivity": "Last activity", "owner": "Owner", "sortBy": "Sort by {{col}}", "status": "Status"
+  }
+}
