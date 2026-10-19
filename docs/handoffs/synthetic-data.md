@@ -32,3 +32,14 @@
 - `dropdb/createdb synthetic_data`, migrations via psql, `seed/load.sh synthetic_data` twice → exit 0, second load identical.
 - `seed/counts.sql` → person 81, person_privacy 81, timeline_entry 312, account statuses 6/4/9/3/3, open_job_count mismatches 0.
 - Checked: no `+90 555` or `linkedin.com` left in the data; account 6 and 24 histories match `docs/status-lifecycles.md`.
+
+## Wave 1b (Envers baseline fix) · 2026-10-20
+
+**Done**
+- `seed/09_envers.sql` (new, called last by `run.sql`): one `revinfo` revision (user = admin) and a REVTYPE 0 row in every `*_aud` table for each seeded row, copied by shared column name, so updates, deletes and anonymise work on seeded data.
+- `seed/00_clear.sql`: also clears `retention_settings_aud` and `revinfo` (reload stays idempotent, one revision per load).
+
+**Verified with** (own DB `synthetic_data`, app on 8085, SERVER_PORT env; `-Dserver.port` was ignored by `spring-boot:run`)
+- Loaded the seed twice: revinfo 1, person_aud 81 = person 81.
+- Login as admin, `PATCH /people/{id}` 200 (was 500), `POST /people/{id}/anonymise` 204 on a candidate; a client contact returned 409 (business rule, not 500). No errors in the app log.
+- Servers stopped.
