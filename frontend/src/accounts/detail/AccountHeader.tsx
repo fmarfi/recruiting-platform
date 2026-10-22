@@ -1,8 +1,8 @@
-import { Alert, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
+import { Alert, Box, Button } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../../api';
-import { StatusMenu } from '../../shell/components/StatusMenu';
-import { fmtDate } from '../../shell/lib/format';
+import { Path } from '../../shell/ui/Path';
+import { PageHeader } from '../../shell/ui/PageHeader';
 import { useReference } from '../../shell/refdata/useReference';
 import { ReasonDialog } from '../components/ReasonDialog';
 import { StatusFailureAlert } from '../components/StatusFailureAlert';
@@ -17,9 +17,9 @@ interface Props {
   onChanged: () => void;
 }
 
-/** Name, editable status badge, owner line and the two quick actions (A-02, UX-06). */
+/** Breadcrumb, title, quick actions and the status Path (A-02, UX-06). A step click is the same move as the old badge menu. */
 export function AccountHeader({ account: a, onLog, onAddAction, onChanged }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const ref = useReference();
   const change = useStatusChange(
     (status, reason) => api.PATCH('/accounts/{id}/status', { params: { path: { id: a.id } }, body: { status: status as Account['status'], reason, version: a.version } }),
@@ -27,31 +27,24 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged }: Pro
     t('shell.saveError'),
   );
   return (
-    <Card withBorder>
-      <Stack gap="xs">
-        <Group justify="space-between" align="flex-start">
-          <Group>
-            <Title order={1} data-testid="screen-title">
-              {a.name}
-            </Title>
-            <StatusMenu kind="account" value={a.status} onMove={change.move} />
-          </Group>
-          <Group visibleFrom="sm">
-            <Button variant="default" onClick={onLog}>
-              {t('accounts.logActivity')}
-            </Button>
-            <Button variant="default" onClick={onAddAction}>
-              {t('accounts.addAction')}
-            </Button>
-          </Group>
-        </Group>
-        <Text c="dimmed">
-          {[a.sector, a.city].filter(Boolean).join(' - ')} - {t('accounts.ownerIs', { name: a.owner.name })} - {t('accounts.clientSince', { date: fmtDate(a.openedOn, i18n.language) })}
-        </Text>
+    <>
+      <PageHeader
+        title={a.name}
+        glyph="A"
+        crumbs={[{ label: t('nav.accounts'), to: '/accounts' }, { label: a.name }]}
+        actions={
+          <>
+            <Button variant="default" visibleFrom="sm" onClick={onLog}>{t('accounts.logActivity')}</Button>
+            <Button variant="default" visibleFrom="sm" onClick={onAddAction}>{t('accounts.addAction')}</Button>
+          </>
+        }
+      />
+      <Box mb="md">
+        <Path kind="account" value={a.status} onMove={change.move} />
         {change.failure && <StatusFailureAlert failure={change.failure} />}
-        {a.status === 'CLOSED' && <Alert color="gray">{t('accounts.closedBanner')}</Alert>}
-      </Stack>
+        {a.status === 'CLOSED' && <Alert color="gray" mt="xs">{t('accounts.closedBanner')}</Alert>}
+      </Box>
       <ReasonDialog opened={!!change.pending} target={change.pending ? ref.label('account', change.pending.to) : ''} onConfirm={change.confirm} onCancel={change.cancel} />
-    </Card>
+    </>
   );
 }
