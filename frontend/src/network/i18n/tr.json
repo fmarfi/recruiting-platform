@@ -1,5 +1,6 @@
 {
   "network": {
+    "summary": "{{count}} kayıt - {{sort}} sırasına göre", "filtered": "filtrelenmiş", "density": "Yoğunluk", "comfortable": "Rahat", "compact": "Sıkı", "refresh": "Yenile",
     "accounts": "Müşteriler", "addAction": "Aksiyon ekle", "addConnection": "Bağlantı ekle", "addToJob": "Pozisyona ekle", "all": "Tümü", "career": "Kariyer", "clear": "Temizle",
     "consentFailed": "Onay isteği gönderilemedi.", "consentNoEmail": "Bu kişinin e-posta adresi yok.", "consentTo": "{{email}} adresine onay isteği gönderilecek.",
     "createFailed": "Kişi oluşturulamadı.", "daysAgo": "{{count}} gün", "daysShort": "{{count}} gün önce",

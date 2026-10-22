@@ -1,10 +1,11 @@
 // Network list (A-12): who do we know and who should I contact?
-import { Alert, Button, Chip, Container, Group, Pagination, Select, SegmentedControl, Skeleton, Text, TextInput, Title } from '@mantine/core';
+import { ActionIcon, Alert, Button, Chip, Container, Group, Pagination, Select, SegmentedControl, Skeleton, Text, TextInput, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCurrentUser, useLabel, type Schemas } from '../../pipeline/shared';
 import { PersonCards, PersonTable } from '../components/PersonRows';
+import { useDensity } from './useDensity';
 import { NewPersonDialog } from './NewPersonDialog';
 import { usePeople } from './usePeople';
 
@@ -29,6 +30,7 @@ export function NetworkList() {
     fn();
     setPage(0);
   };
+  const [density, setDensity] = useDensity();
   const filtered = !!(q || types.length || mine || consent || staleDays);
 
   return (
@@ -75,6 +77,32 @@ export function NetworkList() {
         </Group>
       </Chip.Group>
 
+      {/* List toolbar: result summary on the left, density toggle and refresh on the right. */}
+      <Group justify="space-between" mb="xs" data-testid="list-toolbar">
+        <Text size="sm" c="dimmed">
+          {t('network.summary', {
+            count: res.data?.page.totalElements ?? 0,
+            sort: t(staleDays ? 'network.fields.lastContact' : 'network.fields.name'),
+          })}
+          {filtered ? ` - ${t('network.filtered')}` : ''}
+        </Text>
+        <Group gap="xs">
+          <SegmentedControl
+            size="xs"
+            value={density}
+            onChange={(v) => setDensity(v as 'comfortable' | 'compact')}
+            aria-label={t('network.density')}
+            data={[
+              { value: 'comfortable', label: t('network.comfortable') },
+              { value: 'compact', label: t('network.compact') },
+            ]}
+          />
+          <ActionIcon variant="default" aria-label={t('network.refresh')} onClick={res.reload}>
+            &#8635;
+          </ActionIcon>
+        </Group>
+      </Group>
+
       {res.error ? (
         <Alert color="red" role="alert" title={t('network.loadFailed')}>
           <Button variant="light" onClick={res.reload}>
@@ -105,7 +133,7 @@ export function NetworkList() {
       ) : phone ? (
         <PersonCards people={people} />
       ) : (
-        <PersonTable people={people} />
+        <PersonTable people={people} compact={density === 'compact'} />
       )}
       {(res.data?.page.totalPages ?? 0) > 1 && (
         <Pagination mt="md" total={res.data!.page.totalPages} value={page + 1} onChange={(p) => setPage(p - 1)} />
