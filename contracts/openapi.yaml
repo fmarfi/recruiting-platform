@@ -35,6 +35,13 @@ info:
     - Status lists are closed sets (ADR 0002): `/reference-data` is read-only and there is no endpoint to
       edit them.
     - Errors are RFC 9457 problem details with a machine-readable `code` (see `ProblemDetail`).
+    - **Bulk updates (Wave 2)**: `POST /<resource>/bulk` changes the owner or the status of up to 100
+      records. Each record runs in its own transaction through the same service, lifecycle and events
+      as the single-record endpoint; the response is 200 with one `BulkItemResult` per id (`UPDATED`,
+      `SKIPPED` when already in that state, `FAILED` with a problem detail). Bulk status moves are
+      manager/admin only. No optimistic-lock check.
+    - **CSV exports (Wave 2)**: `GET /<resource>/export` takes the same filters as the list and returns
+      `text/csv` (UTF-8 with BOM, comma separator, RFC 4180 quoting, header row of English column keys).
 
     **Security (ADR 0007)**: session cookie after `POST /auth/login`. State-changing requests send the
     CSRF token from the `XSRF-TOKEN` cookie in the `X-XSRF-TOKEN` header. Every operation needs a logged-in
@@ -83,6 +90,8 @@ tags:
     description: Timeline and dashboard of an account (A-08, A-09). Module `pipeline` (backend-pipeline).
   - name: Home
     description: My day (UX-01). Module `pipeline` (backend-pipeline).
+  - name: Reports
+    description: Fixed firm-wide or per-consultant report tiles (Wave 2, S4). Read-only SQL projections (ADR 0010). Module `pipeline` (backend-pipeline).
   - name: Consent
     description: KVKK information notice, consent requests and consent records per person (S-01, NFR-01, NFR-02). Module `privacy` (security-privacy).
   - name: Public consent
@@ -428,6 +437,111 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/bulk:
+    post:
+      tags: [Accounts]
+      operationId: bulkUpdateAccounts
+      summary: Reassign the owner or change the status of up to 100 accounts (Wave 2, P5)
+      description: |
+        Exactly one of `ownerId` or `status` (400 `VALIDATION_FAILED` otherwise). Each account is updated
+        in its own transaction by the same code as `PATCH /accounts/{id}` or `PATCH /accounts/{id}/status`,
+        so the transition table, reason rule, guards (no close with open job orders), Envers audit, timeline
+        and `AccountUpdated` / `AccountStatusChanged` events apply per record. `reason` applies to every
+        item. A target that always needs a reason (ON_HOLD, CLOSED) without one is rejected up front (400
+        `REASON_REQUIRED`); otherwise per-item failures (`ILLEGAL_TRANSITION`, `TRANSITION_GUARD_FAILED`,
+        `REASON_REQUIRED` for CLOSED to LEAD, `NOT_FOUND`) are listed in `results` and do not stop the
+        others. Status moves are manager/admin only (403 `FORBIDDEN` for consultants); owner changes are
+        open to every role. An account already in the target state is `SKIPPED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountBulkRequest' }
+            examples:
+              changeStatus:
+                summary: Put two accounts on hold
+                value:
+                  ids: [0192a5b8-0000-7000-8000-000000000001, 0192a5b8-0000-7000-8000-000000000002]
+                  status: ON_HOLD
+                  reason: Client froze hiring until Q1
+              reassign:
+                summary: Reassign the owner
+                value:
+                  ids: [0192a5b8-0000-7000-8000-000000000001]
+                  ownerId: 0192a5b8-0000-7000-8000-0000000000f1
+      responses:
+        '200':
+          description: One result per id, in request order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BulkResult' }
+              example:
+                requested: 2
+                updated: 1
+                skipped: 0
+                failed: 1
+                results:
+                  - id: 0192a5b8-0000-7000-8000-000000000001
+                    outcome: UPDATED
+                    version: 4
+                  - id: 0192a5b8-0000-7000-8000-000000000002
+                    outcome: FAILED
+                    error:
+                      type: urn:recruiting:problem:illegal-transition
+                      title: Illegal status change
+                      status: 409
+                      detail: Cannot move from Lead to On hold.
+                      code: ILLEGAL_TRANSITION
+                      currentStatus: LEAD
+                      requestedStatus: ON_HOLD
+                      allowed: [PROPOSAL_SENT, CLOSED]
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /accounts/export:
+    get:
+      tags: [Accounts]
+      operationId: exportAccounts
+      summary: Accounts list as CSV with the current filters (Wave 2, P5)
+      description: |
+        Same filters and sort as `GET /accounts`, no paging; or only the selected rows with `id`. At most
+        10 000 rows (400 `VALIDATION_FAILED`: narrow the filters). Columns: `id, name, sector, city,
+        status, owner, openedOn, openJobCount, lastActivityAt, website`. Status is the enum name; the UI
+        does not translate CSV. Free-text `notes` are not exported.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/AccountStatus' }
+          style: form
+          explode: true
+        - name: sector
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/ExportIds'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: CSV file
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename="accounts-YYYY-MM-DD.csv"
+          content:
+            text/csv:
+              schema: { type: string }
+              example: |
+                id,name,sector,city,status,owner,openedOn,openJobCount,lastActivityAt,website
+                0192a5b8-0000-7000-8000-000000000001,Örnek Gıda A.Ş.,FMCG,İstanbul,ACTIVE,Deniz Aksoy,2026-03-02,2,2026-10-14T08:15:00Z,https://ornekgida.example
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /accounts/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -674,6 +788,62 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /people/export:
+    get:
+      tags: [People]
+      operationId: exportPeople
+      summary: Network list as CSV with the current filters (Wave 2, P5)
+      description: |
+        Same filters and sort as `GET /people`, no paging; or only the selected rows with `id`. At most
+        5 000 rows (400 `VALIDATION_FAILED`: narrow the filters). Anonymised people are left out. Columns:
+        `id, name, type, title, company, city, email, owner, consentStatus, lastContactAt`; no phone,
+        notes or employment history (KVKK data minimisation). Manager/admin only, like the person export
+        (`GET /people/{id}/export`). Writes one access-log entry (action `EXPORT`, entity `PERSON`) per
+        exported person. Not to be confused with the per-person data export `GET /people/{id}/export`.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - name: type
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/PersonType' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/OwnerId'
+        - name: consentStatus
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ConsentStatus' }
+          style: form
+          explode: true
+        - name: lastContactBefore
+          in: query
+          description: Last contact on or before this date (or never).
+          schema: { type: string, format: date }
+        - name: lastContactAfter
+          in: query
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/ExportIds'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: CSV file
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename="people-YYYY-MM-DD.csv"
+          content:
+            text/csv:
+              schema: { type: string }
+              example: |
+                id,name,type,title,company,city,email,owner,consentStatus,lastContactAt
+                0192a5b8-0000-7000-8000-0000000000b1,Elif Yıldırım,EXECUTIVE,Finance Director,Marmara Holding,Ankara,elif.yildirim@example.com,Deniz Aksoy,GIVEN,2026-10-01T10:00:00Z
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /people/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -1063,6 +1233,59 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/bulk:
+    post:
+      tags: [Job orders]
+      operationId: bulkUpdateJobOrders
+      summary: Reassign the owner or change the status of up to 100 job orders (Wave 2, P5)
+      description: |
+        Exactly one of `ownerId` or `status` (400 `VALIDATION_FAILED` otherwise). Each job order is updated
+        in its own transaction by the same code as `PATCH /job-orders/{id}` or `PATCH /job-orders/{id}/status`,
+        so the transition table, guards (OFFER to FILLED needs a PLACED application), Envers audit,
+        timeline and `JobOrderStatusChanged` events apply per record. `reason` applies to every item;
+        CANCELLED without a reason is rejected up front (400 `REASON_REQUIRED`). Per-item failures
+        (`ILLEGAL_TRANSITION`, `TRANSITION_GUARD_FAILED`, `NOT_FOUND`) are listed in `results` and do not
+        stop the others. Status moves are manager/admin only (403 `FORBIDDEN` for consultants); owner
+        changes are open to every role. A job order already in the target state is `SKIPPED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobOrderBulkRequest' }
+            examples:
+              cancel:
+                summary: Cancel two searches
+                value:
+                  ids: [0192a5b8-0000-7000-8000-0000000000a1, 0192a5b8-0000-7000-8000-0000000000a2]
+                  status: CANCELLED
+                  reason: Client restructured the finance team
+              reassign:
+                summary: Reassign the owner
+                value:
+                  ids: [0192a5b8-0000-7000-8000-0000000000a1]
+                  ownerId: 0192a5b8-0000-7000-8000-0000000000f1
+      responses:
+        '200':
+          description: One result per id, in request order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BulkResult' }
+              example:
+                requested: 2
+                updated: 1
+                skipped: 1
+                failed: 0
+                results:
+                  - id: 0192a5b8-0000-7000-8000-0000000000a1
+                    outcome: UPDATED
+                    version: 7
+                  - id: 0192a5b8-0000-7000-8000-0000000000a2
+                    outcome: SKIPPED
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /job-orders/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -1609,6 +1832,24 @@ paths:
             items: { $ref: '#/components/schemas/TimelineKind' }
           style: form
           explode: true
+        - name: activityType
+          in: query
+          description: |
+            Wave 2 (P3): narrows `ACTIVITY` entries to these activity types; entries of other kinds are
+            unaffected (combine with `kind=ACTIVITY` for activities only). Repeat for "any of".
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ActivityType' }
+          style: form
+          explode: true
+        - name: from
+          in: query
+          description: Wave 2 (P3). Entries at or after this instant (month grouping is done by the UI).
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          description: Wave 2 (P3). Entries before this instant.
+          schema: { type: string, format: date-time }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -1649,6 +1890,93 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MyDay' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /reports/dashboard:
+    get:
+      tags: [Reports]
+      operationId: getReportDashboard
+      summary: Firm-wide or per-consultant report tiles (Wave 2, S4)
+      description: |
+        Read-only aggregates computed on request from the owning modules' tables (ADR 0010); nothing is
+        stored. Without `ownerId` the figures are firm-wide; with it they are narrowed per tile: job
+        orders and placements by job-order owner, accounts by account owner, activities by the user who
+        logged them, next actions by their owner. Every status, stage and activity type is present (zero
+        counts included) in lifecycle order. Week = ISO week (Monday to Sunday) and quarter = calendar
+        quarter, both in the firm's time zone (`Europe/Istanbul`). Open to every role (pilot: no
+        record-level visibility, ADR 0007).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/OwnerId'
+      responses:
+        '200':
+          description: Dashboard tiles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportDashboard' }
+              example:
+                generatedAt: '2026-10-20T07:30:00Z'
+                owner: null
+                period:
+                  today: '2026-10-20'
+                  weekStart: '2026-10-19'
+                  weekEnd: '2026-10-25'
+                  quarterStart: '2026-10-01'
+                  quarterEnd: '2026-12-31'
+                openJobOrdersByStatus:
+                  total: 9
+                  counts:
+                    - { status: OPEN, count: 2 }
+                    - { status: SOURCING, count: 3 }
+                    - { status: SHORTLIST_SENT, count: 2 }
+                    - { status: INTERVIEWING, count: 1 }
+                    - { status: OFFER, count: 1 }
+                pipelineByStage:
+                  activeCandidates: 31
+                  counts:
+                    SOURCED: 12
+                    SCREENED: 8
+                    PRESENTED: 6
+                    CLIENT_INTERVIEW: 3
+                    OFFER: 2
+                    PLACED: 1
+                    REJECTED: 9
+                accountsByStatus:
+                  total: 24
+                  counts:
+                    - { status: LEAD, count: 7 }
+                    - { status: PROPOSAL_SENT, count: 3 }
+                    - { status: ACTIVE, count: 9 }
+                    - { status: ON_HOLD, count: 2 }
+                    - { status: CLOSED, count: 3 }
+                activitiesThisWeek:
+                  total: 14
+                  byType:
+                    - { type: CALL, count: 6 }
+                    - { type: VISIT, count: 1 }
+                    - { type: MEETING, count: 3 }
+                    - { type: EMAIL, count: 2 }
+                    - { type: NOTE, count: 2 }
+                overdueNextActions:
+                  count: 4
+                  oldestDueOn: '2026-10-09'
+                placementsThisQuarter:
+                  count: 1
+                  previousQuarterCount: 3
+                placementsByMonth:
+                  - { month: '2025-11', count: 0 }
+                  - { month: '2025-12', count: 1 }
+                  - { month: '2026-01', count: 0 }
+                  - { month: '2026-02', count: 1 }
+                  - { month: '2026-03', count: 0 }
+                  - { month: '2026-04', count: 2 }
+                  - { month: '2026-05', count: 0 }
+                  - { month: '2026-06', count: 1 }
+                  - { month: '2026-07', count: 1 }
+                  - { month: '2026-08', count: 1 }
+                  - { month: '2026-09', count: 1 }
+                  - { month: '2026-10', count: 1 }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /people/{id}/consent:
     parameters:
@@ -2236,6 +2564,16 @@ components:
       name: jobOrderId
       in: query
       schema: { $ref: '#/components/schemas/Id' }
+    ExportIds:
+      name: id
+      in: query
+      description: Export only these records (the list selection, repeat the parameter, max 100); the other filters are then ignored.
+      schema:
+        type: array
+        maxItems: 100
+        items: { $ref: '#/components/schemas/Id' }
+      style: form
+      explode: true
   responses:
     BadRequest:
       description: Validation failed (`VALIDATION_FAILED`) or a reason is missing (`REASON_REQUIRED`)
@@ -3175,6 +3513,9 @@ components:
         person: { oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }] }
         jobOrder: { oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }] }
         actor: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }], description: '`null` for system jobs.' }
+        activityType:
+          oneOf: [{ $ref: '#/components/schemas/ActivityType' }, { type: 'null' }]
+          description: Wave 2 (P3). Set for `ACTIVITY` entries (joined from `activity`), otherwise null or absent.
     TimelineEntryPage:
       type: object
       required: [content, page]
@@ -3221,6 +3562,161 @@ components:
             openJobOrders: { type: integer }
             candidatesInProcess: { type: integer }
             placedThisYear: { type: integer }
+    # ---------- reports (Wave 2, ADR 0010) ----------
+    ReportDashboard:
+      type: object
+      required: [generatedAt, owner, period, openJobOrdersByStatus, pipelineByStage, accountsByStatus, activitiesThisWeek, overdueNextActions, placementsThisQuarter, placementsByMonth]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        owner:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+          description: The `ownerId` filter, or null for firm-wide figures.
+        period:
+          type: object
+          required: [today, weekStart, weekEnd, quarterStart, quarterEnd]
+          properties:
+            today: { type: string, format: date }
+            weekStart: { type: string, format: date, description: Monday of the current ISO week. }
+            weekEnd: { type: string, format: date, description: Sunday of the current ISO week. }
+            quarterStart: { type: string, format: date }
+            quarterEnd: { type: string, format: date }
+        openJobOrdersByStatus:
+          type: object
+          description: Open job orders (not FILLED or CANCELLED) per status; the five open statuses, in lifecycle order.
+          required: [total, counts]
+          properties:
+            total: { type: integer, minimum: 0, examples: [9] }
+            counts:
+              type: array
+              items: { $ref: '#/components/schemas/JobOrderStatusCount' }
+        pipelineByStage:
+          type: object
+          description: Applications on open job orders per stage.
+          required: [activeCandidates, counts]
+          properties:
+            activeCandidates: { type: integer, minimum: 0, description: Not PLACED or REJECTED., examples: [31] }
+            counts: { $ref: '#/components/schemas/StageCounts' }
+        accountsByStatus:
+          type: object
+          description: All accounts per status (all five statuses, lifecycle order).
+          required: [total, counts]
+          properties:
+            total: { type: integer, minimum: 0, examples: [24] }
+            counts:
+              type: array
+              items: { $ref: '#/components/schemas/AccountStatusCount' }
+        activitiesThisWeek:
+          type: object
+          description: Activities with `occurredAt` in the current ISO week, per type (all types).
+          required: [total, byType]
+          properties:
+            total: { type: integer, minimum: 0, examples: [14] }
+            byType:
+              type: array
+              items: { $ref: '#/components/schemas/ActivityTypeCount' }
+        overdueNextActions:
+          type: object
+          description: Next actions not done with `dueOn` before today.
+          required: [count]
+          properties:
+            count: { type: integer, minimum: 0, examples: [4] }
+            oldestDueOn: { type: [string, 'null'], format: date }
+        placementsThisQuarter:
+          type: object
+          description: Applications in stage PLACED whose `stageChangedAt` falls in the current quarter (and the previous one, for the trend).
+          required: [count, previousQuarterCount]
+          properties:
+            count: { type: integer, minimum: 0, examples: [1] }
+            previousQuarterCount: { type: integer, minimum: 0, examples: [3] }
+        placementsByMonth:
+          type: array
+          description: Placements per calendar month, the last 12 months including the current one, oldest first (S4 "Placements per month" card).
+          minItems: 12
+          maxItems: 12
+          items: { $ref: '#/components/schemas/MonthCount' }
+    JobOrderStatusCount:
+      type: object
+      required: [status, count]
+      properties:
+        status: { $ref: '#/components/schemas/JobOrderStatus' }
+        count: { type: integer, minimum: 0, examples: [3] }
+    AccountStatusCount:
+      type: object
+      required: [status, count]
+      properties:
+        status: { $ref: '#/components/schemas/AccountStatus' }
+        count: { type: integer, minimum: 0, examples: [9] }
+    ActivityTypeCount:
+      type: object
+      required: [type, count]
+      properties:
+        type: { $ref: '#/components/schemas/ActivityType' }
+        count: { type: integer, minimum: 0, examples: [6] }
+    MonthCount:
+      type: object
+      required: [month, count]
+      properties:
+        month: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$', description: 'YYYY-MM', examples: ['2026-10'] }
+        count: { type: integer, minimum: 0, examples: [1] }
+    # ---------- bulk updates (Wave 2) ----------
+    BulkIds:
+      type: array
+      description: Records to update, at most 100, no duplicates.
+      minItems: 1
+      maxItems: 100
+      uniqueItems: true
+      items: { $ref: '#/components/schemas/Id' }
+    AccountBulkRequest:
+      type: object
+      description: Exactly one of `ownerId` or `status`.
+      required: [ids]
+      properties:
+        ids: { $ref: '#/components/schemas/BulkIds' }
+        ownerId:
+          $ref: '#/components/schemas/Id'
+          description: New responsible consultant (an active user).
+        status: { $ref: '#/components/schemas/AccountStatus' }
+        reason: { $ref: '#/components/schemas/Reason' }
+    JobOrderBulkRequest:
+      type: object
+      description: Exactly one of `ownerId` or `status`.
+      required: [ids]
+      properties:
+        ids: { $ref: '#/components/schemas/BulkIds' }
+        ownerId:
+          $ref: '#/components/schemas/Id'
+          description: New owner (an active user).
+        status: { $ref: '#/components/schemas/JobOrderStatus' }
+        reason: { $ref: '#/components/schemas/Reason' }
+    BulkOutcome:
+      type: string
+      description: '`UPDATED` = changed; `SKIPPED` = already in the requested state (no change, no event); `FAILED` = see `error`.'
+      enum: [UPDATED, SKIPPED, FAILED]
+    BulkItemResult:
+      type: object
+      required: [id, outcome]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        outcome: { $ref: '#/components/schemas/BulkOutcome' }
+        version:
+          type: [integer, 'null']
+          format: int64
+          description: New version when UPDATED.
+        error:
+          oneOf: [{ $ref: '#/components/schemas/ProblemDetail' }, { type: 'null' }]
+          description: 'FAILED only: the problem the single-record endpoint would have returned (e.g. ILLEGAL_TRANSITION with `allowed`, TRANSITION_GUARD_FAILED with `blockingItems`, REASON_REQUIRED, NOT_FOUND).'
+    BulkResult:
+      type: object
+      required: [requested, updated, skipped, failed, results]
+      properties:
+        requested: { type: integer, minimum: 1, examples: [2] }
+        updated: { type: integer, minimum: 0, examples: [1] }
+        skipped: { type: integer, minimum: 0, examples: [0] }
+        failed: { type: integer, minimum: 0, examples: [1] }
+        results:
+          type: array
+          description: One entry per requested id, in request order.
+          items: { $ref: '#/components/schemas/BulkItemResult' }
     # ---------- privacy ----------
     PrivacyNoticeRef:
       type: object
