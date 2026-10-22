@@ -1,5 +1,6 @@
 {
   "network": {
+    "summary": "{{count}} items - sorted by {{sort}}", "filtered": "filtered", "density": "Density", "comfortable": "Comfortable", "compact": "Compact", "refresh": "Refresh",
     "accounts": "Accounts", "addAction": "Add action", "addConnection": "Add connection", "addToJob": "Add to a job", "all": "All", "career": "Career", "clear": "Clear",
     "consentFailed": "Could not send the consent request.", "consentNoEmail": "This person has no email address.", "consentTo": "A consent request will be sent to {{email}}.",
     "createFailed": "Could not create the person.", "daysAgo": "{{count}} days", "daysShort": "{{count}} d ago",

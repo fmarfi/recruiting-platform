@@ -19,10 +19,10 @@ function LastContact({ at }: { at?: string | null }) {
   );
 }
 
-export function PersonTable({ people }: { people: Person[] }) {
+export function PersonTable({ people, compact = false }: { people: Person[]; compact?: boolean }) {
   const { t } = useTranslation();
   return (
-    <Table highlightOnHover>
+    <Table highlightOnHover verticalSpacing={compact ? 4 : 'sm'}>
       <Table.Thead>
         <Table.Tr>
           <Table.Th>{t('network.fields.name')}</Table.Th>
