@@ -27,7 +27,10 @@ Command-bar URL params for the network and job screens (from the frontend-shell 
 - Architect branch `worktree-wave2a-architect` (head 8d81d21): VERIFIED by the orchestrator (tsc clean, 24 tests, `mvn -q -B verify` exit 0 without -Pintegration). Ready to merge.
 - Code review of frontend-shell: DONE, no blockers, 6 should-fix + nits. The frontend-shell agent was asked to fix them (same worktree). After it reports: re-run tsc, vitest, vite build there yourself, then merge. Review items are in that agent's brief; key ones: Object.hasOwn in operators.ts, repeated `status:` operator, AccountsList filters in the URL, no people names in localStorage recents (KVKK), viewStore setItem failure.
 - `db-engineer` was launched on worktree `..\wt-db` (branch `worktree-wave2a-db`, based on the architect branch). Check `git -C ..\wt-db log --oneline -5` and `docs/handoffs/db-engineer.md` there; verify with `mvn -q -B verify` (and `-Pintegration` with Docker running).
-- Not yet started: backend-accounts (/views), backend-pipeline + security-privacy (/bulk-actions), frontend-pipeline (network on the grid). They follow db-engineer's merge.
+- LATER UPDATE: frontend-shell fixes done and verified by the orchestrator (79 tests, tsc clean, build ok). Architect + frontend-shell are MERGED into branch `wave2a-integration` (worktree `..\wt-integration`, head e24ec0a); tsc/79 tests/vite build verified on the merge.
+- `frontend-pipeline` was launched on `..\wt-frontend-pipeline` (branch `worktree-wave2a-frontend-pipeline`, based on wave2a-integration): network list and job orders list onto the DataGrid. Not yet reviewed or verified.
+- The main checkout (`recruiting-platform`, branch `feature/network-customer-tools`) does NOT contain Wave 2a yet: continue from `wave2a-integration`.
+- Not yet started: backend-accounts (/views), backend-pipeline + security-privacy (/bulk-actions). They follow db-engineer's merge (rebase their worktrees on wave2a-integration + db branch).
 
 ## Steps for tomorrow (in order)
 1. **Check the agents.** `git -C ..\wt-architect log --oneline -3`; read `docs/handoffs/architect.md` in `wt-architect` and the review result for frontend-shell (or rerun it).
