@@ -1,4 +1,4 @@
-﻿import type { ColumnDef, ColumnState, SortState } from './types';
+import type { ColumnDef, ColumnState, SortState } from './types';
 
 const key = (gridId: string, what: string) => `grid.${gridId}.${what}`;
 

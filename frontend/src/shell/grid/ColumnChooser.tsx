@@ -1,4 +1,4 @@
-﻿import { ActionIcon, Button, Checkbox, Group, Popover, Stack, Text } from '@mantine/core';
+import { ActionIcon, Button, Checkbox, Group, Popover, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import type { GridColumns } from './useGridColumns';
 import type { ColumnDef } from './types';

@@ -1,27 +1,50 @@
-﻿const KEY = 'command.recent';
+const PREFIX = 'command.recent.';
+const LEGACY_KEY = 'command.recent';
 const MAX = 8;
+const MAX_AGE_MS = 30 * 24 * 3600 * 1000;
 
-export interface RecentItem {
-  to: string;
-  title: string;
-  sub?: string;
+export type RecentKind = 'account' | 'person' | 'job';
+
+/** Only the kind and id are stored (KVKK: no names, titles or companies in the browser); labels are fetched when the bar opens. */
+export interface RecentRef {
+  kind: RecentKind;
+  id: string;
+  at: number;
 }
 
-/** Records opened from the command bar, kept in this browser only. Storage may be blocked, so every access is guarded. */
-export function loadRecentItems(): RecentItem[] {
+const KINDS: RecentKind[] = ['account', 'person', 'job'];
+const keyFor = (userId: string) => `${PREFIX}${userId}`;
+
+export function recentPath(r: Pick<RecentRef, 'kind' | 'id'>): string {
+  return r.kind === 'account' ? `/accounts/${r.id}` : r.kind === 'person' ? `/people/${r.id}` : `/job-orders/${r.id}`;
+}
+
+/** Per user, newest first, entries older than 30 days dropped. Storage may be blocked, so every access is guarded. */
+export function loadRecentRefs(userId: string, now = Date.now()): RecentRef[] {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
-    return Array.isArray(v)
-      ? v.filter((x): x is RecentItem => !!x && typeof x === 'object' && typeof (x as RecentItem).to === 'string' && typeof (x as RecentItem).title === 'string').slice(0, MAX)
-      : [];
+    localStorage.removeItem(LEGACY_KEY); // older builds kept titles here
+    const v = JSON.parse(localStorage.getItem(keyFor(userId)) ?? '[]') as unknown;
+    if (!Array.isArray(v)) return [];
+    return v
+      .filter((x): x is RecentRef => !!x && typeof x === 'object' && KINDS.includes((x as RecentRef).kind) && typeof (x as RecentRef).id === 'string' && typeof (x as RecentRef).at === 'number' && now - (x as RecentRef).at < MAX_AGE_MS)
+      .slice(0, MAX);
   } catch {
     return [];
   }
 }
 
-export function pushRecentItem(item: RecentItem): void {
+export function pushRecentRef(userId: string, ref: Pick<RecentRef, 'kind' | 'id'>, now = Date.now()): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify([item, ...loadRecentItems().filter((x) => x.to !== item.to)].slice(0, MAX)));
+    const next = [{ ...ref, at: now }, ...loadRecentRefs(userId, now).filter((x) => !(x.kind === ref.kind && x.id === ref.id))].slice(0, MAX);
+    localStorage.setItem(keyFor(userId), JSON.stringify(next));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function clearRecentRefs(userId: string): void {
+  try {
+    localStorage.removeItem(keyFor(userId));
   } catch {
     /* storage unavailable */
   }

@@ -1,4 +1,4 @@
-﻿import { Box, Button, Card, Checkbox, Group, SegmentedControl, Stack, Table, Text, UnstyledButton } from '@mantine/core';
+import { Box, Button, Card, Checkbox, Group, SegmentedControl, Stack, Table, Text, UnstyledButton } from '@mantine/core';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ErrorBanner } from '../components/ErrorBanner';

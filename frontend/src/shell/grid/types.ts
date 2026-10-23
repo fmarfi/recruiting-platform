@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 /** Sort as the server expects it ("field,dir"). */
 export interface SortState {

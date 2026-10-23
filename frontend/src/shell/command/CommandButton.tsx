@@ -1,4 +1,4 @@
-﻿import { Button, Kbd } from '@mantine/core';
+import { Button, Kbd } from '@mantine/core';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 

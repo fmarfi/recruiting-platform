@@ -1,22 +1,38 @@
-﻿import { formatSort, type SortState } from '../../shell/grid';
+import { formatSort, parseSort, type SortState } from '../../shell/grid';
 import type { AccountFilters } from './useAccounts';
 
 const STATUSES = ['LEAD', 'PROPOSAL_SENT', 'ACTIVE', 'ON_HOLD', 'CLOSED'];
+const SORT_FIELDS = ['name', 'status', 'openedOn', 'lastActivityAt', 'openJobCount'];
 export const DEFAULT_SORT = 'lastActivityAt,desc';
 
 /**
- * Filters carried in the URL, e.g. /accounts?owner=me&status=ACTIVE&q=holding (written by the command bar).
- * owner: "me" or absent = my accounts (the default), "all" = everybody. status: one account status constant.
+ * The accounts list state lives in the URL, e.g. /accounts?owner=me&status=ACTIVE&q=holding&page=2&sort=name,asc
+ * (the command bar writes the same params). owner: absent or "me" = my accounts (the default), "all" = everybody.
+ * status: one account status constant (a repeated or comma separated list keeps the last one, the list takes a single status).
+ * page is 1-based; defaults are left out of the URL.
  */
 export function filtersFromParams(params: URLSearchParams, meId: string): AccountFilters {
-  const status = (params.get('status') ?? '').toUpperCase();
+  const raw = params.getAll('status').join(',').split(',').pop() ?? '';
+  const status = raw.trim().toUpperCase();
+  const sort = parseSort(params.get('sort'));
+  const page = Number(params.get('page'));
   return {
     q: params.get('q') ?? '',
     status: STATUSES.includes(status) ? status : '',
     ownerId: params.get('owner') === 'all' ? '' : meId,
-    page: 0,
-    sort: DEFAULT_SORT,
+    page: Number.isInteger(page) && page > 1 ? page - 1 : 0,
+    sort: sort && SORT_FIELDS.includes(sort.field) ? formatSort(sort) : DEFAULT_SORT,
   };
+}
+
+export function paramsFromFilters(f: AccountFilters): URLSearchParams {
+  const p = new URLSearchParams();
+  if (!f.ownerId) p.set('owner', 'all');
+  if (f.status) p.set('status', f.status);
+  if (f.q) p.set('q', f.q);
+  if (f.page > 0) p.set('page', String(f.page + 1));
+  if (f.sort !== DEFAULT_SORT) p.set('sort', f.sort);
+  return p;
 }
 
 /** What a saved view stores for the accounts list. The owner is kept as a scope so a view works for any user. */
@@ -31,4 +47,3 @@ export const toView = (f: AccountFilters): AccountView => ({ q: f.q, status: f.s
 export function applyView(f: AccountFilters, v: { filters: AccountView; sort?: SortState | null }, meId: string): AccountFilters {
   return { ...f, q: v.filters.q ?? '', status: v.filters.status ?? '', ownerId: v.filters.owner === 'all' ? '' : meId, page: 0, sort: v.sort ? formatSort(v.sort) : f.sort };
 }
-

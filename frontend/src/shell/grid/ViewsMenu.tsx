@@ -1,4 +1,4 @@
-﻿import { ActionIcon, Button, Group, Menu, Modal, Stack, TextInput } from '@mantine/core';
+import { ActionIcon, Button, Group, Menu, Modal, Stack, Text, TextInput } from '@mantine/core';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ColumnState, SavedView, SortState, ViewStore } from './types';
@@ -16,6 +16,7 @@ export function ViewsMenu<F>({ store, current, onApply }: Props<F>) {
   const [views, setViews] = useState<SavedView<F>[]>([]);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
+  const [confirm, setConfirm] = useState(false);
   const refresh = useCallback(() => void store.list().then(setViews, () => setViews([])), [store]);
   useEffect(refresh, [refresh]);
 
@@ -23,9 +24,14 @@ export function ViewsMenu<F>({ store, current, onApply }: Props<F>) {
     const n = name.trim();
     if (!n) return;
     const existing = views.find((v) => v.name.toLowerCase() === n.toLowerCase());
+    if (existing && !confirm) {
+      setConfirm(true);
+      return;
+    }
     await store.save({ id: existing?.id, name: n, ...current });
     setNaming(false);
     setName('');
+    setConfirm(false);
     refresh();
   };
 
@@ -55,18 +61,29 @@ export function ViewsMenu<F>({ store, current, onApply }: Props<F>) {
             </Group>
           ))}
           <Menu.Divider />
-          <Menu.Item onClick={() => setNaming(true)}>{t('grid.saveView')}</Menu.Item>
+          <Menu.Item onClick={() => {
+              setConfirm(false);
+              setNaming(true);
+            }}>{t('grid.saveView')}</Menu.Item>
         </Menu.Dropdown>
       </Menu>
       <Modal opened={naming} onClose={() => setNaming(false)} title={t('grid.saveView')} size="sm">
         <Stack>
-          <TextInput data-autofocus label={t('grid.viewName')} value={name} onChange={(e) => setName(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && void save()} />
+          <TextInput data-autofocus label={t('grid.viewName')} value={name} onChange={(e) => {
+              setName(e.currentTarget.value);
+              setConfirm(false);
+            }} onKeyDown={(e) => e.key === 'Enter' && void save()} />
+          {confirm && (
+            <Text size="sm" role="alert">
+              {t('grid.overwrite', { name: name.trim() })}
+            </Text>
+          )}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setNaming(false)}>
               {t('shell.cancel')}
             </Button>
             <Button onClick={() => void save()} disabled={!name.trim()}>
-              {t('shell.save')}
+              {confirm ? t('grid.replace') : t('shell.save')}
             </Button>
           </Group>
         </Stack>

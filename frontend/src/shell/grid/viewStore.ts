@@ -1,10 +1,16 @@
-﻿import type { NewView, SavedView, ViewStore } from './types';
+import type { NewView, SavedView, ViewStore } from './types';
 
-/** localStorage-backed ViewStore, one list per grid id. Storage failures degrade to an in-memory list. */
-export function localViewStore<F = unknown>(gridId: string): ViewStore<F> {
+/**
+ * localStorage-backed ViewStore, one list per grid id. The in-memory list is the source of truth once a write
+ * has failed (blocked or full storage): it is never replaced by the stale stored copy, and `onPersistError`
+ * lets the screen tell the user the views will not survive a reload.
+ */
+export function localViewStore<F = unknown>(gridId: string, onPersistError?: () => void): ViewStore<F> {
   const k = `grid.${gridId}.views`;
   let memory: SavedView<F>[] = [];
+  let unsynced = false;
   const read = (): SavedView<F>[] => {
+    if (unsynced) return memory;
     try {
       const v = JSON.parse(localStorage.getItem(k) ?? 'null') as unknown;
       if (Array.isArray(v)) memory = v.filter((x): x is SavedView<F> => !!x && typeof x === 'object' && typeof (x as SavedView).id === 'string' && typeof (x as SavedView).name === 'string');
@@ -17,8 +23,10 @@ export function localViewStore<F = unknown>(gridId: string): ViewStore<F> {
     memory = v;
     try {
       localStorage.setItem(k, JSON.stringify(v));
+      unsynced = false;
     } catch {
-      /* storage unavailable */
+      unsynced = true;
+      onPersistError?.();
     }
   };
   return {

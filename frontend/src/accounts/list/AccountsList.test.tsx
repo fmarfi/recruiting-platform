@@ -1,6 +1,6 @@
-﻿import { MantineProvider } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../i18n';
 import { AuthContext, type AuthCtx } from '../../shell/auth/useAuth';
@@ -15,11 +15,17 @@ vi.mock('./useAccounts', () => ({ useAccounts: vi.fn() }));
 const acc = { id: 'a1', name: 'Acme', sector: 'FMCG', city: 'Izmir', owner: { id: 'u1', name: 'Una' }, status: 'ACTIVE', openJobCount: 2, lastActivityAt: null, openedOn: '2025-01-01', website: null };
 const auth = { user: { id: 'u1', name: 'U' }, status: 'authed', isManager: false, isAdmin: false } as unknown as AuthCtx;
 
+function Jump() {
+  const nav = useNavigate();
+  return <button onClick={() => nav('/accounts?status=LEAD&owner=all')}>jump</button>;
+}
+
 function renderAt(url: string) {
   return render(
     <MantineProvider env="test">
       <AuthContext.Provider value={auth}>
         <MemoryRouter initialEntries={[url]}>
+          <Jump />
           <AccountsList />
         </MemoryRouter>
       </AuthContext.Provider>
@@ -52,6 +58,16 @@ describe('AccountsList', () => {
     expect(screen.getByRole('columnheader', { name: /Last activity/ })).toHaveAttribute('aria-sort', 'descending');
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Name' }));
     expect(vi.mocked(useAccounts)).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'name,asc' }));
+  });
+
+  it('applies a URL change while open, and writes filter changes back to the URL', () => {
+    renderAt('/accounts');
+    expect(vi.mocked(useAccounts)).toHaveBeenLastCalledWith(expect.objectContaining({ status: '', ownerId: 'u1' }));
+    fireEvent.click(screen.getByText('jump'));
+    expect(vi.mocked(useAccounts)).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'LEAD', ownerId: '' }));
+    // sorting goes through the URL too: the next render reads it back
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Name' }));
+    expect(vi.mocked(useAccounts)).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'LEAD', ownerId: '', sort: 'name,asc' }));
   });
 
   it('saves the current view and lists it', async () => {

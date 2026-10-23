@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { matchesText, moveActive, parseQuery, removeOperator, routeFor } from './operators';
 
 describe('parseQuery', () => {
@@ -22,8 +22,19 @@ describe('parseQuery', () => {
     expect(parseQuery('TYPE:Exec CONSENT:GIVEN').operators.map((o) => o.value)).toEqual(['EXECUTIVE', 'GIVEN']);
     expect(parseQuery('status:on-hold').operators[0]!.value).toBe('ON_HOLD');
   });
-  it('handles an unclosed quote and records token positions', () => {
-    const p = parseQuery('a company:"Y Hol');
+  it('does not let a stray quote swallow the rest of the input', () => {
+    const p = parseQuery('ali " owner:me stale:90');
+    expect(p.operators.map((o) => o.key)).toEqual(['owner', 'stale']);
+    expect(p.text).toBe('ali');
+    expect(parseQuery('company:"Y owner:me').operators.map((o) => o.key)).toEqual(['company', 'owner']);
+  });
+  it('ignores inherited object keys as operators', () => {
+    const p = parseQuery('constructor:x toString:y __proto__:z');
+    expect(p.operators).toEqual([]);
+    expect(p.text).toBe('constructor:x toString:y __proto__:z');
+  });
+  it('records token positions', () => {
+    const p = parseQuery('a company:"Y Hol"');
     expect(p.operators[0]).toMatchObject({ key: 'company', value: 'Y Hol', start: 2 });
     const q = parseQuery('x owner:me y');
     expect(removeOperator('x owner:me y', q.operators[0]!)).toBe('x y');
@@ -46,6 +57,15 @@ describe('routeFor', () => {
     const r = routeFor(parseQuery('type:exec status:active'))!;
     expect(r.path).toBe('/network');
     expect(r.dropped.map((o) => o.key)).toEqual(['status']);
+  });
+  it('keeps only the last status when it is repeated', () => {
+    expect(routeFor(parseQuery('status:active status:lead'))!.to).toBe('/accounts?status=LEAD');
+    expect(routeFor(parseQuery('status:open status:filled'))!.to).toBe('/job-orders?status=FILLED');
+  });
+  it('flags city and company as not applied yet on /network', () => {
+    const r = routeFor(parseQuery('city:izmir type:exec company:"Y Holding"'))!;
+    expect(r.pending.map((o) => o.key)).toEqual(['city', 'company']);
+    expect(routeFor(parseQuery('type:exec'))!.pending).toEqual([]);
   });
   it('returns null without list operators', () => {
     expect(routeFor(parseQuery('ahmet'))).toBeNull();

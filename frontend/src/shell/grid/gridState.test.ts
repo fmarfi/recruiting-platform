@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultColumnState, formatSort, loadColumnState, moveColumn, nextSort, normalizeColumnState, pageSelection, parseSort, saveColumnState, toggleColumn, toggleId, togglePage, visibleColumns } from './gridState';
 import { toCsv } from './csv';
 import { localViewStore } from './viewStore';
@@ -89,6 +89,21 @@ describe('selection', () => {
 describe('csv', () => {
   it('quotes separators and neutralises formulas', () => {
     expect(toCsv(['a', 'b'], [['=1+1', 'x;y'], [null, 'q"r']])).toBe('a;b\r\n\'=1+1;"x;y"\r\n;"q""r"');
+  });
+});
+
+describe('local view store when storage fails', () => {
+  it('keeps the in-memory list as the truth and reports the error', async () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    const onErr = vi.fn();
+    const store = localViewStore<{ q: string }>('f', onErr);
+    await store.save({ name: 'A', filters: { q: '' } });
+    await store.save({ name: 'B', filters: { q: '' } });
+    expect((await store.list()).map((x) => x.name)).toEqual(['A', 'B']);
+    expect(onErr).toHaveBeenCalledTimes(2);
+    spy.mockRestore();
   });
 });
 
