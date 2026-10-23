@@ -1,34 +1,28 @@
-# Hand-off: frontend-shell · W1-13 · 2026-10-19
+﻿# Hand-off: frontend-shell · Wave 2a (DataGrid, command bar, accounts adoption) · 2026-10-23
 
-**Branch / commits:** `worktree-wave1b-frontend-shell` · 1 commit (43acc00)
+**Branch / commits:** `worktree-wave2a-frontend-shell` · see `git log --oneline` (earlier wave notes: git history of this file)
 
 **Done**
-- shell/: AuthProvider, RequireAuth, /login, layout (sidebar on laptop, bottom tabs on phone, search, + New, TR/EN, user menu), reference-data provider, shared badges/states.
-- shell/home: My day (stats, grouped next actions with done/snooze/undo, side cards, empty states).
-- shell/search: header typeahead with recent searches, /search page with grouped results.
-- accounts/: list (filters, sort, cards on phone), account page (header, status change with reason, dashboard strip, jobs/contacts/proposals tabs, timeline), new account, log activity, add action dialogs.
-- settings/: Users (list, role change, enable/disable, invite; admin edits, manager read only), Roles matrix, Status lists (read only). Consultants see "no access".
-- i18n: strings in `src/{shell,accounts,settings}/i18n/{tr,en}.json`, merged in `src/i18n/index.ts`. Test checks every used key exists in TR and EN.
-- routes.tsx: real shell and screens; job-orders, network, people stay placeholders for frontend-pipeline.
+- shell/grid: generic `DataGrid<T>` (typed ColumnDef, sort callback + aria-sort, row select + select-all-on-page + `bulkActions` slot, density, sticky header, skeleton/empty/error, phone cards, CSV of visible columns of the current page), column chooser (order+visibility in localStorage `grid.<id>.columns`), `ViewStore` interface + `localViewStore`, `ViewsMenu`, `groupBy` prop as extension point (renders group header rows; no UI yet). Import from `shell/grid` (index.ts).
+- shell/command: Ctrl/Cmd+K palette + header button; pure `parseQuery`/`routeFor`; grouped /search results (existing endpoint), quick actions, recent items (`command.recent`), combobox/listbox keyboard nav.
+- accounts/list: grid adoption, column chooser, saved views (local), CSV export, filters read from URL.
+- Tests: 64 total (baseline 24).
 
 **Not done / left**
-- Settings sections Import, Retention, Audit log show "not available" (no spec'd UI built).
-- Not run against the real backend; manual click-through on phone width not done.
-- Account page: add/end contact and new job/proposal buttons not built (pipeline screens own jobs).
+- Bulk selection is off on accounts (no bulk endpoint yet); CSV exports the current page only (a full export needs a server endpoint).
+- Server-backed ViewStore: implement `ViewStore<F>` over /views and swap in `localViewStore(...)` call sites.
 
-**Others must know**
-- frontend-pipeline: add routes inside the `<Route element={<RequireAuth><Shell/></RequireAuth>}>` group in routes.tsx; use `useReference()` for labels and `ToneBadge`/`StatusBadge` from shell/components.
-- Providers (Auth, ReferenceData) now live in routes.tsx, not App.tsx.
+**Others must know: URL params written by the command bar (frontend-pipeline to read)**
+- `/network`: `owner=me`, `stale=<days>`, `type=<PersonType>[,<PersonType>]` (EXECUTIVE|CLIENT_CONTACT|REFERRER|CANDIDATE), `consent=<ConsentStatus>` (NOT_SENT|SENT|GIVEN|REFUSED|WITHDRAWN), `city=<text>`, `company=<text>`, `q=<free text>`.
+- `/job-orders`: `owner=me`, `status=<JobOrderStatus>`, `q=<free text>`.
+- `/accounts` (done here): `owner=me|all` (absent = me), `status=<AccountStatus>`, `q`.
+- Operator syntax: `owner:me stale:90 type:exec consent:given city:izmir company:"Y Holding" status:active`; routing is in `shell/command/operators.ts` (`routeFor`). Unknown operators stay free text.
+- /network has no city/company filter in the API; the pipeline owner decides whether to filter client-side.
 
-**Change requests**
-- none
+**Change requests** (for files you don't own)
+- frontend-pipeline · network/list, joborders/list · read the params above on mount and on query change.
+- frontend-pipeline · network/list/csv.ts · may re-export `shell/grid/csv.ts` (identical helper) to avoid duplicates.
 
 **Verified with**
-- `npx tsc --noEmit` → clean; `npx vitest run` → 7 passed; `npx vite build` → ok (in frontend/).
+- `npx tsc --noEmit` clean; `npx vitest run` 64 passed; `npx vite build` ok (in frontend/).
 
-## Wave 1b frontend fixes (branch worktree-wave1b-frontend-fixes)
-- Global + New: Log activity / Add action open pipeline QuickAdd (onSaved reloads screen); Person item opens NewPersonDialog; account-level Log/Add dialogs removed from the menu. Phone floating + (Shell.tsx) opens QuickAdd.
-- pipeline useRefData/useCurrentUser now read the shell ReferenceDataProvider/AuthProvider (one /reference-data and /auth/me fetch). Tests rendering pipeline screens need AuthContext and RefContext providers.
-- QuickAdd split into QuickAdd.tsx, QuickAddFields.tsx, quickAddState.ts; 4 component tests added.
-- Settings: Import (upload, review, commit/discard, history), Retention (admin edits, dry/real run, runs, flagged), Audit log (admin only, action filter). Account page: Add contact, End contact, New job, New proposal.
-- Not done: Import/Retention/Audit have no component tests; phone FAB is not covered by a test; flagged/runs lists show only the first page.
