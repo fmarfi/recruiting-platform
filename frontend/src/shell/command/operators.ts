@@ -1,4 +1,4 @@
-﻿// Pure parser for the command-bar operator syntax: owner:me stale:90 city:izmir type:exec consent:given company:"Y Holding" status:active
+// Pure parser for the command-bar operator syntax: owner:me stale:90 city:izmir type:exec consent:given company:"Y Holding" status:active
 // Unknown operators, empty or invalid values stay in the free text, so typing never loses input.
 
 export type OperatorKey = 'owner' | 'stale' | 'city' | 'type' | 'consent' | 'company' | 'status';
@@ -53,7 +53,7 @@ interface Token {
   end: number;
 }
 
-/** Splits on whitespace outside double quotes. An unclosed quote runs to the end. */
+/** Splits on whitespace outside double quotes. A stray quote without a partner does not swallow the rest. */
 function tokenize(input: string): Token[] {
   const out: Token[] = [];
   let i = 0;
@@ -65,7 +65,8 @@ function tokenize(input: string): Token[] {
     const start = i;
     let quoted = false;
     while (i < input.length && (quoted || !/\s/.test(input[i]!))) {
-      if (input[i] === '"') quoted = !quoted;
+      // a quote only opens a phrase when a closing quote follows; a stray one is plain text
+      if (input[i] === '"' && (quoted || input.indexOf('"', i + 1) !== -1)) quoted = !quoted;
       i++;
     }
     out.push({ text: input.slice(start, i), start, end: i });
@@ -81,7 +82,7 @@ export function parseQuery(input: string): ParsedQuery {
   for (const tok of tokenize(input)) {
     const m = /^([A-Za-z]+):(.*)$/.exec(tok.text);
     const key = m ? (m[1]!.toLowerCase() as OperatorKey) : null;
-    if (m && key && key in NORMALIZERS) {
+    if (m && key && Object.hasOwn(NORMALIZERS, key)) {
       const value = NORMALIZERS[key](unquote(m[2]!));
       if (value) {
         operators.push({ key, value, start: tok.start, end: tok.end });
@@ -104,6 +105,9 @@ export interface OperatorRoute {
   params: [string, string][];
   /** Operators that this list cannot filter by; shown dimmed, not sent. */
   dropped: ParsedOperator[];
+  /** Sent in the URL, but the API cannot filter by them yet (city, company); shown dimmed as 
+ot applied yet. */
+  pending: ParsedOperator[];
   /** path + query string, ready for navigate(). */
   to: string;
 }
@@ -119,7 +123,7 @@ const ORDER: OperatorKey[] = ['owner', 'stale', 'type', 'consent', 'city', 'comp
  * Which list screen the operators belong to, with filters as query params:
  * /network?owner=me&stale=90&type=EXECUTIVE&consent=GIVEN&city=izmir&company=Y+Holding&q=text,
  * /accounts?owner=me&status=ACTIVE&q=text, /job-orders?owner=me&status=OPEN&q=text.
- * Repeated operators of the same key are joined with commas (type=EXECUTIVE,CANDIDATE).
+ * Repeated type/city/company operators are joined with commas (type=EXECUTIVE,CANDIDATE); owner, stale and status keep the last one.
  * Returns null when no operator maps to a list.
  */
 export function routeFor(p: ParsedQuery): OperatorRoute | null {
@@ -136,11 +140,12 @@ export function routeFor(p: ParsedQuery): OperatorRoute | null {
   const params: [string, string][] = [];
   for (const k of ORDER) {
     const vals = [...new Set(kept.filter((o) => o.key === k).map((o) => o.value))];
-    if (vals.length) params.push([k, k === 'owner' || k === 'stale' ? vals[vals.length - 1]! : vals.join(',')]);
+    if (vals.length) params.push([k, k === 'owner' || k === 'stale' || k === 'status' ? vals[vals.length - 1]! : vals.join(',')]);
   }
   if (p.text) params.push(['q', p.text]);
+  const pending = path === '/network' ? kept.filter((o) => o.key === 'city' || o.key === 'company') : [];
   const qs = new URLSearchParams(params).toString();
-  return { path, params, dropped, to: qs ? `${path}?${qs}` : path };
+  return { path, params, dropped, pending, to: qs ? `${path}?${qs}` : path };
 }
 
 /** Wrap-around arrow navigation for the listbox: -1 means "nothing active yet". */
@@ -155,3 +160,4 @@ export function matchesText(label: string, text: string): boolean {
   const f = (s: string) => fold(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return f(label).includes(f(text));
 }
+

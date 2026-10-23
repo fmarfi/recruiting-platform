@@ -1,4 +1,4 @@
-﻿import { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { loadColumnState, moveColumn, normalizeColumnState, saveColumnState, toggleColumn, defaultColumnState, visibleColumns } from './gridState';
 import type { ColumnDef, ColumnState } from './types';
 

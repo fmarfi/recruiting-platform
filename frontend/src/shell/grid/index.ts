@@ -1,4 +1,4 @@
-﻿export { DataGrid, type DataGridProps } from './DataGrid';
+export { DataGrid, type DataGridProps } from './DataGrid';
 export { ViewsMenu } from './ViewsMenu';
 export { useGridColumns, type GridColumns } from './useGridColumns';
 export { localViewStore } from './viewStore';

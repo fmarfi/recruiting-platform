@@ -1,10 +1,12 @@
-﻿import { MantineProvider } from '@mantine/core';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { MantineProvider } from '@mantine/core';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../i18n';
 import { AuthContext, type AuthCtx } from '../auth/useAuth';
+import { CommandButton, useCommandHotkey } from './CommandButton';
 import { CommandPalette } from './CommandPalette';
+import { useState, useCallback } from 'react';
 
 vi.mock('../../accounts/components/NewAccountDialog', () => ({ NewAccountDialog: () => null }));
 vi.mock('../../network/list/NewPersonDialog', () => ({ NewPersonDialog: () => null }));
@@ -83,7 +85,10 @@ describe('CommandPalette', () => {
     fireEvent.mouseEnter(screen.getByRole('option', { name: /Acme Holding/ }));
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(screen.getByTestId('where')).toHaveTextContent('/accounts/a1');
-    expect(JSON.parse(localStorage.getItem('command.recent')!)[0].to).toBe('/accounts/a1');
+    // KVKK: only kind and id are stored, under a per-user key
+    const raw = localStorage.getItem('command.recent.u1')!;
+    expect(JSON.parse(raw)[0]).toMatchObject({ kind: 'account', id: 'a1' });
+    expect(raw).not.toContain('Acme');
   });
 
   it('runs a navigation quick action', () => {
@@ -96,3 +101,51 @@ describe('CommandPalette', () => {
 
 
 
+
+function Harness() {
+  const [open, setOpen] = useState(false);
+  const toggle = useCallback(() => setOpen((o) => !o), []);
+  useCommandHotkey(toggle);
+  return (
+    <>
+      <CommandButton onClick={() => setOpen(true)} />
+      <CommandPalette opened={open} onClose={() => setOpen(false)} onChanged={() => {}} />
+    </>
+  );
+}
+
+function renderHarness() {
+  return render(
+    <MantineProvider env="test">
+      <AuthContext.Provider value={auth}>
+        <MemoryRouter>
+          <Harness />
+        </MemoryRouter>
+      </AuthContext.Provider>
+    </MantineProvider>,
+  );
+}
+
+describe('command bar entry points', () => {
+  it('opens and closes with Ctrl+K and Cmd+K', async () => {
+    renderHarness();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(await screen.findByRole('dialog', { name: 'Command bar' })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'K', metaKey: true });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.keyDown(window, { key: 'k' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('returns focus to the trigger when closed with Escape', async () => {
+    renderHarness();
+    const btn = screen.getByRole('button', { name: /Open command bar/ });
+    btn.focus();
+    fireEvent.click(btn);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(btn).toHaveFocus());
+  });
+});

@@ -1,4 +1,4 @@
-﻿import { ActionIcon, Badge, Box, Group, Kbd, Modal, Stack, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Badge, Box, Group, Kbd, Modal, Stack, VisuallyHidden, Text, TextInput } from '@mantine/core';
 import { useEffect, useId, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +9,8 @@ import { useAuth } from '../auth/useAuth';
 import { StatusBadge } from '../components/StatusBadge';
 import { useTypeahead } from '../search/useTypeahead';
 import { matchesText, moveActive, parseQuery, removeOperator, routeFor, type OperatorKey } from './operators';
-import { loadRecentItems, pushRecentItem } from './recentItems';
+import { pushRecentRef, type RecentKind } from './recentItems';
+import { useRecentLabels } from './useRecentLabels';
 
 type Section = 'filter' | 'actions' | 'accounts' | 'people' | 'jobs' | 'recent' | 'search';
 type Dialog = null | 'account' | 'person' | 'activity';
@@ -29,7 +30,9 @@ const GROUP_ORDER: Section[] = ['filter', 'actions', 'accounts', 'people', 'jobs
 export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean; onClose: () => void; onChanged: () => void }) {
   const { t } = useTranslation();
   const nav = useNavigate();
-  const { isManager } = useAuth();
+  const { isManager, user } = useAuth();
+  const userId = user?.id ?? '';
+  const recents = useRecentLabels(userId, opened);
   const uid = useId();
   const listId = `${uid}-list`;
   const [q, setQ] = useState('');
@@ -57,8 +60,8 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
   };
 
   const items = useMemo<Item[]>(() => {
-    const go = (to: string, rec?: { title: string; sub?: string }) => () => {
-      if (rec) pushRecentItem({ to, ...rec });
+    const go = (to: string, rec?: { kind: RecentKind; id: string }) => () => {
+      if (rec) pushRecentRef(userId, rec);
       onClose();
       nav(to);
     };
@@ -86,20 +89,20 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
     if (res && parsed.text.length >= 2) {
       for (const a of res.accounts) {
         const sub = [a.sector, a.city].filter(Boolean).join(' - ');
-        out.push({ id: `a-${a.id}`, group: 'accounts', label: a.name, sub, badge: <StatusBadge kind="account" value={a.status} size="sm" />, run: go(`/accounts/${a.id}`, { title: a.name, sub }) });
+        out.push({ id: `a-${a.id}`, group: 'accounts', label: a.name, sub, badge: <StatusBadge kind="account" value={a.status} size="sm" />, run: go(`/accounts/${a.id}`, { kind: 'account', id: a.id }) });
       }
       for (const p of res.people) {
         const sub = [p.title, p.company].filter(Boolean).join(', ');
-        out.push({ id: `p-${p.id}`, group: 'people', label: p.name, sub, run: go(`/people/${p.id}`, { title: p.name, sub }) });
+        out.push({ id: `p-${p.id}`, group: 'people', label: p.name, sub, run: go(`/people/${p.id}`, { kind: 'person', id: p.id }) });
       }
-      for (const j of res.jobOrders) out.push({ id: `j-${j.id}`, group: 'jobs', label: j.title, sub: j.account.name, badge: <StatusBadge kind="jobOrder" value={j.status} size="sm" />, run: go(`/job-orders/${j.id}`, { title: j.title, sub: j.account.name }) });
+      for (const j of res.jobOrders) out.push({ id: `j-${j.id}`, group: 'jobs', label: j.title, sub: j.account.name, badge: <StatusBadge kind="jobOrder" value={j.status} size="sm" />, run: go(`/job-orders/${j.id}`, { kind: 'job', id: j.id }) });
     }
 
-    if (!q.trim()) for (const r of loadRecentItems()) out.push({ id: `r-${r.to}`, group: 'recent', label: r.title, sub: r.sub, run: go(r.to) });
+    if (!q.trim()) for (const r of recents) out.push({ id: `r-${r.to}`, group: 'recent', label: r.title, sub: r.sub, run: go(r.to, r.ref) });
     if (parsed.text.length >= 2) out.push({ id: 'search', group: 'search', label: t('shell.seeAll', { q: parsed.text }), run: go(`/search?q=${encodeURIComponent(parsed.text)}`) });
     return out.sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route, parsed, res, q, isManager, t, nav, onClose, opened]);
+  }, [route, parsed, res, q, isManager, t, nav, onClose, recents, userId]);
 
   const idx = Math.min(active, items.length - 1);
   const optionId = (i: number) => `${uid}-opt-${i}`;
@@ -132,7 +135,7 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
 
   return (
     <>
-      <Modal opened={opened} onClose={onClose} withCloseButton={false} padding={0} size="lg" yOffset="10vh" aria-label={t('command.title')} transitionProps={{ duration: 0 }}>
+      <Modal opened={opened} onClose={onClose} withCloseButton={false} padding={0} size="lg" yOffset="10vh" title={t('command.title')} styles={{ header: { display: 'none' } }} returnFocus transitionProps={{ duration: 0 }}>
         <Stack gap={0}>
           <Box p="sm" style={{ borderBottom: '1px solid var(--color-border, #e5e7eb)' }}>
             <TextInput
@@ -160,8 +163,8 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
                     variant="light"
                     size="lg"
                     tt="none"
-                    style={route?.dropped.includes(o) ? { opacity: 0.5 } : undefined}
-                    title={route?.dropped.includes(o) ? t('command.ignored') : undefined}
+                    style={route?.dropped.includes(o) || route?.pending.includes(o) ? { opacity: 0.5 } : undefined}
+                    title={route?.dropped.includes(o) ? t('command.ignored') : route?.pending.includes(o) ? t('command.notApplied') : undefined}
                     rightSection={
                       <ActionIcon size="xs" variant="transparent" onClick={() => setQ(removeOperator(q, o))} aria-label={t('command.removeFilter', { name: `${opLabel[o.key]} ${o.value}` })}>
                         {'\u00D7'}
@@ -169,6 +172,7 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
                     }
                   >
                     {opLabel[o.key]}: {o.value}
+                    {(route?.pending.includes(o) || route?.dropped.includes(o)) && <VisuallyHidden> ({route.pending.includes(o) ? t('command.notApplied') : t('command.ignored')})</VisuallyHidden>}
                   </Badge>
                 ))}
               </Group>
@@ -236,5 +240,6 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
     </>
   );
 }
+
 
 

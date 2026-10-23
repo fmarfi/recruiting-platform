@@ -1,7 +1,9 @@
-﻿import { MantineProvider } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../i18n';
+import { ViewsMenu } from './ViewsMenu';
+import { localViewStore } from './viewStore';
 import { DataGrid } from './DataGrid';
 import type { ColumnDef } from './types';
 
@@ -57,12 +59,15 @@ describe('DataGrid', () => {
 
   it('exports only visible columns as safe CSV', async () => {
     let blob: Blob | undefined;
-    URL.createObjectURL = ((b: Blob) => ((blob = b), 'blob:x')) as typeof URL.createObjectURL;
-    URL.revokeObjectURL = () => {};
-    HTMLAnchorElement.prototype.click = () => {};
+    const spies = [
+      vi.spyOn(URL, 'createObjectURL').mockImplementation(((b: Blob) => ((blob = b), 'blob:x')) as typeof URL.createObjectURL),
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {}),
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {}),
+    ];
     wrap(<DataGrid gridId="t" columns={cols} rows={rows} rowId={(r) => r.id} exportName="things" />);
     fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
     expect(await blob!.text()).toBe('Name;City\r\nAlpha;Izmir\r\nBeta;\'=cmd');
+    spies.forEach((s) => s.mockRestore());
   });
 
   it('renders loading, error and empty states and phone cards', () => {
@@ -90,3 +95,23 @@ describe('DataGrid', () => {
   });
 });
 
+
+describe('views', () => {
+  it('asks before replacing a view with the same name', async () => {
+    const store = localViewStore<{ q: string }>('v');
+    await store.save({ name: 'Mine', filters: { q: 'old' } });
+    render(
+      <MantineProvider env="test">
+        <ViewsMenu store={store} current={{ filters: { q: 'new' }, columns: { order: [], visible: [] }, sort: null }} onApply={() => {}} />
+      </MantineProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Views' }));
+    fireEvent.click(await screen.findByText('Save current view'));
+    fireEvent.change(screen.getByLabelText('View name'), { target: { value: 'mine' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Replace it?');
+    expect((await store.list())[0]!.filters.q).toBe('old');
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+    await vi.waitFor(async () => expect((await store.list())[0]!.filters.q).toBe('new'));
+  });
+});

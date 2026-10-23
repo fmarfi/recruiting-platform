@@ -1,4 +1,4 @@
-﻿// Safe CSV for grid exports. Cells starting with = + - @ are prefixed so spreadsheets do not run them as formulas.
+// Safe CSV for grid exports. Cells starting with = + - @ are prefixed so spreadsheets do not run them as formulas.
 const cell = (v: unknown) => {
   let s = v == null ? '' : String(v);
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
@@ -18,5 +18,5 @@ export function downloadCsv(fileName: string, csv: string) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000); // some browsers cancel the download if revoked at once
 }

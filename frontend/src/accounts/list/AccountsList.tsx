@@ -1,6 +1,6 @@
-﻿import { Button, Container, Group, Pagination, Stack, Title } from '@mantine/core';
+import { Button, Container, Group, Pagination, Stack, Text, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shell/auth/useAuth';
@@ -9,7 +9,7 @@ import { DataGrid, ViewsMenu, formatSort, localViewStore, parseSort, useGridColu
 import { tokens } from '../../theme/tokens';
 import { NewAccountDialog } from '../components/NewAccountDialog';
 import { AccountCard, useAccountColumns, type Account } from './accountColumns';
-import { applyView, DEFAULT_SORT, filtersFromParams, toView, type AccountView } from './accountFilters';
+import { applyView, DEFAULT_SORT, filtersFromParams, paramsFromFilters, toView, type AccountView } from './accountFilters';
 import { AccountFilterBar } from './AccountFilterBar';
 import { useAccounts, type AccountFilters } from './useAccounts';
 
@@ -20,27 +20,18 @@ export function AccountsList() {
   const { t } = useTranslation();
   const { user, isManager } = useAuth();
   const nav = useNavigate();
-  const [params] = useSearchParams();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
   const meId = user?.id ?? '';
-  const [filters, setFilters] = useState<AccountFilters>(() => filtersFromParams(params, meId));
+  // The filters are the URL: Ctrl+K links, Back and reload all keep the state. Replace avoids a history entry per keystroke.
+  const [params, setParams] = useSearchParams();
+  const filters = useMemo(() => filtersFromParams(params, meId), [params, meId]);
+  const setFilters = (fn: (f: AccountFilters) => AccountFilters) => setParams(paramsFromFilters(fn(filters)), { replace: true });
   const [creating, setCreating] = useState(false);
+  const [viewWarn, setViewWarn] = useState(false);
   const res = useAccounts(filters);
   const defs = useAccountColumns();
   const columns = useGridColumns<Account>(GRID_ID, defs);
-  const views = useMemo(() => localViewStore<AccountView>(GRID_ID), []);
-
-  // A new query string (e.g. from the command bar while this screen is open) replaces the filters.
-  const paramKey = params.toString();
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    setFilters(filtersFromParams(params, meId));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramKey]);
+  const views = useMemo(() => localViewStore<AccountView>(GRID_ID, () => setViewWarn(true)), []);
 
   const change = (patch: Partial<AccountFilters>) => setFilters((f) => ({ ...f, page: 0, ...patch }));
   const clear = () => setFilters((f) => ({ ...f, q: '', status: '', ownerId: '', page: 0 }));
@@ -81,14 +72,21 @@ export function AccountsList() {
           phone={!!phone}
           renderCard={(a) => <AccountCard a={a} />}
           toolbar={
-            <ViewsMenu<AccountView>
-              store={views}
-              current={{ filters: toView(filters), columns: columns.state, sort }}
-              onApply={(v) => {
-                setFilters((f) => applyView(f, v, meId));
-                if (v.columns) columns.set(v.columns);
-              }}
-            />
+            <>
+              <ViewsMenu<AccountView>
+                store={views}
+                current={{ filters: toView(filters), columns: columns.state, sort }}
+                onApply={(v) => {
+                  setFilters((f) => applyView(f, v, meId));
+                  if (v.columns) columns.set(v.columns);
+                }}
+              />
+              {viewWarn && (
+                <Text size="xs" c="red" role="status">
+                  {t('grid.viewsNotPersisted')}
+                </Text>
+              )}
+            </>
           }
           empty={
             filtered ? (
