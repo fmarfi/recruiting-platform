@@ -1,10 +1,12 @@
 import { ActionIcon, AppShell, Burger, Group, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
 import { tokens } from '../../theme/tokens';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
+import { CommandButton, useCommandHotkey } from '../command/CommandButton';
+import { CommandPalette } from '../command/CommandPalette';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { LanguageSwitch } from './LanguageSwitch';
 import { NavItems } from './NavItems';
@@ -18,6 +20,9 @@ export function Shell() {
   const [drawer, setDrawer] = useState(false);
   const [fab, setFab] = useState(false);
   const [version, setVersion] = useState(0); // bump to re-mount the screen after a quick add
+  const [command, setCommand] = useState(false);
+  const toggleCommand = useCallback(() => setCommand((o) => !o), []);
+  useCommandHotkey(toggleCommand);
 
   return (
     <AppShell
@@ -33,6 +38,7 @@ export function Shell() {
             {t('app.title')}
           </Text>
           <GlobalSearch />
+          <CommandButton onClick={() => setCommand(true)} />
           <NewMenu onChanged={() => setVersion((v) => v + 1)} />
           <LanguageSwitch />
           <UserMenu />
@@ -44,6 +50,7 @@ export function Shell() {
       <AppShell.Main>
         <Outlet key={version} />
       </AppShell.Main>
+      <CommandPalette opened={command} onClose={() => setCommand(false)} onChanged={() => setVersion((v) => v + 1)} />
       {phone && (
         <AppShell.Footer p={4}>
           <NavItems vertical={false} />

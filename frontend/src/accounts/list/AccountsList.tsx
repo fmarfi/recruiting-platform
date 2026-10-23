@@ -1,36 +1,44 @@
-import { Button, Container, Group, Pagination, Stack, Title } from '@mantine/core';
+import { Button, Container, Group, Pagination, Stack, Text, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
-import { ErrorBanner } from '../../shell/components/ErrorBanner';
-import { SkeletonRows } from '../../shell/components/SkeletonRows';
+import { DataGrid, ViewsMenu, formatSort, localViewStore, parseSort, useGridColumns } from '../../shell/grid';
 import { tokens } from '../../theme/tokens';
 import { NewAccountDialog } from '../components/NewAccountDialog';
+import { AccountCard, useAccountColumns, type Account } from './accountColumns';
+import { applyView, DEFAULT_SORT, filtersFromParams, paramsFromFilters, toView, type AccountView } from './accountFilters';
 import { AccountFilterBar } from './AccountFilterBar';
-import { AccountsTable } from './AccountsTable';
 import { useAccounts, type AccountFilters } from './useAccounts';
 
-/** Accounts list (A-01): owner defaults to Me, status chips filter, sortable columns, pages of 20. */
+const GRID_ID = 'accounts';
+
+/** Accounts list (A-01): owner defaults to Me, status chips filter, sortable columns, pages of 20. Filters can come from the URL query. */
 export function AccountsList() {
   const { t } = useTranslation();
   const { user, isManager } = useAuth();
   const nav = useNavigate();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
   const meId = user?.id ?? '';
-  const [filters, setFilters] = useState<AccountFilters>({ q: '', status: '', ownerId: meId, page: 0, sort: 'lastActivityAt,desc' });
+  // The filters are the URL: Ctrl+K links, Back and reload all keep the state. Replace avoids a history entry per keystroke.
+  const [params, setParams] = useSearchParams();
+  const filters = useMemo(() => filtersFromParams(params, meId), [params, meId]);
+  const setFilters = (fn: (f: AccountFilters) => AccountFilters) => setParams(paramsFromFilters(fn(filters)), { replace: true });
   const [creating, setCreating] = useState(false);
+  const [viewWarn, setViewWarn] = useState(false);
   const res = useAccounts(filters);
+  const defs = useAccountColumns();
+  const columns = useGridColumns<Account>(GRID_ID, defs);
+  const views = useMemo(() => localViewStore<AccountView>(GRID_ID, () => setViewWarn(true)), []);
 
   const change = (patch: Partial<AccountFilters>) => setFilters((f) => ({ ...f, page: 0, ...patch }));
   const clear = () => setFilters((f) => ({ ...f, q: '', status: '', ownerId: '', page: 0 }));
   const filtered = !!(filters.q || filters.status || filters.ownerId);
-  const sortBy = (field: string) =>
-    change({ sort: filters.sort.startsWith(`${field},`) ? `${field},${filters.sort.endsWith('asc') ? 'desc' : 'asc'}` : `${field},${field === 'name' ? 'asc' : 'desc'}` });
   const d = res.data;
   const newBtn = <Button onClick={() => setCreating(true)}>{t('accounts.newAccount')}</Button>;
+  const sort = parseSort(filters.sort) ?? parseSort(DEFAULT_SORT);
 
   return (
     <Container maw="var(--content-max-width)" p={0}>
@@ -49,31 +57,53 @@ export function AccountsList() {
       </Group>
       <Stack>
         <AccountFilterBar filters={filters} meId={meId} onChange={change} onClear={clear} active={filtered} />
-        {res.error ? (
-          <ErrorBanner onRetry={res.reload} />
-        ) : res.loading && !d ? (
-          <SkeletonRows n={8} />
-        ) : d && d.content.length === 0 ? (
-          filtered ? (
-            <EmptyState
-              title={t('accounts.emptyFilter')}
-              actions={
-                <Button variant="default" onClick={clear}>
-                  {t('accounts.clear')}
-                </Button>
-              }
-            />
-          ) : (
-            <EmptyState title={t('accounts.emptyTitle')} hint={t('accounts.emptyHint')} actions={newBtn} />
-          )
-        ) : (
-          d && (
+        <DataGrid<Account>
+          gridId={GRID_ID}
+          columns={defs}
+          columnsController={columns}
+          rows={d?.content}
+          rowId={(a) => a.id}
+          loading={res.loading}
+          error={!!res.error}
+          onRetry={res.reload}
+          sort={sort}
+          onSort={(s) => change({ sort: formatSort(s) })}
+          exportName="accounts"
+          phone={!!phone}
+          renderCard={(a) => <AccountCard a={a} />}
+          toolbar={
             <>
-              <AccountsTable rows={d.content} sort={filters.sort} onSort={sortBy} phone={!!phone} />
-              {d.page.totalPages > 1 && <Pagination total={d.page.totalPages} value={d.page.number + 1} onChange={(p) => setFilters((f) => ({ ...f, page: p - 1 }))} />}
+              <ViewsMenu<AccountView>
+                store={views}
+                current={{ filters: toView(filters), columns: columns.state, sort }}
+                onApply={(v) => {
+                  setFilters((f) => applyView(f, v, meId));
+                  if (v.columns) columns.set(v.columns);
+                }}
+              />
+              {viewWarn && (
+                <Text size="xs" c="red" role="status">
+                  {t('grid.viewsNotPersisted')}
+                </Text>
+              )}
             </>
-          )
-        )}
+          }
+          empty={
+            filtered ? (
+              <EmptyState
+                title={t('accounts.emptyFilter')}
+                actions={
+                  <Button variant="default" onClick={clear}>
+                    {t('accounts.clear')}
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState title={t('accounts.emptyTitle')} hint={t('accounts.emptyHint')} actions={newBtn} />
+            )
+          }
+        />
+        {d && d.page.totalPages > 1 && <Pagination total={d.page.totalPages} value={d.page.number + 1} onChange={(p) => setFilters((f) => ({ ...f, page: p - 1 }))} />}
       </Stack>
       <NewAccountDialog opened={creating} onClose={() => setCreating(false)} onCreated={(id) => nav(`/accounts/${id}`)} />
     </Container>
