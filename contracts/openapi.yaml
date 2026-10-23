@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Recruiting Platform API
-  version: 1.0.0
+  version: 1.1.0
   summary: Phase 1 (Module A, CRM) REST contract plus users, roles, KVKK consent and audit.
   description: |
     Contract owned by the architect (Wave 0). Backends implement it, frontends build against the
@@ -40,6 +40,10 @@ info:
     CSRF token from the `XSRF-TOKEN` cookie in the `X-XSRF-TOKEN` header. Every operation needs a logged-in
     user unless it has `security: []`. `x-roles` lists the roles allowed; `x-owner` names the module and
     agent that implement the endpoint.
+
+    **Changes**
+    - 1.1.0 (Wave 2a, additive only): saved list views (`/views`, `/views/{id}`) and bulk actions
+      (`POST /bulk-actions`), ADR 0010. No existing operation or schema changed.
   contact:
     name: architect agent
   license:
@@ -95,6 +99,10 @@ tags:
     description: Access, correction and deletion requests and the person export (S-04, NFR-11). Module `privacy` (security-privacy).
   - name: Audit
     description: Access log and change history (NFR-05, A-02). Module `security` (security-privacy).
+  - name: Saved views
+    description: Saved private and shared list views for the data grids (since 1.1.0, ADR 0010). Module `accounts` (backend-accounts).
+  - name: Bulk actions
+    description: Mass actions on selected grid records with a result per record (since 1.1.0, ADR 0010). Module `pipeline` (backend-pipeline) with handlers in `accounts` and `privacy`.
 paths:
   /auth/login:
     post:
@@ -2178,6 +2186,182 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  # ---------- 1.1.0 (Wave 2a): saved views and bulk actions (ADR 0010) ----------
+  /views:
+    get:
+      tags: [Saved views]
+      operationId: listViews
+      summary: Saved list views the current user can see (own private views plus all shared views)
+      description: |
+        Returns the caller's PRIVATE views and every SHARED view, optionally for one entity, ordered by
+        name. Other users' private views are never returned. Plain array: a user has at most 50 private
+        views per entity (ASSUMPTION, ADR 0010).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - name: entity
+          in: query
+          description: Only views of this grid.
+          schema: { $ref: '#/components/schemas/ListEntity' }
+      responses:
+        '200':
+          description: Views
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SavedView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Saved views]
+      operationId: createView
+      summary: Save the current filters, columns, sort and grouping of a grid as a view
+      description: |
+        The owner is the current user. `definition.filters` is validated per entity (see
+        `ViewDefinition`); an unknown key or a bad value gives 400 `VALIDATION_FAILED` with
+        `field = definition.filters.<key>`. **ASSUMPTION (open question for the client):** only MANAGER and
+        ADMIN may create or switch a view to SHARED; a consultant gets 403 `FORBIDDEN`. Same name for the
+        same owner and entity gives 409 `DUPLICATE`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SavedViewCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SavedView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /views/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Saved views]
+      operationId: updateView
+      summary: Rename a view, change its visibility or replace its definition
+      description: |
+        `definition` is replaced as a whole. The entity cannot change. Who may change a view: its owner,
+        and MANAGER/ADMIN for SHARED views. Another user's PRIVATE view gives 404 (its existence is not
+        revealed); a consultant changing someone else's SHARED view, or switching a view to SHARED, gets
+        403 `FORBIDDEN` (views are personal settings, not business records, so the pilot rule "any
+        consultant may change any record" does not apply; ADR 0010). Send `version` for optimistic locking
+        (409 `VERSION_CONFLICT`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SavedViewUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SavedView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Saved views]
+      operationId: deleteView
+      summary: Delete a view
+      description: Same permission rule as `PATCH /views/{id}`. Hard delete; views hold no personal data.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '204':
+          description: Deleted
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /bulk-actions:
+    post:
+      tags: [Bulk actions]
+      operationId: runBulkAction
+      summary: Apply one action to many selected records of a grid, with a result per record
+      description: |
+        Synchronous; at most 500 ids. Each record is processed on its own (own transaction), so **partial
+        success is normal**: the response is 200 with one `BulkRecordResult` per requested id, in request
+        order. 400 only when the request as a whole is invalid (more than 500 ids, `params` that do not fit
+        the action, an action not allowed for the entity).
+
+        Rules (ADR 0010):
+        - **Through the normal services, never around them.** `CHANGE_STATUS` runs the same lifecycle check
+          as `PATCH .../status` (transition table, reason rule, manager-only moves, data guards); a record
+          that cannot move is `FAILED` with `ILLEGAL_TRANSITION`, `TRANSITION_GUARD_FAILED`,
+          `REASON_REQUIRED` or `FORBIDDEN`. Every change publishes the usual domain events (timeline) and
+          writes an Envers revision.
+        - **Consent gate.** Actions that contact people (`REQUEST_CONSENT`, and every later contact action
+          such as templated e-mail) only go to people with a valid basis; others are `SKIPPED` with an
+          explicit code (`NO_EMAIL`, `CONSENT_GIVEN`, `CONSENT_REFUSED`, `CONSENT_WITHDRAWN`,
+          `REQUEST_PENDING`, `ANONYMISED`, `NO_CONSENT_BASIS`), never silently dropped. Bulk does not re-ask
+          people who refused or withdrew; use the single `POST /people/{id}/consent/requests` for that.
+        - **Audit.** Every requested id gets an audit entry (`bulk_action_item`) with its outcome and code,
+          including SKIPPED and FAILED ones, linked to one `bulk_action` row with the actor and the params.
+        - Records that already have the requested value (same owner, tag already there or missing, same
+          status) are `SKIPPED` with `NO_CHANGE`; unknown ids are `FAILED` with `NOT_FOUND`.
+
+        Entities per action: `REASSIGN_OWNER`, `ADD_TAG`, `REMOVE_TAG` all; `CHANGE_STATUS` ACCOUNTS,
+        JOB_ORDERS, PROPOSALS (`params.status` must be a value of that entity's lifecycle);
+        `SET_NEXT_ACTION` PEOPLE, ACCOUNTS, JOB_ORDERS (one next action per record, linked to it);
+        `REQUEST_CONSENT` PEOPLE only and MANAGER/ADMIN only, like the consent campaign (403 `FORBIDDEN`
+        for consultants; ASSUMPTION).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline (dispatcher, audit); handlers in accounts (backend-accounts) and privacy (security-privacy)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BulkActionRequest' }
+            examples:
+              changeStatus:
+                summary: Cancel two job orders with a reason
+                value:
+                  entity: JOB_ORDERS
+                  ids: [0192a5b8-0000-7000-8000-0000000000a1, 0192a5b8-0000-7000-8000-0000000000a2]
+                  action: CHANGE_STATUS
+                  params: { status: CANCELLED, reason: Client froze hiring for this year }
+              requestConsent:
+                summary: Ask three people for KVKK consent
+                value:
+                  entity: PEOPLE
+                  ids: [0192a5b8-0000-7000-8000-000000000101, 0192a5b8-0000-7000-8000-000000000102, 0192a5b8-0000-7000-8000-000000000103]
+                  action: REQUEST_CONSENT
+                  params: { language: TR }
+      responses:
+        '200':
+          description: Processed; see the result of each record
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BulkActionResult' }
+              example:
+                id: 0192a5b8-0000-7000-8000-00000000b001
+                entity: PEOPLE
+                action: REQUEST_CONSENT
+                requested: 3
+                ok: 1
+                skipped: 2
+                failed: 0
+                results:
+                  - { id: 0192a5b8-0000-7000-8000-000000000101, outcome: OK, code: null, message: null }
+                  - { id: 0192a5b8-0000-7000-8000-000000000102, outcome: SKIPPED, code: NO_EMAIL, message: The person has no e-mail address. }
+                  - { id: 0192a5b8-0000-7000-8000-000000000103, outcome: SKIPPED, code: CONSENT_WITHDRAWN, message: Consent was withdrawn; bulk requests do not re-ask. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 components:
   securitySchemes:
     sessionCookie:
@@ -3538,3 +3722,278 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Revision' }
         page: { $ref: '#/components/schemas/PageMeta' }
+    # ---------- saved views (1.1.0, ADR 0010) ----------
+    ListEntity:
+      type: string
+      description: The grid a saved view or a bulk action belongs to (`contracts/enums/ListEntity.java`).
+      enum: [PEOPLE, ACCOUNTS, JOB_ORDERS, PROPOSALS]
+    ViewVisibility:
+      type: string
+      description: PRIVATE is seen only by its owner; SHARED by every user (`contracts/enums/ViewVisibility.java`).
+      enum: [PRIVATE, SHARED]
+    FilterValue:
+      description: One filter value, or several (OR) as an array.
+      oneOf:
+        - { type: string, maxLength: 200 }
+        - { type: number }
+        - { type: boolean }
+        - type: array
+          maxItems: 50
+          items:
+            oneOf:
+              - { type: string, maxLength: 200 }
+              - { type: number }
+              - { type: boolean }
+        - { type: 'null' }
+    ViewDefinition:
+      type: object
+      description: |
+        What a grid shows. The client turns `filters` and `sort` into the query of the matching list
+        endpoint (`GET /people`, `/accounts`, `/job-orders`, `/proposals`), so the allowed filter keys are
+        that endpoint's query parameters except `page`, `size` and `sort`:
+        - PEOPLE: `q`, `type`, `ownerId`, `consentStatus`, `lastContactBefore`, `lastContactAfter`
+        - ACCOUNTS: `q`, `status`, `sector`, `ownerId`
+        - JOB_ORDERS: `q`, `accountId`, `status`, `open`, `ownerId`
+        - PROPOSALS: `accountId`, `status`, `ownerId`
+        Values are validated like the query parameters (enum names, UUIDs, dates). `ownerId` may also be
+        `"me"`, which the client replaces with the current user's id when it runs the view (so one shared
+        "My accounts" view works for everybody). The server rejects unknown keys and bad values with 400
+        `VALIDATION_FAILED` (`field = definition.filters.<key>`). `columns`, `sort` and `groupBy` use the
+        property names of the list item schema; unknown names give 400 as well.
+      required: [filters, columns, sort]
+      properties:
+        filters:
+          type: object
+          maxProperties: 20
+          propertyNames: { pattern: '^[A-Za-z][A-Za-z0-9]{0,49}$' }
+          additionalProperties: { $ref: '#/components/schemas/FilterValue' }
+          examples: [{ status: [ACTIVE, ON_HOLD], ownerId: me }]
+        columns:
+          type: array
+          description: Visible columns in display order.
+          maxItems: 50
+          items: { type: string, pattern: '^[A-Za-z][A-Za-z0-9.]{0,99}$' }
+          examples: [[name, status, sector, owner, lastActivityAt]]
+        sort:
+          type: array
+          description: '`property,asc|desc`, like the `sort` query parameter; first key wins.'
+          maxItems: 5
+          items: { type: string, pattern: '^[A-Za-z]+(,(asc|desc))?$' }
+          examples: [['lastActivityAt,desc']]
+        groupBy:
+          type: [string, 'null']
+          pattern: '^[A-Za-z][A-Za-z0-9.]{0,99}$'
+          description: Property to group rows by, or null.
+          examples: [sector]
+    SavedView:
+      type: object
+      required: [id, entity, name, visibility, owner, definition, editable, createdAt, updatedAt, version]
+      examples:
+        - id: 0192a5b8-0000-7000-8000-00000000c001
+          entity: ACCOUNTS
+          name: My active accounts by sector
+          visibility: SHARED
+          owner: { id: 0192a5b8-6f1e-7c3a-9b2d-3f4e5a6b7c8d, name: Deniz Aksoy }
+          definition:
+            filters: { status: [ACTIVE, ON_HOLD], ownerId: me }
+            columns: [name, status, sector, owner, lastActivityAt]
+            sort: ['lastActivityAt,desc']
+            groupBy: sector
+          editable: true
+          createdAt: '2026-10-20T09:30:00Z'
+          updatedAt: '2026-10-21T14:05:00Z'
+          version: 2
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        entity: { $ref: '#/components/schemas/ListEntity' }
+        name: { type: string, examples: [Active accounts in Izmir] }
+        visibility: { $ref: '#/components/schemas/ViewVisibility' }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        definition: { $ref: '#/components/schemas/ViewDefinition' }
+        editable: { type: boolean, description: Whether the current user may change or delete this view. }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    SavedViewCreateRequest:
+      type: object
+      required: [entity, name, definition]
+      properties:
+        entity: { $ref: '#/components/schemas/ListEntity' }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        visibility:
+          $ref: '#/components/schemas/ViewVisibility'
+          description: Defaults to PRIVATE. SHARED is MANAGER/ADMIN only (ASSUMPTION).
+        definition: { $ref: '#/components/schemas/ViewDefinition' }
+    SavedViewUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        visibility: { $ref: '#/components/schemas/ViewVisibility' }
+        definition: { $ref: '#/components/schemas/ViewDefinition' }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- bulk actions (1.1.0, ADR 0010) ----------
+    BulkActionType:
+      type: string
+      description: '`contracts/enums/BulkActionType.java`'
+      enum: [REASSIGN_OWNER, CHANGE_STATUS, ADD_TAG, REMOVE_TAG, SET_NEXT_ACTION, REQUEST_CONSENT]
+    BulkOutcome:
+      type: string
+      description: OK = done; SKIPPED = nothing done on purpose (no change needed, consent gate); FAILED = could not be done (`contracts/enums/BulkOutcome.java`).
+      enum: [OK, SKIPPED, FAILED]
+    BulkResultCode:
+      type: string
+      description: Why a record was SKIPPED or FAILED (`contracts/enums/BulkResultCode.java`).
+      enum: [NO_CHANGE, NOT_FOUND, FORBIDDEN, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, REASON_REQUIRED, STATE_CONFLICT, VERSION_CONFLICT, NO_EMAIL, CONSENT_GIVEN, CONSENT_REFUSED, CONSENT_WITHDRAWN, REQUEST_PENDING, ANONYMISED, NO_CONSENT_BASIS, TOO_MANY_TAGS, INTERNAL_ERROR]
+    Tag:
+      type: string
+      description: Trimmed, stored lower-case, 1 to 50 characters; at most 20 tags per record. No personal data in tags.
+      minLength: 1
+      maxLength: 50
+      pattern: '^\S(.*\S)?$'
+      examples: [cfo-network]
+    ReassignOwnerParams:
+      type: object
+      additionalProperties: false
+      required: [ownerId]
+      properties:
+        ownerId: { $ref: '#/components/schemas/Id' }
+    ChangeStatusParams:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: Target status from the entity's lifecycle (`AccountStatus`, `JobOrderStatus` or `ProposalStatus`); another value gives 400.
+          examples: [ON_HOLD]
+        reason: { $ref: '#/components/schemas/Reason' }
+    TagParams:
+      type: object
+      additionalProperties: false
+      required: [tag]
+      properties:
+        tag: { $ref: '#/components/schemas/Tag' }
+    SetNextActionParams:
+      type: object
+      additionalProperties: false
+      required: [title, dueOn]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        dueOn: { type: string, format: date }
+        ownerId:
+          $ref: '#/components/schemas/Id'
+          description: Defaults to the current user.
+    RequestConsentParams:
+      type: object
+      additionalProperties: false
+      properties:
+        language:
+          $ref: '#/components/schemas/Language'
+          description: Defaults to TR.
+    BulkActionTarget:
+      type: object
+      required: [entity, ids]
+      properties:
+        entity: { $ref: '#/components/schemas/ListEntity' }
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Id' }
+    BulkActionRequest:
+      description: One action with its typed `params`, chosen by `action`.
+      oneOf:
+        - $ref: '#/components/schemas/ReassignOwnerBulkRequest'
+        - $ref: '#/components/schemas/ChangeStatusBulkRequest'
+        - $ref: '#/components/schemas/AddTagBulkRequest'
+        - $ref: '#/components/schemas/RemoveTagBulkRequest'
+        - $ref: '#/components/schemas/SetNextActionBulkRequest'
+        - $ref: '#/components/schemas/RequestConsentBulkRequest'
+      discriminator:
+        propertyName: action
+        mapping:
+          REASSIGN_OWNER: '#/components/schemas/ReassignOwnerBulkRequest'
+          CHANGE_STATUS: '#/components/schemas/ChangeStatusBulkRequest'
+          ADD_TAG: '#/components/schemas/AddTagBulkRequest'
+          REMOVE_TAG: '#/components/schemas/RemoveTagBulkRequest'
+          SET_NEXT_ACTION: '#/components/schemas/SetNextActionBulkRequest'
+          REQUEST_CONSENT: '#/components/schemas/RequestConsentBulkRequest'
+    ReassignOwnerBulkRequest:
+      allOf:
+        - $ref: '#/components/schemas/BulkActionTarget'
+        - type: object
+          required: [action, params]
+          properties:
+            action: { type: string, const: REASSIGN_OWNER }
+            params: { $ref: '#/components/schemas/ReassignOwnerParams' }
+    ChangeStatusBulkRequest:
+      allOf:
+        - $ref: '#/components/schemas/BulkActionTarget'
+        - type: object
+          required: [action, params]
+          properties:
+            action: { type: string, const: CHANGE_STATUS }
+            params: { $ref: '#/components/schemas/ChangeStatusParams' }
+    AddTagBulkRequest:
+      allOf:
+        - $ref: '#/components/schemas/BulkActionTarget'
+        - type: object
+          required: [action, params]
+          properties:
+            action: { type: string, const: ADD_TAG }
+            params: { $ref: '#/components/schemas/TagParams' }
+    RemoveTagBulkRequest:
+      allOf:
+        - $ref: '#/components/schemas/BulkActionTarget'
+        - type: object
+          required: [action, params]
+          properties:
+            action: { type: string, const: REMOVE_TAG }
+            params: { $ref: '#/components/schemas/TagParams' }
+    SetNextActionBulkRequest:
+      allOf:
+        - $ref: '#/components/schemas/BulkActionTarget'
+        - type: object
+          required: [action, params]
+          properties:
+            action: { type: string, const: SET_NEXT_ACTION }
+            params: { $ref: '#/components/schemas/SetNextActionParams' }
+    RequestConsentBulkRequest:
+      allOf:
+        - $ref: '#/components/schemas/BulkActionTarget'
+        - type: object
+          required: [action, params]
+          properties:
+            action: { type: string, const: REQUEST_CONSENT }
+            params: { $ref: '#/components/schemas/RequestConsentParams' }
+    BulkRecordResult:
+      type: object
+      required: [id, outcome, code, message]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        outcome: { $ref: '#/components/schemas/BulkOutcome' }
+        code:
+          oneOf: [{ $ref: '#/components/schemas/BulkResultCode' }, { type: 'null' }]
+          description: Null when OK; always set when SKIPPED or FAILED.
+        message:
+          type: [string, 'null']
+          description: Short English explanation for the user (the UI translates `code`). Never contains personal data.
+    BulkActionResult:
+      type: object
+      required: [id, entity, action, requested, ok, skipped, failed, results]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+          description: The `bulk_action` audit row.
+        entity: { $ref: '#/components/schemas/ListEntity' }
+        action: { $ref: '#/components/schemas/BulkActionType' }
+        requested: { type: integer, examples: [3] }
+        ok: { type: integer, examples: [1] }
+        skipped: { type: integer, examples: [2] }
+        failed: { type: integer, examples: [0] }
+        results:
+          type: array
+          description: One entry per requested id, in request order.
+          items: { $ref: '#/components/schemas/BulkRecordResult' }
