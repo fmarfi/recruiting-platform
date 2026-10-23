@@ -23,6 +23,12 @@ Start the next session with: "Read CLAUDE.md, docs/NEXT-SESSION.md and docs/mast
 
 Command-bar URL params for the network and job screens (from the frontend-shell hand-off): `/network`: `owner=me, stale=N, type=A,B, consent=X, city, company, q`; `/job-orders`: `owner=me, status, q`; `/accounts` (already reads): `owner=me|all, status, q`.
 
+## Update later on 2026-10-23 (supersedes the table above where they differ)
+- Architect branch `worktree-wave2a-architect` (head 8d81d21): VERIFIED by the orchestrator (tsc clean, 24 tests, `mvn -q -B verify` exit 0 without -Pintegration). Ready to merge.
+- Code review of frontend-shell: DONE, no blockers, 6 should-fix + nits. The frontend-shell agent was asked to fix them (same worktree). After it reports: re-run tsc, vitest, vite build there yourself, then merge. Review items are in that agent's brief; key ones: Object.hasOwn in operators.ts, repeated `status:` operator, AccountsList filters in the URL, no people names in localStorage recents (KVKK), viewStore setItem failure.
+- `db-engineer` was launched on worktree `..\wt-db` (branch `worktree-wave2a-db`, based on the architect branch). Check `git -C ..\wt-db log --oneline -5` and `docs/handoffs/db-engineer.md` there; verify with `mvn -q -B verify` (and `-Pintegration` with Docker running).
+- Not yet started: backend-accounts (/views), backend-pipeline + security-privacy (/bulk-actions), frontend-pipeline (network on the grid). They follow db-engineer's merge.
+
 ## Steps for tomorrow (in order)
 1. **Check the agents.** `git -C ..\wt-architect log --oneline -3`; read `docs/handoffs/architect.md` in `wt-architect` and the review result for frontend-shell (or rerun it).
 2. **Verify the architect branch** in `..\wt-architect`: `cd frontend; npm install; npm run gen:api; npm run typecheck; npm test`, then `mvn -q -B verify` at the repo root (Docker running for `-Pintegration`), and a Prism smoke on `/views` and `/bulk-actions`. Send it to code-reviewer.
