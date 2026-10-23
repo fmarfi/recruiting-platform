@@ -14,6 +14,7 @@ import { ContactsTab } from './ContactsTab';
 import { DashboardStrip } from './DashboardStrip';
 import { JobsTab } from './JobsTab';
 import { ProposalsTab } from './ProposalsTab';
+import { RelationshipsTab } from './RelationshipsTab';
 import { TimelinePanel } from './TimelinePanel';
 import { useAccountPage } from './useAccountPage';
 
@@ -69,6 +70,7 @@ export function AccountPage() {
               <Tabs.List>
                 <Tabs.Tab value="jobs">{t('accounts.tab.jobs')} {jobs.length}</Tabs.Tab>
                 <Tabs.Tab value="contacts">{t('accounts.tab.contacts')} {contacts.length}</Tabs.Tab>
+                <Tabs.Tab value="relationships">{t('accounts.tab.relationships')}</Tabs.Tab>
                 <Tabs.Tab value="proposals">{t('accounts.tab.proposals')} {proposals.length}</Tabs.Tab>
                 <Tabs.Tab value="timeline" hiddenFrom="md">
                   {t('accounts.tab.timeline')}
@@ -89,6 +91,9 @@ export function AccountPage() {
                   </Button>
                 </Group>
                 <ContactsTab contacts={contacts} showEnded={page.showEnded} onShowEnded={page.setShowEnded} accountId={a.id} onChanged={page.reloadAll} />
+              </Tabs.Panel>
+              <Tabs.Panel value="relationships" pt="md">
+                <RelationshipsTab contacts={contacts.filter((c) => c.active)} connections={page.connections.data} />
               </Tabs.Panel>
               <Tabs.Panel value="proposals" pt="md">
                 <Group justify="flex-end" mb="xs">

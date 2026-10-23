@@ -12,7 +12,21 @@
     "noOpenJobs": "No open jobs available.", "noPipelines": "Not on any job yet.", "note": "Note", "notFound": "Person not found.", "openExisting": "Open existing",
     "person": "Person", "pipelines": "Pipelines", "privacy": "Privacy", "privacyUnavailable": "Privacy details are not available.",
     "retention": "Retention ends {{date}}", "retentionWarning": "Data scheduled for deletion.", "search": "Search people", "sendConsent": "Send consent request",
-    "tabs": { "activity": "Activity", "connections": "Connections", "jobs": "Clients and jobs", "overview": "Overview", "privacy": "Privacy" },
-    "types": { "EXECUTIVE": "Executive", "CLIENT_CONTACT": "Client contact", "REFERRER": "Referrer", "CANDIDATE": "Candidate" }
+    "tabs": { "activity": "Activity", "connections": "Connections", "jobs": "Clients and jobs", "map": "Map", "overview": "Overview", "privacy": "Privacy" },
+    "types": { "EXECUTIVE": "Executive", "CLIENT_CONTACT": "Client contact", "REFERRER": "Referrer", "CANDIDATE": "Candidate" },
+    "views": "Lists", "saveCurrent": "Save this view", "saveView": "Save", "viewName": "Name this view", "deleteView": "Delete view {{name}}",
+    "presets": { "needsCall": "Needs a call", "noConsent": "No consent request yet", "executives": "Executives", "referrers": "Referrers" },
+    "selectAll": "Select all on this page", "selected": "{{count}} selected", "clearSelection": "Clear selection",
+    "exportCsv": "Export CSV", "exportSelected": "Export selected", "exportFailed": "Could not export the list.", "exportCapped": "Exported the first {{count}} people (limit {{limit}}). Narrow the filters to export the rest.",
+    "requestConsent": "Request consent", "bulkConsentDone": "Consent requests queued: {{queued}}. Skipped: {{skipped}}.",
+    "map": { "label": "Relationship map of {{name}}", "more": "{{count}} more connections are listed on the Connections tab.", "expandFailed": "Could not load their connections.", "open": "Open profile", "expand": "Show who they know", "noMore": "No further connections recorded.", "hint": "Select a person to see details and who they know." },
+    "snapshot": {
+      "warmth": "Last contact", "touches": "Touchpoints", "last90": "last 90 days", "reach": "Connections", "reachSub": "people linked", "pipelines": "Jobs", "openActions": "{{count}} open actions",
+      "health": { "GOOD": "Warm", "WARN": "Cooling", "BAD": "Cold" },
+      "next": {
+        "doNotContact": "Do not contact for new roles.", "overdueAction": "{{count}} overdue action(s): finish them first.", "neverContacted": "Never contacted: log a first call or meeting.",
+        "reconnect": "Not contacted for over 90 days: reconnect.", "planNext": "No next step planned: add an action.", "onTrack": "On track: next step is planned."
+      }
+    }
   }
 }

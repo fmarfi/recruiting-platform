@@ -1,5 +1,5 @@
 // Person page (A-12, A-13, S-01): relationship, every pipeline the person is in, network links, consent status.
-import { Alert, Anchor, Button, Container, Skeleton, Tabs, Text } from '@mantine/core';
+import { Alert, Anchor, Button, Container, Skeleton, Stack, Tabs, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -12,6 +12,8 @@ import { JobsTab } from './JobsTab';
 import { OverviewTab } from './OverviewTab';
 import { PersonHeader } from './PersonHeader';
 import { PrivacyTab } from './PrivacyTab';
+import { RelationshipMap } from './RelationshipMap';
+import { RelationshipSnapshot } from './RelationshipSnapshot';
 import { SendConsentDialog } from './SendConsentDialog';
 import { usePerson } from './usePerson';
 
@@ -68,6 +70,7 @@ export function PersonPage() {
           <Tabs.Tab value="connections">
             {t('network.tabs.connections')} {links.length}
           </Tabs.Tab>
+          <Tabs.Tab value="map">{t('network.tabs.map')}</Tabs.Tab>
           <Tabs.Tab value="jobs">
             {t('network.tabs.jobs')} {apps.length}
           </Tabs.Tab>
@@ -77,7 +80,13 @@ export function PersonPage() {
           <Tabs.Tab value="privacy">{t('network.tabs.privacy')}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="overview">
-          <OverviewTab person={p} actions={d.actions.data?.content ?? []} roles={d.roles.data ?? []} />
+          <Stack gap="md">
+            <RelationshipSnapshot person={p} activities={activities} actions={d.actions.data?.content ?? []} linkCount={links.length} jobCount={apps.length} />
+            <OverviewTab person={p} actions={d.actions.data?.content ?? []} roles={d.roles.data ?? []} />
+          </Stack>
+        </Tabs.Panel>
+        <Tabs.Panel value="map">
+          <RelationshipMap center={p} links={links} />
         </Tabs.Panel>
         <Tabs.Panel value="connections">
           <ConnectionsTab links={links} onAdd={() => setDialog('connection')} />
