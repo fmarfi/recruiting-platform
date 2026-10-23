@@ -12,7 +12,21 @@
     "noOpenJobs": "Uygun açık pozisyon yok.", "noPipelines": "Henüz bir pozisyonda değil.", "note": "Not", "notFound": "Kişi bulunamadı.", "openExisting": "Mevcut kaydı aç",
     "person": "Kişi", "pipelines": "Süreçler", "privacy": "Gizlilik", "privacyUnavailable": "Gizlilik bilgileri görüntülenemiyor.",
     "retention": "Saklama süresi {{date}} tarihinde bitiyor", "retentionWarning": "Veriler silinmek üzere planlandı.", "search": "Kişi ara", "sendConsent": "Onay isteği gönder",
-    "tabs": { "activity": "Hareketler", "connections": "Bağlantılar", "jobs": "Müşteriler ve pozisyonlar", "overview": "Genel", "privacy": "Gizlilik" },
-    "types": { "EXECUTIVE": "Yönetici", "CLIENT_CONTACT": "Müşteri kontağı", "REFERRER": "Yönlendiren", "CANDIDATE": "Aday" }
+    "tabs": { "activity": "Hareketler", "connections": "Bağlantılar", "jobs": "Müşteriler ve pozisyonlar", "map": "Harita", "overview": "Genel", "privacy": "Gizlilik" },
+    "types": { "EXECUTIVE": "Yönetici", "CLIENT_CONTACT": "Müşteri kontağı", "REFERRER": "Yönlendiren", "CANDIDATE": "Aday" },
+    "views": "Listeler", "saveCurrent": "Bu görünümü kaydet", "saveView": "Kaydet", "viewName": "Görünüme ad verin", "deleteView": "{{name}} görünümünü sil",
+    "presets": { "needsCall": "Aranması gerekenler", "noConsent": "Onay isteği gönderilmeyenler", "executives": "Yöneticiler", "referrers": "Yönlendirenler" },
+    "selectAll": "Bu sayfadakilerin tümünü seç", "selected": "{{count}} seçildi", "clearSelection": "Seçimi temizle",
+    "exportCsv": "CSV dışa aktar", "exportSelected": "Seçilenleri dışa aktar", "exportFailed": "Liste dışa aktarılamadı.", "exportCapped": "İlk {{count}} kişi dışa aktarıldı (sınır {{limit}}). Kalanı için filtreleri daraltın.",
+    "requestConsent": "Onay iste", "bulkConsentDone": "Sıraya alınan onay isteği: {{queued}}. Atlanan: {{skipped}}.",
+    "map": { "label": "{{name}} ilişki haritası", "more": "{{count}} bağlantı daha Bağlantılar sekmesinde listeleniyor.", "expandFailed": "Bağlantıları yüklenemedi.", "open": "Profili aç", "expand": "Kimi tanıdığını göster", "noMore": "Başka bağlantı kaydı yok.", "hint": "Ayrıntılar ve tanıdıkları için bir kişi seçin." },
+    "snapshot": {
+      "warmth": "Son görüşme", "touches": "Temas", "last90": "son 90 gün", "reach": "Bağlantılar", "reachSub": "bağlı kişi", "pipelines": "Pozisyonlar", "openActions": "{{count}} açık aksiyon",
+      "health": { "GOOD": "Sıcak", "WARN": "Soğuyor", "BAD": "Soğuk" },
+      "next": {
+        "doNotContact": "Yeni pozisyonlar için iletişime geçmeyin.", "overdueAction": "{{count}} gecikmiş aksiyon: önce onları tamamlayın.", "neverContacted": "Hiç görüşülmedi: ilk aramayı veya toplantıyı kaydedin.",
+        "reconnect": "90 günden uzun süredir görüşülmedi: yeniden iletişime geçin.", "planNext": "Planlı bir sonraki adım yok: aksiyon ekleyin.", "onTrack": "Yolunda: sonraki adım planlandı."
+      }
+    }
   }
 }

@@ -9,7 +9,12 @@
     "reason": "Neden", "reasonTitle": "{{status}} durumuna geçiş nedeni", "openJobsBlock": "Bu müşterinin hâlâ açık pozisyonları var.",
     "clientSince": "{{date}} tarihinden beri müşteri", "closedBanner": "Bu müşteri kapatıldı.", "ownerIs": "sorumlu {{name}}",
     "backToList": "Müşterilere dön", "notFound": "Müşteri bulunamadı.",
-    "tab": { "jobs": "Pozisyonlar", "contacts": "Kişiler", "proposals": "Teklifler", "timeline": "Zaman çizelgesi" },
+    "tab": { "jobs": "Pozisyonlar", "contacts": "Kişiler", "relationships": "İlişkiler", "proposals": "Teklifler", "timeline": "Zaman çizelgesi" },
+    "rel": {
+      "coverage": "Kişi kapsamı", "coverageOf": "{{total}} kişiden {{covered}} ile yakın zamanda görüşüldü", "gap": "{{count}} kişiyle {{days}} gündür görüşülmedi. Bir sonraki tekliften önce arayın.",
+      "contact": "Kişi", "lastContact": "Son görüşme", "never": "Hiç", "daysAgo": "{{count}} gün önce", "knownBy": "Tanıyan",
+      "warmPaths": "Sıcak yollar", "warmHint": "Ağımızda bu müşterideki kişileri tanıyanlar: onlardan tanıştırma isteyin.", "noPaths": "Ağımızda bu kişilerle bağlantılı kimse yok."
+    },
     "consent": { "NOT_SENT": "Onay gönderilmedi", "SENT": "Onay gönderildi", "GIVEN": "Onay verildi", "REFUSED": "Onay reddedildi", "WITHDRAWN": "Onay geri çekildi" },
     "emptyContacts": "Henüz kişi yok", "emptyContactsHint": "Bu müşteride çalıştığınız kişileri ekleyin.", "endedOn": "{{date}} tarihinde sona erdi", "primary": "Asıl", "showEnded": "Sona erenleri göster",
     "dash": { "avgDays": "Ort. açık gün", "candidates": "Adaylar", "nextAction": "Sıradaki iş", "openJobs": "Açık pozisyonlar" }, "setNextAction": "Sıradaki işi belirle",

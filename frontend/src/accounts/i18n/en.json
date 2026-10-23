@@ -9,7 +9,12 @@
     "reason": "Reason", "reasonTitle": "Reason for moving to {{status}}", "openJobsBlock": "This client still has open job orders.",
     "clientSince": "client since {{date}}", "closedBanner": "This client is closed.", "ownerIs": "owner {{name}}",
     "backToList": "Back to clients", "notFound": "Client not found.",
-    "tab": { "jobs": "Job orders", "contacts": "Contacts", "proposals": "Proposals", "timeline": "Timeline" },
+    "tab": { "jobs": "Job orders", "contacts": "Contacts", "relationships": "Relationships", "proposals": "Proposals", "timeline": "Timeline" },
+    "rel": {
+      "coverage": "Contact coverage", "coverageOf": "{{covered}} of {{total}} contacts spoken to recently", "gap": "{{count}} contact(s) not spoken to in {{days}} days. Call them before the next proposal.",
+      "contact": "Contact", "lastContact": "Last contact", "never": "Never", "daysAgo": "{{count}} days ago", "knownBy": "Known by",
+      "warmPaths": "Warm paths", "warmHint": "People in our network who know the contacts at this client: ask them for an introduction.", "noPaths": "No one in our network is linked to these contacts yet."
+    },
     "consent": { "NOT_SENT": "Consent not sent", "SENT": "Consent sent", "GIVEN": "Consent given", "REFUSED": "Consent refused", "WITHDRAWN": "Consent withdrawn" },
     "emptyContacts": "No contacts yet", "emptyContactsHint": "Add the people you work with at this client.", "endedOn": "ended {{date}}", "primary": "Primary", "showEnded": "Show ended",
     "dash": { "avgDays": "Avg. days open", "candidates": "Candidates", "nextAction": "Next action", "openJobs": "Open jobs" }, "setNextAction": "Set next action",

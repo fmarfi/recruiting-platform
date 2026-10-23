@@ -8,26 +8,42 @@ export type PeopleFilters = {
   consent?: Schemas['ConsentStatus'];
   /** Not contacted for at least this many days (0 = off). */
   staleDays: number;
+  /** `field,dir`; empty = default order. */
+  sort: string;
   page: number;
 };
 
-/** Network list query (A-12). With the stale filter on, the oldest contact comes first. */
+const query = (f: PeopleFilters, page: number, size: number) => {
+  const before = f.staleDays ? new Date(Date.now() - f.staleDays * 86_400_000) : undefined;
+  return {
+    q: f.q || undefined,
+    type: f.types.length ? f.types : undefined,
+    ownerId: f.ownerId,
+    consentStatus: f.consent ? [f.consent] : undefined,
+    lastContactBefore: before ? toIsoDate(before) : undefined,
+    page,
+    size,
+    sort: [f.sort || (before ? 'lastContactAt,asc' : 'name,asc')],
+  };
+};
+
+/** Network list query (A-12). With the stale filter on, the oldest contact comes first unless a sort is chosen. */
 export function usePeople(f: PeopleFilters) {
-  return useAsync(() => {
-    const before = f.staleDays ? new Date(Date.now() - f.staleDays * 86_400_000) : undefined;
-    return api.GET('/people', {
-      params: {
-        query: {
-          q: f.q || undefined,
-          type: f.types.length ? f.types : undefined,
-          ownerId: f.ownerId,
-          consentStatus: f.consent ? [f.consent] : undefined,
-          lastContactBefore: before ? toIsoDate(before) : undefined,
-          page: f.page,
-          size: 25,
-          sort: [before ? 'lastContactAt,asc' : 'name,asc'],
-        },
-      },
-    });
-  }, [f.q, f.types.join(','), f.ownerId, f.consent, f.staleDays, f.page]);
+  return useAsync(() => api.GET('/people', { params: { query: query(f, f.page, 25) } }), [f.q, f.types.join(','), f.ownerId, f.consent, f.staleDays, f.sort, f.page]);
+}
+
+export const EXPORT_LIMIT = 1000;
+
+/** Every person matching the filters (for CSV export), capped at EXPORT_LIMIT. */
+export async function fetchAllPeople(f: PeopleFilters): Promise<{ people: Schemas['PersonSummary'][]; total: number }> {
+  const people: Schemas['PersonSummary'][] = [];
+  let total = 0;
+  for (let page = 0; people.length < EXPORT_LIMIT; page++) {
+    const r = await api.GET('/people', { params: { query: query(f, page, 100) } });
+    if (!r.data) throw new Error('export failed');
+    total = r.data.page.totalElements;
+    people.push(...r.data.content);
+    if (page + 1 >= r.data.page.totalPages) break;
+  }
+  return { people: people.slice(0, EXPORT_LIMIT), total };
 }
