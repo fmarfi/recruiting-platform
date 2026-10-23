@@ -1,4 +1,4 @@
-﻿import { Box, Group, Kbd, Modal, Pill, Stack, Text, TextInput } from '@mantine/core';
+﻿import { ActionIcon, Badge, Box, Group, Kbd, Modal, Stack, Text, TextInput } from '@mantine/core';
 import { useEffect, useId, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -155,16 +155,21 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
             {parsed.operators.length > 0 && (
               <Group gap={6} mt="xs" aria-label={t('command.filters')}>
                 {parsed.operators.map((o) => (
-                  <Pill
+                  <Badge
                     key={`${o.key}-${o.start}`}
-                    withRemoveButton
-                    onRemove={() => setQ(removeOperator(q, o))}
-                    removeButtonProps={{ 'aria-label': t('command.removeFilter', { name: `${opLabel[o.key]} ${o.value}` }) }}
+                    variant="light"
+                    size="lg"
+                    tt="none"
                     style={route?.dropped.includes(o) ? { opacity: 0.5 } : undefined}
                     title={route?.dropped.includes(o) ? t('command.ignored') : undefined}
+                    rightSection={
+                      <ActionIcon size="xs" variant="transparent" onClick={() => setQ(removeOperator(q, o))} aria-label={t('command.removeFilter', { name: `${opLabel[o.key]} ${o.value}` })}>
+                        {'\u00D7'}
+                      </ActionIcon>
+                    }
                   >
                     {opLabel[o.key]}: {o.value}
-                  </Pill>
+                  </Badge>
                 ))}
               </Group>
             )}
@@ -231,4 +236,5 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
     </>
   );
 }
+
 
