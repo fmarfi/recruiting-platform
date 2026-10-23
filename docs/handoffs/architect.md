@@ -116,3 +116,4 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 - `npx -y @redocly/cli@1 lint contracts/openapi.yaml` → valid, 0 warnings
 - `npm run typecheck`, `npm test` (frontend) → green (24 tests)
 - Prism smoke on :4017: views GET/POST/PATCH/DELETE 200/201/200/204, bulk 200. Params that do not match the action, and a bad entity, give 400.
+- `mvn -q -B verify` → exit 0 (without -Pintegration); `javac -Xlint:all -Werror --release 21` on contracts → exit 0
