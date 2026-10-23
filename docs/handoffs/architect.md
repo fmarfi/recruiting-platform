@@ -88,3 +88,31 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 
 **Verified with**
 - `mvn -q -B verify -Pintegration` → exit 0 (PersonDeleteIT: 3 tests, 0 failures)
+
+## Wave 2a · contract 1.1.0 (saved views, bulk actions) · 2026-10-23
+
+**Branch / commits:** `worktree-wave2a-architect` · 2 commits
+
+**Done**
+- `openapi.yaml` 1.1.0, additive only (95 ops / 63 paths): `GET/POST /views`, `PATCH/DELETE /views/{id}`, `POST /bulk-actions` (typed union on `action`, 200 with per-record `BulkRecordResult`). No existing operation or schema changed.
+- Enums: `ListEntity`, `ViewVisibility`, `BulkActionType`, `BulkOutcome`, `BulkResultCode` (Java + openapi).
+- `schema.md`: `saved_view` (accounts), `bulk_action` + `bulk_action_item` (pipeline), `tags varchar(50)[]` on person/account/job_order/proposal, `tags = '{}'` on anonymisation.
+- ADR 0010. No new event (bulk publishes the existing per-record events); events.md unchanged.
+
+**Others must know**
+- ASSUMPTIONs (open client questions): SHARED views are MANAGER/ADMIN only; bulk `REQUEST_CONSENT` is MANAGER/ADMIN only and never re-asks REFUSED/WITHDRAWN.
+- Views: another user's private view gives 404, and editing someone else's shared view as a consultant gives 403. This is an explicit exception to the ADR 0007 "any record" rule. The filter keys are the list endpoint's query params; `ownerId: "me"` is resolved by the client.
+- Bulk: one transaction per record. Each item audit row is written in its own transaction. Lifecycle errors map 1:1 to `BulkResultCode`.
+
+**Change requests** (for files you don't own)
+- db-engineer · migration `V…__accounts_saved_view.sql`, `V…__pipeline_bulk_action.sql`, and add the `tags` columns + GIN + CHECK (cardinality <= 20) on the 4 tables and their `_aud` tables, as in schema.md.
+- backend-accounts · implement `/views` (validate filters per entity, visibility rules, `editable`, DUPLICATE on the name). Implement the handlers for REASSIGN_OWNER, ADD/REMOVE_TAG and CHANGE_STATUS (accounts) for PEOPLE/ACCOUNTS. Clear `person.tags` in `PersonDataApi.anonymise`.
+- backend-pipeline · `POST /bulk-actions` dispatcher, `BulkActionHandler` SPI in the pipeline public package, the audit tables, and the handlers for JOB_ORDERS/PROPOSALS and SET_NEXT_ACTION.
+- security-privacy · REQUEST_CONSENT handler (implements the pipeline SPI) with the consent-gate codes; manager/admin check.
+- frontend-shell/-pipeline · `npm run gen:api` picks up the new types; the mock serves the new endpoints.
+- Follow-up contract change (architect, next): `tags` in the read models and a `tag` list query parameter (then a view filter key); optional `GET /bulk-actions` for managers.
+
+**Verified with**
+- `npx -y @redocly/cli@1 lint contracts/openapi.yaml` → valid, 0 warnings
+- `npm run typecheck`, `npm test` (frontend) → green (24 tests)
+- Prism smoke on :4017: views GET/POST/PATCH/DELETE 200/201/200/204, bulk 200. Params that do not match the action, and a bad entity, give 400.
