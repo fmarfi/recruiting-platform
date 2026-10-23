@@ -5,6 +5,21 @@
     "changeStatus": "Durumu değiştir", "managerOnly": "Yalnızca yöneticiler {{action}} yapabilir",
     "recentSearches": "Son aramalar", "searchNone": "\"{{q}}\" için sonuç yok", "searchPlaceholder": "Müşteri, kişi, pozisyon ara", "seeAll": "\"{{q}}\" için tüm sonuçlar"
   },
+  "grid": {
+    "columns": "Sütunlar", "moveUp": "{{col}} sütununu yukarı taşı", "moveDown": "{{col}} sütununu aşağı taşı", "resetColumns": "Sütunları sıfırla",
+    "density": "Satır yoğunluğu", "compact": "Sıkı", "comfortable": "Rahat", "exportCsv": "CSV indir",
+    "sortBy": "{{col}} sütununa göre sırala", "selectPage": "Bu sayfadaki tüm satırları seç", "selectRow": "Satırı seç", "bulkBar": "Toplu işlemler",
+    "selected": "{{n}} seçili", "clearSelection": "Seçimi temizle",
+    "views": "Görünümler", "noViews": "Henüz kayıtlı görünüm yok", "saveView": "Mevcut görünümü kaydet", "viewName": "Görünüm adı", "deleteView": "{{name}} görünümünü sil", "viewsNotPersisted": "Görünümler bu tarayıcıda kaydedilemedi; sayfa yenilenene kadar geçerli.", "overwrite": "\"{{name}}\" adlı bir görünüm var. Üzerine yazılsın mı?", "replace": "Üzerine yaz"
+  },
+  "command": {
+    "title": "Komut çubuğu", "button": "Ara ve komut ver", "open": "Komut çubuğunu aç (Ctrl+K)", "placeholder": "Ara veya komut yaz, örn. owner:me stale:90 type:exec",
+    "results": "Sonuçlar", "filters": "Etkin filtreler", "removeFilter": "{{name}} filtresini kaldır", "ignored": "Bu liste bu operatörle filtrelenemez", "none": "Eşleşme yok.", "notApplied": "henüz uygulanmıyor",
+    "openList": "{{list}} listesini bu filtrelerle aç", "goTo": "Git: {{page}}",
+    "group": { "filter": "Filtre", "actions": "İşlemler", "accounts": "Müşteriler", "people": "Kişiler", "jobs": "Pozisyonlar", "recent": "Son kullanılanlar", "search": "Arama" },
+    "op": { "owner": "Sahibi", "stale": "Görüşülmeyen (gün)", "city": "Şehir", "type": "Tür", "consent": "Onay", "company": "Şirket", "status": "Durum" },
+    "hintMove": "gezin", "hintOpen": "aç", "hintClose": "kapat"
+  },
   "login": { "title": "Giriş yap", "email": "E-posta", "password": "Parola", "submit": "Giriş yap", "invalid": "E-posta veya parola hatalı.", "error": "Giriş şu anda yapılamıyor. Tekrar deneyin." },
   "myday": {
     "greeting": "Merhaba, {{name}}", "summary": "{{overdue}} geciken, bugün {{today}} iş", "welcome": "Hoş geldiniz", "welcomeHint": "Başlamak için ilk müşterinizi ekleyin veya CSV içe aktarın.",

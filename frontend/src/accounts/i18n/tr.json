@@ -23,6 +23,7 @@
     "all": "Tümü", "emptyTimeline": "Henüz bir hareket yok.", "system": "Sistem",
     "tl": { "ACCOUNT_STATUS": "Durum {{to}} oldu", "PROPOSAL": "Teklif {{to}} durumuna geçti", "JOB_ORDER": "Pozisyon: {{title}}", "CANDIDATE": "Aday: {{name}}" },
     "clear": "Filtreleri temizle", "filterName": "Ada göre filtrele", "mine": "Benim", "emptyFilter": "Filtrelere uyan müşteri yok", "emptyHint": "İlk müşterinizi ekleyin veya CSV içe aktarın.", "emptyTitle": "İlk müşterinizi ekleyin", "import": "CSV içe aktar",
-    "jobs": "Pozisyonlar", "jobsCount": "{{n}} açık pozisyon", "lastActivity": "Son hareket", "owner": "Sorumlu", "sortBy": "{{col}} sütununa göre sırala", "status": "Durum"
+    "openedOn": "Müşteri tarihi", "website": "Web sitesi",
+    "jobs": "Pozisyonlar", "jobsCount": "{{n}} açık pozisyon", "lastActivity": "Son hareket", "owner": "Sorumlu", "status": "Durum"
   }
 }
