@@ -1,6 +1,6 @@
 # ADR 0008: One `person` record for the network and for candidates; consent and retention per person
 
-- Status: accepted (Wave 0)
+- Status: accepted (Wave 0); amended by ADR 0011 (the non-AI candidate profile, CV files and duplicate merge are Phase 1 and live on `person` in `accounts`; `ai` adds only AI data in Phase 2)
 - Date: 2026-10-16
 
 ## Context

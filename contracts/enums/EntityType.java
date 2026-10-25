@@ -16,5 +16,11 @@ public enum EntityType {
     CONSENT_REQUEST,
     PRIVACY_NOTICE,
     DATA_SUBJECT_REQUEST,
-    IMPORT_JOB
+    IMPORT_JOB,
+    /** A CV or document of a person (since 1.2.0). */
+    PERSON_FILE,
+    /** An uploaded CV waiting in the intake queue (since 1.2.0). */
+    CV_INTAKE_ITEM,
+    /** An off-limits company rule (since 1.2.0). */
+    OFF_LIMITS_RULE
 }

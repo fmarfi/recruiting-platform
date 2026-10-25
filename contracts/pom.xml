@@ -9,10 +9,10 @@
   </parent>
   <artifactId>contracts</artifactId>
   <name>contracts</name>
-  <description>Shared contract types: enums/, events/ and errors/ (package com.recruiting.platform.contracts). No dependencies. openapi.yaml and design tokens are not compiled.</description>
+  <description>Shared contract types: enums/, events/, errors/ and spi/ (package com.recruiting.platform.contracts). No dependencies. openapi.yaml and design tokens are not compiled.</description>
   <build>
     <plugins>
-      <!-- java sources live in enums/, events/ and errors/ (not src/main/java) -->
+      <!-- java sources live in enums/, events/, errors/ and spi/ (not src/main/java) -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -27,6 +27,7 @@
                 <source>${project.basedir}/enums</source>
                 <source>${project.basedir}/events</source>
                 <source>${project.basedir}/errors</source>
+                <source>${project.basedir}/spi</source>
               </sources>
             </configuration>
           </execution>

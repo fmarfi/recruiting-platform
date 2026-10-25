@@ -27,6 +27,17 @@ public enum ErrorCode {
     DUPLICATE(409),
     /** The record is in a state that forbids this change (e.g. terms of a sent proposal). */
     STATE_CONFLICT(409),
+    /**
+     * Sharing guard (since 1.2.0, ADR 0011): a person without valid consent cannot be presented
+     * or shared with a client. {@code blockingItems} lists the people, each with a
+     * {@link ShareBlockReason} as {@code reasonCode}; the UI offers a one-click (re)send.
+     */
+    CONSENT_REQUIRED(409),
+    /**
+     * Off-limits guard (since 1.2.0, ADR 0011): the person works at an off-limits company.
+     * {@code blockingItems} lists the matching rules with their {@link OffLimitsReason}.
+     */
+    OFF_LIMITS(409),
     /** A one-time link (consent token) has expired. */
     GONE(410),
     /** Upload too large. */

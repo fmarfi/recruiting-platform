@@ -4,10 +4,11 @@ The shared interfaces every agent builds against. Owner: architect (`design-toke
 
 | File | What it is | Who uses it |
 | --- | --- | --- |
-| `openapi.yaml` | OpenAPI 3.1 contract, version 1.1.1 (see the changelog below): 95 operations on 63 paths (auth, users, reference data, accounts, contacts, people, network links, import, search, job orders, pipeline, proposals, activities, next actions, timeline, dashboard, My day, consent, privacy notices, retention, data-subject requests, audit; since 1.1.0 saved views and bulk actions, ADR 0010). Conventions are in its `info.description` and ADR 0006. `x-owner` = implementing module/agent, `x-roles` = allowed roles. | backends implement it, frontends generate types and use the mock, QA writes contract tests |
+| `openapi.yaml` | OpenAPI 3.1 contract, version 1.2.0 (see the changelog below; operation and path counts in the changelog): auth, users, reference data, accounts, contacts, people, network links, import, search, job orders, pipeline, proposals, activities, next actions, timeline, dashboard, My day, consent, privacy notices, retention, data-subject requests, audit; since 1.1.0 saved views and bulk actions, ADR 0010; since 1.2.0 candidate files, CV intake, duplicates, exposure, off-limits, sharing guard, ADR 0011). Conventions are in its `info.description` and ADR 0006. `x-owner` = implementing module/agent, `x-roles` = allowed roles. | backends implement it, frontends generate types and use the mock, QA writes contract tests |
 | `enums/*.java` | Status lifecycles (`AccountStatus`, `ProposalStatus`, `JobOrderStatus`, `PipelineStage`, `ConsentStatus`, `DataSubjectRequestStatus`) implementing `Lifecycle` with transition table, reason rule, manager-only rule, labels and tone; plain vocabularies (`PersonType`, `ActivityType`, `LinkType`, `Role`, …); `ErrorCode`. Must match `docs/status-lifecycles.md`. | all backend modules, db-engineer (CHECK constraints), `/reference-data` |
 | `events/*.java` | Domain event records (`DomainEvent` header + one record per event). | publishers and listeners across modules |
 | `errors/*.java` | `ApiException` and `IllegalTransitionException` (with `check(from, to, reason)`). Mapped to RFC 9457 by `platform-app`. | all backend modules |
+| `spi/*.java` | Plain-JDK service interfaces shared by several modules, implemented in `platform-app`: `FileStore` (CV and document bytes; local volume now, S3-compatible later; since 1.2.0, ADR 0011). | accounts, later pipeline (reports), devops |
 | `events.md` | Event catalogue: publisher, payload, listeners, delivery rules, main flows. | backend agents, security-privacy |
 | `schema.md` | Tables, keys, indexes, module ownership, Envers scope, anonymisation. | db-engineer, backend agents |
 | `design-tokens.json` | Colours, spacing, type, one badge style per status tone (ux-designer). | frontends |
@@ -25,7 +26,7 @@ Expected: `Woohoo! Your API description is valid.` with no errors or warnings.
 Compile the Java contracts without Maven (JDK 21+; on this machine `"C:\Program Files\Java\jdk-25\bin\javac"`):
 
 ```bash
-javac -Xlint:all -Werror --release 21 -d /tmp/contracts-classes contracts/enums/*.java contracts/events/*.java contracts/errors/*.java
+javac -Xlint:all -Werror --release 21 -d /tmp/contracts-classes contracts/enums/*.java contracts/events/*.java contracts/errors/*.java contracts/spi/*.java
 ```
 
 ## Run the mock server
@@ -68,4 +69,5 @@ server: {
 | Version | Date | Change | Affected owners |
 | --- | --- | --- | --- |
 | 1.1.0 | 2026-10-23 | Saved views, bulk actions, `ListEntity`/`ViewVisibility`/`Bulk*` enums, tags columns (ADR 0010). | backend-accounts, backend-pipeline, security-privacy, db-engineer, frontends |
+| 1.2.0 | 2026-10-25 | Wave 2b, additive (116 operations / 78 paths, was 95 / 63). Candidate profile fields on `Person` (source channel, notice period, mobility, encrypted compensation, languages, educations); CV files `/people/{id}/files` (versions, download, Tika status) and `cv` full-text filter; bulk upload `/cv-intake`; `/duplicates/check`, `/duplicates`, `/people/{id}/merge`; `/people/{id}/exposure` and `Application.warnings`; `/off-limits` and `OFF_LIMITS`; sharing guard `CONSENT_REQUIRED` and `/consent/share-check`; consent renewal (`purpose`, `openedAt`, reminders), `RetentionBasis.FROM_LAST_CONSENT`; `tag`/`sourceChannel`/`shareable` filters. 15 new enums, 3 events (`PersonFileUploaded`, `PersonMerged`, `RetentionRenewed`), `spi/FileStore.java` (ADR 0011). | db-engineer, backend-accounts, backend-pipeline, security-privacy, devops, frontend-shell, frontend-pipeline, QA |
 | 1.1.1 | 2026-10-25 | `city`, `company` filters on `GET /people` (+ PEOPLE view keys). Bulk audit holds no personal data: `BulkResultCode.message()` fixed texts, `bulk_action_item.message` dropped, `title`/`reason` not stored in `bulk_action.params` (ADR 0010 amendment 1). Tags cleared in `person_aud` by the purge (ADR 0009). | db-engineer, backend-accounts, backend-pipeline, security-privacy |
