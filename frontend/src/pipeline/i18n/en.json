@@ -4,7 +4,7 @@
     "activeCandidates": "{{count}} active candidates", "add": "Add", "addCandidate": "Add candidate", "addFailed": "Could not add.", "backTo": "Back to {{stage}}",
     "changeStatus": "Change status", "daysOpen": "{{count}} days open", "emptyBody": "Add the first candidate to start the pipeline.", "emptyColumn": "Empty",
     "emptyTitle": "No candidates yet", "fee": "Fee terms", "hint": "Drag a card to change its stage",
-    "list": { "active": "Open", "all": "All", "client": "Client", "daysOpen": "Days open", "empty": "No job orders match.", "mine": "Mine", "searchPlaceholder": "Search job orders", "status": "Status", "title": "Job orders" },
+    "list": { "active": "Open", "all": "All", "clear": "Clear filters", "client": "Client", "daysOpen": "Days open", "empty": "No job orders match.", "mine": "Mine", "searchPlaceholder": "Search job orders", "status": "Status", "title": "Job orders" },
     "loadFailed": "Could not load the pipeline.", "logActivity": "Log activity", "logWithPerson": "Log with this person", "managerOnly": "Only managers can {{action}}",
     "markFilled": "Mark filled", "markFilledAsk": "Mark this job order as filled?", "move": "Move to", "moved": "{{name}} moved to {{stage}}",
     "moveFailed": "Could not move the candidate.", "notFound": "Job order not found.", "opened": "Opened", "openProfile": "Open profile", "owner": "Owner",

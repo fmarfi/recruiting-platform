@@ -5,6 +5,21 @@
     "changeStatus": "Change status", "managerOnly": "Only managers can {{action}}",
     "recentSearches": "Recent searches", "searchNone": "No results for \"{{q}}\"", "searchPlaceholder": "Search clients, people, jobs", "seeAll": "See all results for \"{{q}}\""
   },
+  "grid": {
+    "columns": "Columns", "moveUp": "Move {{col}} up", "moveDown": "Move {{col}} down", "resetColumns": "Reset columns",
+    "density": "Row density", "compact": "Compact", "comfortable": "Comfortable", "exportCsv": "Export CSV",
+    "sortBy": "Sort by {{col}}", "selectPage": "Select all rows on this page", "selectRow": "Select row", "bulkBar": "Bulk actions",
+    "selected": "{{n}} selected", "clearSelection": "Clear selection",
+    "views": "Views", "noViews": "No saved views yet", "saveView": "Save current view", "viewName": "View name", "deleteView": "Delete view {{name}}", "viewsNotPersisted": "Views could not be saved in this browser; they last until you reload.", "overwrite": "A view named \"{{name}}\" exists. Replace it?", "replace": "Replace"
+  },
+  "command": {
+    "title": "Command bar", "button": "Search and commands", "open": "Open command bar (Ctrl+K)", "placeholder": "Search or type a command, e.g. owner:me stale:90 type:exec",
+    "results": "Results", "filters": "Active filters", "removeFilter": "Remove filter {{name}}", "ignored": "This list cannot filter by this operator", "none": "Nothing matches.", "notApplied": "not applied yet",
+    "openList": "Open {{list}} with these filters", "goTo": "Go to {{page}}",
+    "group": { "filter": "Filter", "actions": "Actions", "accounts": "Clients", "people": "People", "jobs": "Jobs", "recent": "Recent", "search": "Search" },
+    "op": { "owner": "Owner", "stale": "Not contacted (days)", "city": "City", "type": "Type", "consent": "Consent", "company": "Company", "status": "Status" },
+    "hintMove": "move", "hintOpen": "open", "hintClose": "close"
+  },
   "login": { "title": "Sign in", "email": "E-mail", "password": "Password", "submit": "Sign in", "invalid": "E-mail or password is wrong.", "error": "Sign-in is not available right now. Try again." },
   "myday": {
     "greeting": "Hello, {{name}}", "summary": "{{overdue}} overdue, {{today}} due today", "welcome": "Welcome", "welcomeHint": "Add your first client to get started, or import a CSV.",

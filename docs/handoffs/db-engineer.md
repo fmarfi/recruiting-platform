@@ -29,3 +29,24 @@
 **Verified with**
 - `mvn -q -B verify` -> green (2 tests).
 - `mvn -q -B verify -Pintegration` -> green (19 ITs, Docker 29.8, pgvector/pgvector:0.8.7-pg17).
+
+
+# Hand-off: db-engineer · Wave 2a (tags, saved_view, bulk_action) · 2026-10-25
+
+**Branch / commits:** `worktree-wave2a-db` · 200f4e9
+
+**Done**
+- `V202610230001__platform_tags.sql`: `tags varchar(50)[]` (max 20, GIN index) on person, account, job_order, proposal and their `_aud` tables; `tags` mapped on the four entities.
+- `V202610230002__accounts_saved_view.sql`: `saved_view` (PRIVATE/SHARED, jsonb definition, unique per owner+entity+lower(name)); `SavedView` + `SavedViewRepository` in accounts.
+- `V202610230003__pipeline_bulk_action.sql`: `bulk_action` and `bulk_action_item` (append-only, outcome/code CHECK matching ADR 0010); entities and repositories in pipeline.
+- `Wave2aRepositoryIT` (8 tests): tag limit, saved-view uniqueness, bulk item outcome/code rule, round trips.
+
+**Not done / left**
+- Backend endpoints (`/views`, `/bulk-actions`) belong to backend-accounts and backend-pipeline.
+
+**Verified with**
+- `mvn -q -B verify` green; `mvn -B verify -Pintegration` with Docker: 69 tests, 0 failures, BUILD SUCCESS (2026-10-25).
+
+## Review fixes
+- BulkActionItem implements Persistable (isNew flag, cleared on PostLoad/PostPersist); duplicate (bulk_action_id, entity_id) now fails; IT asserts it.
+- setTags null-safe (null -> empty list, defensive copy) on Person/Account/JobOrder/Proposal; imports replace FQNs; V202610230001 gains ck_*_tags_lower CHECK (tags = lower(tags::text)::varchar[]), IT asserts upper-case rejected.

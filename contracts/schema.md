@@ -21,8 +21,8 @@ PostgreSQL 16+ with pgvector (vectors only in Phase 2). One schema, `public`.
 | Module | Tables |
 | --- | --- |
 | security | `app_user`, `access_log`, `revinfo` |
-| accounts | `account`, `person`, `person_employment`, `contact`, `network_link`, `import_job`, `account_open_job` |
-| pipeline | `job_order`, `application`, `proposal`, `activity`, `next_action`, `timeline_entry` |
+| accounts | `account`, `person`, `person_employment`, `contact`, `network_link`, `import_job`, `account_open_job`, `saved_view` |
+| pipeline | `job_order`, `application`, `proposal`, `activity`, `next_action`, `timeline_entry`, `bulk_action`, `bulk_action_item` |
 | privacy | `person_privacy`, `privacy_notice`, `consent_record`, `consent_request`, `retention_settings`, `retention_run`, `data_subject_request` |
 | platform-app (Modulith) | `event_publication` (Spring Modulith JPA event registry; the db-engineer writes the Flyway migration for the table the Spring Modulith JPA starter expects, because `ddl-auto` is `validate` and nothing creates it automatically) |
 
@@ -41,6 +41,8 @@ account  1─* timeline_entry                 (A-08, written by event listeners)
 person   1─1 person_privacy 1─* consent_record, consent_request   (S-01, NFR-02)
 privacy_notice 1─* consent_record, consent_request
 person   1─* data_subject_request (nullable until identified)        (S-04)
+app_user 1─* saved_view.owner_id                                     (grid views, ADR 0010)
+app_user 1─* bulk_action 1─* bulk_action_item                       (mass-action audit, ADR 0010)
 ```
 
 Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`, `cv_embedding vector(n)` and an AI score on `application`. Retention and consent already work on `person`, so nothing moves (ADR 0008).
@@ -96,6 +98,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | opened_on | date | not null, default today |
 | open_job_count | int | not null default 0; derived: `count(*) from account_open_job where account_id = ? and open`, refreshed after each projection upsert |
 | last_activity_at | timestamptz | null; maintained from `ActivityLogged`; index desc |
+| tags | varchar(50)[] | not null default `'{}'`; lower-case, at most 20 (`CHECK (cardinality(tags) <= 20)`); GIN index; written by `ADD_TAG`/`REMOVE_TAG` bulk actions (ADR 0010) |
 | audit columns | | |
 
 **person** — audited (except `last_contact_at`, `consent_status`, `retention_status`)
@@ -118,6 +121,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | consent_status | varchar(40) | `ConsentStatus`, default `NOT_SENT`; read-only copy, maintained from `ConsentStatusChanged` |
 | retention_status | varchar(40) | `RetentionStatus`, default `ACTIVE`; copy, maintained from `RetentionFlagged` and anonymisation |
 | anonymised_at | timestamptz | null; when set, personal columns hold placeholders |
+| tags | varchar(50)[] | not null default `'{}'`; lower-case, at most 20 (`CHECK (cardinality(tags) <= 20)`); GIN index; written by `ADD_TAG`/`REMOVE_TAG` bulk actions (ADR 0010) |
 | audit columns | | |
 
 **person_employment** — audited; `id uuid PK`, `person_id FK person on delete cascade`, `company varchar(200) not null`, `title varchar(200)`, `start_date date`, `end_date date`, `sort_order int not null`. Replaced as a whole on update.
@@ -164,6 +168,19 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 
 `PersonCreated.importId` tells privacy which import created a person; it keeps that in `person_privacy.import_id` so `POST /consent-requests/bulk` with `importId` can target them.
 
+**saved_view** — not audited (a user setting, not a business record; ADR 0010)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| entity | varchar(40) | `ListEntity` |
+| name | varchar(120) | not null; unique `(owner_id, entity, lower(name))` |
+| visibility | varchar(40) | `ViewVisibility`, default `PRIVATE`; index `(entity, visibility)` |
+| owner_id | uuid FK app_user | not null; index `(owner_id, entity)` |
+| definition | jsonb | not null; `{filters, columns, sort, groupBy}` as `ViewDefinition` in openapi.yaml, validated by the service per entity |
+| audit columns | | `version` gives the optimistic lock of `PATCH /views/{id}` |
+
+Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold ids and enum names, not personal data.
 ### pipeline
 
 **job_order** — audited (except cached counters)
@@ -183,6 +200,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | owner_id | uuid FK app_user | not null; index |
 | opened_on | date | not null |
 | closed_on | date | null; set on FILLED or CANCELLED |
+| tags | varchar(50)[] | not null default `'{}'`; lower-case, at most 20 (`CHECK (cardinality(tags) <= 20)`); GIN index; written by `ADD_TAG`/`REMOVE_TAG` bulk actions (ADR 0010) |
 | audit columns | | |
 
 `stageCounts`, `activeCandidates` and `daysOpen` are computed by query (`group by stage`), not stored.
@@ -215,6 +233,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | sent_on | date | null |
 | decided_on | date | null |
 | owner_id | uuid FK app_user | not null |
+| tags | varchar(50)[] | not null default `'{}'`; lower-case, at most 20 (`CHECK (cardinality(tags) <= 20)`); GIN index; written by `ADD_TAG`/`REMOVE_TAG` bulk actions (ADR 0010) |
 | audit columns | | |
 
 **activity** — audited
@@ -263,6 +282,29 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | actor_id | uuid FK app_user | null for system |
 | source_event_id | uuid | unique (listener idempotency) |
 
+**bulk_action** — append-only, not audited (audit evidence of one mass action, ADR 0010)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | returned as `BulkActionResult.id` |
+| entity | varchar(40) | `ListEntity` |
+| action | varchar(40) | `BulkActionType` |
+| params | jsonb | the typed params as sent (owner id, status and reason, tag, next-action title and date, language) |
+| actor_id | uuid FK app_user | not null; index `(actor_id, started_at desc)` |
+| started_at, finished_at | timestamptz | not null |
+| requested_count, ok_count, skipped_count, failed_count | int | not null |
+
+**bulk_action_item** — append-only, not audited; one row per requested id, whatever the outcome
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| bulk_action_id | uuid FK bulk_action | `on delete cascade`; PK `(bulk_action_id, entity_id)` |
+| entity_id | uuid | no FK (the record may be deleted or anonymised later, like `access_log`); index `(entity_id)` |
+| outcome | varchar(40) | `BulkOutcome` |
+| code | varchar(40) | `BulkResultCode`; null when OK, not null otherwise (`CHECK`) |
+| message | varchar(500) | null; no personal data |
+
+Each OK record also gets its normal Envers revision, domain event and timeline entry, because the handlers call the same services as the single endpoints. A failed record rolls back only its own transaction; its `bulk_action_item` row is written in a separate transaction so the evidence survives.
 ### privacy
 
 **person_privacy** — audited; one row per person, created on `PersonCreated`
@@ -354,7 +396,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 **Order (one retention or DSR action, run by `privacy`):**
 
 1. **Minimise DSRs** (via JPA, so Envers records it) for every `data_subject_request` with that `person_id`: `requester_name = 'Anonymised person'`, `requester_email = 'hmac:v<k>:' || hex(HMAC-SHA256(PRIVACY_HMAC_KEY, lower(trim(email))))`. The key comes from an env var outside the database; `<k>` is `PRIVACY_HMAC_KEY_VERSION`. Old keys are kept read-only for matching and values are never re-hashed (ADR 0009)., `description = '[removed]'`. Keep the rest as evidence; `resolution` must not hold personal data. DSRs are never purged in Phase 1.
-2. **ANONYMISE:** `PersonDataApi.anonymise(personId)` in `accounts` sets `person.name = 'Anonymised person'`, nulls `email, phone, linkedin_url, how_we_know, notes, title, city, company`, deletes `person_employment` and `network_link` rows, sets `anonymised_at` and `retention_status = ANONYMISED`, then publishes `PersonAnonymised(deleted=false)`.
+2. **ANONYMISE:** `PersonDataApi.anonymise(personId)` in `accounts` sets `person.name = 'Anonymised person'`, nulls `email, phone, linkedin_url, how_we_know, notes, title, city, company`, sets `tags = '{}'`, deletes `person_employment` and `network_link` rows, sets `anonymised_at` and `retention_status = ANONYMISED`, then publishes `PersonAnonymised(deleted=false)`.
    **DELETE** (`RetentionAction.DELETE`, or a completed DELETION request): `PersonDataApi.delete(personId)` removes the person **through JPA** (`PersonRepository.delete`; never a native `DELETE`). Envers then writes the id-only `person_aud` row with `revtype = 2` (`org.hibernate.envers.store_data_at_delete` stays false). The FKs cascade the rest and set the DSR's `person_id` to null. It then publishes `PersonAnonymised(deleted=true)`.
 3. **Listeners on `PersonAnonymised`:**
    - `pipeline` sets `timeline_entry.reason` and `summary` to `[removed]` for every entry with that `person_id`. Timeline text is free text written at event time, so it is scrubbed, not re-rendered; the entries and their ids stay. When `deleted=false`, it also replaces `activity.note`, `application.rejection_reason` and `next_action.title` for the person with `[removed]`.
