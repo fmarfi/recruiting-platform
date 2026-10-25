@@ -47,6 +47,7 @@ public class PersonDataService implements PersonDataApi {
             p.setTitle(null);
             p.setCity(null);
             p.setCompany(null);
+            p.setTags(null); // tags are cleared on anonymisation (ADR 0010)
             p.setAnonymisedAt(Instant.now());
             p.setRetentionStatus(RetentionStatus.ANONYMISED);
             people.saveAndFlush(p);
