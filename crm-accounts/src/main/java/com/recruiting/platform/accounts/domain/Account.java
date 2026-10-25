@@ -1,5 +1,9 @@
 package com.recruiting.platform.accounts.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.persistence.*;
 import com.recruiting.platform.contracts.AccountStatus;
 import java.time.Instant;
@@ -55,6 +59,11 @@ public class Account extends AuditableEntity {
     @NotAudited
     @Column(name = "last_activity_at")
     private Instant lastActivityAt;
+
+    /** Lower-case labels, at most 20 (ADR 0010); column {@code tags varchar(50)[]}. */
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "tags", length = 50)
+    private List<String> tags = new ArrayList<>();
 
     public Account() {
         // for JPA
@@ -152,4 +161,12 @@ public class Account extends AuditableEntity {
         this.lastActivityAt = lastActivityAt;
     }
 
+
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
+    }
 }

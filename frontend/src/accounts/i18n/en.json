@@ -23,6 +23,7 @@
     "all": "All", "emptyTimeline": "Nothing has happened yet.", "system": "System",
     "tl": { "ACCOUNT_STATUS": "Status changed to {{to}}", "PROPOSAL": "Proposal moved to {{to}}", "JOB_ORDER": "Job order: {{title}}", "CANDIDATE": "Candidate: {{name}}" },
     "clear": "Clear filters", "filterName": "Filter by name", "mine": "Mine", "emptyFilter": "No clients match these filters", "emptyHint": "Add your first client or import a CSV.", "emptyTitle": "Add your first client", "import": "Import CSV",
-    "jobs": "Jobs", "jobsCount": "{{n}} open jobs", "lastActivity": "Last activity", "owner": "Owner", "sortBy": "Sort by {{col}}", "status": "Status"
+    "openedOn": "Client since", "website": "Website",
+    "jobs": "Jobs", "jobsCount": "{{n}} open jobs", "lastActivity": "Last activity", "owner": "Owner", "status": "Status"
   }
 }

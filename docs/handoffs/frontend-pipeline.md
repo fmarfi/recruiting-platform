@@ -1,31 +1,27 @@
-# Hand-off: frontend-pipeline · W1-14 · 2026-10-19
+# Hand-off: frontend-pipeline · Wave 2a (Network and job orders on DataGrid) · 2026-10-25
 
-**Branch / commits:** `worktree-wave1b-frontend-pipeline` · 2 commits (screens, then tests/handoff)
+**Branch / commits:** `worktree-wave2a-frontend-pipeline` · see `git log --oneline`
 
 **Done**
-- `frontend/src/pipeline/joborders/list`: job order list (open + mine default, search, status chips, paging).
-- `frontend/src/pipeline/joborders/detail` + `board/`: job order page, kanban board (@dnd-kit/core drag plus "Move to" menu), optimistic moves with undo toast, reason dialog with chips for Rejected, rejected lane, status menu (manager-only reopen), add candidate.
-- `frontend/src/network/list` + `person/`: network list (filters, consent badge), new person, person page with Overview / Connections / Clients and jobs / Activity / Privacy tabs, add connection, add to job, send consent.
-- `frontend/src/pipeline/quickadd`: Quick add (activity or action, entity pickers, mobile-friendly modal).
-- Legal moves and labels come only from /reference-data (`pipeline/shared`).
-- i18n in `src/{pipeline,network}/i18n/{tr,en}.json`, registered in `src/i18n/index.ts` via deep-merge `addResourceBundle`.
-- `src/routes.tsx`: four placeholder routes replaced.
+- /network on shell/grid DataGrid: column chooser, sort (name, company, last contact), density, phone cards, saved views (ViewsMenu + localViewStore, grid id `network`), CSV of visible columns (grid button = current page; "Export all (CSV)" = up to 1000 rows, visible columns), selection with bulk bar via `bulkActions` (export selected, bulk consent for managers).
+- Smart-list presets kept (PresetsBar). Person page, relationship map and snapshot untouched.
+- Command-bar params read from the URL on mount and on every change: owner=me, stale=N, type=A,B, consent, city, company, q; plus page (1-based) and sort. State is written back with replace.
+- city/company have no API filter: they narrow the loaded page client-side and show as dimmed "(this page only)" chips with a remove button.
+- /job-orders on DataGrid: columns, sort (title, status, daysOpen), density, views (`job-orders`), CSV; reads owner (absent = me), status (list), q, page, sort from the URL.
+- `network/list/csv.ts` re-exports shell/grid/csv; PersonRows, SavedViewsBar and savedViews.ts removed.
+- Old saved views (
+etwork.savedViews.v1) are migrated into grid.network.views and the old key is removed (KVKK). The grid is keyed on filters+page, so selection resets on any filter or page change.
+- CSV now exports visible columns only (email is hidden by default, so no longer exported). city/company stay page-local until GET /people supports them.
+- i18n TR/EN added. Saved views store filters only, no people data (KVKK).
+- Tests: 87 total (was 79): URL parsing, client filter, CSV columns, job params.
 
 **Not done / left**
-- Not run against the live backend or Prism by hand (no browser session); only unit tests with stubbed fetch.
-- Board drag-and-drop and Quick add flows have no component tests (only boardRules and list render).
-- Timeline entry on the account page after a move depends on the accounts screens (other agent).
+- Old saved views in localStorage key `network.savedViews.v1` are not migrated (new key `grid.network.views`).
+- Server-backed ViewStore and bulk-actions endpoint: none exist yet; local store kept, bulk is only what existed (consent request).
+- No server-side city/company filter on /people.
 
-**Others must know**
-- frontend-shell: `<QuickAddLauncher />` is mounted in the temporary `<nav>` in `routes.tsx`; mount it in the real shell header/FAB when you replace the nav.
-- `common.*` keys (cancel, confirm, save, retry, refresh, undo) are in `pipeline/i18n`; deep-merge makes duplicates harmless.
-- Job order list H1 uses `pipeline.list.title` ("Pozisyonlar"), not the global `nav.jobOrders`.
-- Added `@dnd-kit/core` 6.3.1 to package.json (allowed by wave briefing).
-
-**Change requests** (for files you don't own)
-- None.
+**Change requests**
+- backend/contracts: add `city` and `company` query filters to GET /people so the chips can become real filters.
 
 **Verified with**
-- `npx tsc --noEmit` → clean
-- `npx vitest run` → 3 files, 6 tests pass
-- `npm run build` → built
+- `npx tsc --noEmit` clean; `npx vitest run` 87 passed; `npx vite build` ok (in frontend/). No browser run.
