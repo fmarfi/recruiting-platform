@@ -87,3 +87,6 @@ export function clientFilter<T extends { city?: string | null; company?: string 
   const co = norm(f.company);
   return rows.filter((r) => (!c || norm(r.city).includes(c)) && (!co || norm(r.company).includes(co)));
 }
+
+/** Key for the grid: a new filter or page remounts it, which clears the row selection (bulk actions must never reach rows that are no longer shown). */
+export const gridKey = (f: ViewFilters, page: number) => paramsFromFilters(f, page).toString();

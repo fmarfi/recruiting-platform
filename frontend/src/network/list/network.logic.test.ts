@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { toCsv, visibleCsv } from './csv';
-import { DEFAULT_FILTERS, PRESETS, clientFilter, filtersFromParams, paramsFromFilters, sameFilters } from './networkFilters';
+import { migrateLegacyViews, NEW_KEY } from './legacyViews';
+import { DEFAULT_FILTERS, PRESETS, clientFilter, filtersFromParams, gridKey, paramsFromFilters, sameFilters } from './networkFilters';
 import { layoutMap } from '../person/RelationshipMap';
 
 describe('toCsv', () => {
@@ -70,5 +71,34 @@ describe('visibleCsv', () => {
   it('writes only the given columns, header from column headers', () => {
     const cols = [{ id: 'a', header: 'A', accessor: (r: { a: string; b: string }) => r.a }, { id: 'b', header: 'B', accessor: (r: { a: string; b: string }) => r.b }];
     expect(visibleCsv(cols.slice(1), [{ a: '1', b: '2' }])).toEqual({ header: ['B'], rows: [['2']] });
+  });
+});
+
+describe('grid key (selection reset)', () => {
+  it('changes with filters and page, so the grid remounts and clears its selection', () => {
+    const a = gridKey(DEFAULT_FILTERS, 0);
+    expect(gridKey(DEFAULT_FILTERS, 0)).toBe(a);
+    expect(gridKey(DEFAULT_FILTERS, 1)).not.toBe(a);
+    expect(gridKey({ ...DEFAULT_FILTERS, q: 'x' }, 0)).not.toBe(a);
+  });
+});
+
+describe('legacy saved views migration', () => {
+  const mem = (init: Record<string, string>) => {
+    const m = { ...init };
+    return { m, getItem: (k: string) => m[k] ?? null, setItem: (k: string, v: string) => void (m[k] = v), removeItem: (k: string) => void delete m[k] };
+  };
+  it('moves old views into the grid store and removes the old key', () => {
+    const s = mem({ 'network.savedViews.v1': JSON.stringify([{ id: 'a', name: 'Mine', filters: { q: 'ali', mine: true } }, { bad: 1 }]) });
+    migrateLegacyViews(s);
+    expect(s.m['network.savedViews.v1']).toBeUndefined();
+    const v = JSON.parse(s.m[NEW_KEY]!);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatchObject({ id: 'a', name: 'Mine', filters: JSON.parse(JSON.stringify({ ...DEFAULT_FILTERS, q: 'ali', mine: true })) });
+  });
+  it('does nothing without an old key and keeps existing new views', () => {
+    const s = mem({ [NEW_KEY]: '[{"id":"z","name":"Z","filters":{}}]' });
+    migrateLegacyViews(s);
+    expect(JSON.parse(s.m[NEW_KEY]!)).toHaveLength(1);
   });
 });
