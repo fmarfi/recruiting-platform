@@ -35,10 +35,13 @@ Owner: architect. Java records: `contracts/events/*.java`, package `com.recruiti
 | `ProposalStatusChanged` | pipeline | proposalId, accountId, from, to, reason | pipeline: timeline `PROPOSAL` |
 | `ActivityLogged` | pipeline | activityId, type, activityAt, accountId?, personId?, jobOrderId? | accounts: `account.last_activity_at = max(...)`; `person.last_contact_at = max(...)` if `type.countsAsContact()`; privacy: recompute `basis_date`/`retain_until` when basis is FROM_LAST_CONTACT; pipeline: timeline `ACTIVITY` (when accountId set) |
 | `ConsentStatusChanged` | privacy | personId, from, to, channel, reason? | accounts: copy to `person.consent_status` |
+| `PersonFileUploaded` (1.2.0) | accounts | personId, fileId, kind, version | privacy: if `kind = CV`, `autoSendOnCvUpload`, the person has an e-mail, status is NOT_SENT or SENT, and no request is younger than 7 days → queue an INITIAL consent request (S-01). Any person type (ASSUMPTION: consent on every candidate). REFUSED/WITHDRAWN are not re-asked automatically. |
+| `PersonMerged` (1.2.0) | privacy (merge orchestrator) | survivorId, mergedId | none in Phase 1 (every row moved synchronously in the merge transaction); later search index and `ai` re-read the survivor |
+| `RetentionRenewed` (1.2.0) | privacy | personId, retainUntil | accounts: `person.retention_status = ACTIVE`; pipeline: mark the open next action created from `RetentionFlagged` for this person done |
 | `RetentionFlagged` | privacy | personId, ownerId, retainUntil | accounts: `person.retention_status = FLAGGED`; pipeline: next action "Renew consent / review retention" for `ownerId` due `retainUntil` (`source_event_id` = eventId) |
 | `CandidateShortlisted` | ai (Phase 2) | jobOrderId, personId, score | pipeline: add application in SOURCED unless present (human decision already made, NFR-06) |
 
-Not events on purpose: user management (security has no listeners in Phase 1), next action changes and network links (no other module needs them), consent requests and notices (internal to privacy).
+Not events on purpose: user management (security has no listeners in Phase 1), next action changes and network links (no other module needs them), consent requests and notices (internal to privacy). Since 1.2.0 also: text extraction, CV intake, duplicate detection and off-limits rules (internal to accounts), exposures (written by pipeline itself in the stage-move transaction). The sharing guard is a synchronous SPI call (`pipeline.ShareGuard`, implemented by privacy), not an event, because it must block.
 
 ## Main flows
 
@@ -83,4 +86,27 @@ nightly privacy job
   │     └─ pipeline: next action for the owner
   └─ retain_until < today and FLAGGED and consent not renewed → PersonDataApi.anonymise() (privacy → accounts call)
         └─ accounts publishes PersonAnonymised → pipeline scrubs free text; privacy closes its record
+```
+
+**CV upload, consent e-mail, sharing guard (1.2.0, ADR 0011)**
+
+```
+POST /cv-intake (files)            → accounts: cv_intake_item PENDING; Tika text; patterns → detected; duplicate check
+POST /cv-intake/{id}/attach        → accounts: person (new or existing) + person_file CV v(n); publish PersonCreated?, PersonFileUploaded
+  └─ privacy (PersonFileUploaded, CV): queue consent_request INITIAL → e-mail → ConsentStatusChanged NOT_SENT→SENT
+person opens link (openedAt) and gives consent → consent_record GIVEN; last_consent_at; retain_until = +24 months
+PATCH /applications/{id}/stage {PRESENTED}
+  └─ pipeline: ShareGuard.check(personId) (privacy SPI impl) → not GIVEN → 409 CONSENT_REQUIRED (UI: one-click resend)
+       → GIVEN → save; candidate_exposure(PIPELINE); warnings; publish ApplicationStageChanged
+```
+
+**Renewal (S-03, 1.2.0)**
+
+```
+nightly privacy job (basis FROM_LAST_CONSENT by default)
+  ├─ retain_until - d == today for d in renewalReminderDays (60, 14), e-mail known:
+  │     GIVEN → consent_request RENEWAL; SENT → INITIAL resend (both unique per person, period, d)
+  ├─ retain_until - warning_days <= today → FLAGGED; RetentionFlagged (unchanged)
+  ├─ person gives consent via the renewal link → consent_record GIVEN; new retain_until; FLAGGED→ACTIVE; publish RetentionRenewed
+  └─ retain_until < today, not renewed → anonymise (unchanged)
 ```

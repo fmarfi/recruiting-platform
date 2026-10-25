@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Recruiting Platform API
-  version: 1.1.1
-  summary: Phase 1 (Module A, CRM) REST contract plus users, roles, KVKK consent and audit.
+  version: 1.2.0
+  summary: Phase 1 (non-AI) REST contract — CRM, candidate pool, CV files, KVKK consent engine and audit.
   description: |
     Contract owned by the architect (Wave 0). Backends implement it, frontends build against the
     mock server generated from it, QA writes contract tests from it. Changes go through the architect.
@@ -47,6 +47,15 @@ info:
     - 1.1.1 (additive, descriptions): `city` and `company` filters on `GET /people` (and as PEOPLE view
       filter keys); no personal data in the bulk audit: `BulkRecordResult.message` is the fixed text of
       the code and is not stored, free-text params (`title`, `reason`) are not stored (ADR 0010 amendment).
+    - 1.2.0 (Wave 2b, additive only; ADR 0011): candidate profile fields on the person (source channel,
+      notice period, mobility, encrypted compensation, languages, educations), CV files with versions and
+      Tika text search (`/people/{id}/files`, `cv` filter), CV intake for bulk upload (`/cv-intake`),
+      duplicate check, queue and merge (`/duplicates`, `/people/{id}/merge`), exposure history
+      (`/people/{id}/exposure`) and pipeline warnings, off-limits rules (`/off-limits`) with the
+      `OFF_LIMITS` guard, sharing guard (`CONSENT_REQUIRED` on PRESENTED, `/consent/share-check`),
+      consent renewal (`purpose`, reminders, tracked `openedAt`), retention basis `FROM_LAST_CONSENT`.
+      Talent pools are tags plus shared saved views (`tag` filter). New response fields are optional, so
+      1.1.x clients and servers stay valid.
   contact:
     name: architect agent
   license:
@@ -106,6 +115,16 @@ tags:
     description: Saved private and shared list views for the data grids (since 1.1.0, ADR 0010). Module `accounts` (backend-accounts).
   - name: Bulk actions
     description: Mass actions on selected grid records with a result per record (since 1.1.0, ADR 0010). Module `pipeline` (backend-pipeline) with handlers in `accounts` and `privacy`.
+  - name: Candidate files
+    description: CVs (versioned) and documents per person, Tika text extraction, download (since 1.2.0, B-01, ADR 0011). Module `accounts` (backend-accounts).
+  - name: CV intake
+    description: Bulk and single CV upload before a person exists; attach or create (since 1.2.0, B-01, ADR 0011). Module `accounts` (backend-accounts).
+  - name: Duplicates
+    description: Duplicate check before create, duplicate queue (module `accounts`, backend-accounts) and audited merge (orchestrated by `privacy`, security-privacy); since 1.2.0, B-04, ADR 0011.
+  - name: Exposure
+    description: Which client accounts saw a person, and warnings before re-presenting (since 1.2.0, B-05, ADR 0011). Module `pipeline` (backend-pipeline).
+  - name: Off-limits
+    description: Companies the firm must not recruit from, enforced when adding to a pipeline (since 1.2.0, ADR 0011). Module `accounts` (backend-accounts); guard in `pipeline`.
 paths:
   /auth/login:
     post:
@@ -659,11 +678,40 @@ paths:
           in: query
           description: Current company contains this text (accent- and case-insensitive, trigram index on `person.company`). Since 1.1.1.
           schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: tag
+          in: query
+          description: Has at least one of these tags (lower-case match). A talent pool is a tag plus a shared saved view on it (ADR 0011). Since 1.2.0.
+          schema:
+            type: array
+            maxItems: 20
+            items: { $ref: '#/components/schemas/Tag' }
+          style: form
+          explode: true
+        - name: sourceChannel
+          in: query
+          description: Since 1.2.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/SourceChannel' }
+          style: form
+          explode: true
+        - name: cv
+          in: query
+          description: |
+            Full-text query over the text of each person's **current** CV (Apache Tika extraction, no AI),
+            Turkish-aware (`tr_unaccent` text search configuration: Turkish stemming, accents ignored).
+            Web-search syntax: words are AND, `"exact phrase"`, `or`, `-word` to exclude. With `cv`, the
+            default sort is relevance and each item carries `cvMatch`. Since 1.2.0.
+          schema: { type: string, minLength: 2, maxLength: 200 }
+        - name: shareable
+          in: query
+          description: '`true`: only people who may be shared with a client (consent GIVEN, not anonymised); `false`: only the others. Since 1.2.0.'
+          schema: { type: boolean }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
           in: query
-          description: 'Sortable: `name`, `company`, `lastContactAt`, `createdAt`. Default `name,asc`.'
+          description: 'Sortable: `name`, `company`, `lastContactAt`, `createdAt`. Default `name,asc` (relevance first when `cv` is set).'
           schema:
             type: array
             items: { type: string }
@@ -679,7 +727,10 @@ paths:
       tags: [People]
       operationId: createPerson
       summary: Add a person to the network
-      description: Consent status starts at NOT_SENT. The privacy module may queue the KVKK notice e-mail (S-01) per retention settings. A second person with the same e-mail gives 409 `DUPLICATE` with `existingId`.
+      description: |
+        Consent status starts at NOT_SENT. The privacy module may queue the KVKK notice e-mail (S-01) per retention settings. A second person with the same e-mail gives 409 `DUPLICATE` with `existingId`.
+
+        Since 1.2.0: call `POST /people/duplicate-check` first (the UI shows the matches before saving). Matches on phone, LinkedIn URL or name + company never block; after the create they are queued in `GET /duplicates`. `sourceChannel` defaults to null (unknown). `compensation` is stored encrypted (field-level, ADR 0011).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
       requestBody:
@@ -1185,7 +1236,18 @@ paths:
       tags: [Pipeline]
       operationId: addCandidateToJobOrder
       summary: Put a person on the job order (stage SOURCED)
-      description: 'Guards: the job order must be open and its account not CLOSED (409 `TRANSITION_GUARD_FAILED`); the same person twice gives 409 `DUPLICATE`.'
+      description: |
+        Guards: the job order must be open and its account not CLOSED (409 `TRANSITION_GUARD_FAILED`); the same person twice gives 409 `DUPLICATE`.
+
+        Since 1.2.0 (ADR 0011):
+        - **Off-limits guard.** If the person's current company (person `company`, or an employment
+          without `endDate`) matches an active off-limits rule, 409 `OFF_LIMITS` with the rules in
+          `blockingItems` (type OFF_LIMITS_RULE, `reasonCode` an `OffLimitsReason`). Rules of the job
+          order's own account are ignored. A MANAGER/ADMIN may add the person anyway with
+          `offLimitsOverrideReason` (kept on the application, audited); a consultant sending it gets 403.
+        - **Warnings.** 201 may carry `warnings`: `PREVIOUSLY_PRESENTED_TO_ACCOUNT` (with the exposures)
+          and `ACTIVE_IN_OTHER_PROCESS`. They never block.
+        - Consent is not needed to add a person (research is allowed); it is needed to present them.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1201,6 +1263,7 @@ paths:
               schema: { $ref: '#/components/schemas/Application' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
   /job-orders/{id}/candidate-suggestions:
@@ -1261,7 +1324,18 @@ paths:
       tags: [Pipeline]
       operationId: changeApplicationStage
       summary: Move a candidate to another stage (drag on the board, A-07)
-      description: 'Reason required for REJECTED. PLACED only from OFFER. PLACED is final. A job order that is FILLED or CANCELLED accepts no stage moves (409 `TRANSITION_GUARD_FAILED`).'
+      description: |
+        Reason required for REJECTED. PLACED only from OFFER. PLACED is final. A job order that is FILLED or CANCELLED accepts no stage moves (409 `TRANSITION_GUARD_FAILED`).
+
+        Since 1.2.0 (ADR 0011):
+        - **Sharing guard.** Moving to PRESENTED shares the person with the client, so it needs valid
+          consent (GIVEN, not anonymised; checked through the `ShareGuard` SPI that privacy implements).
+          Otherwise 409 `CONSENT_REQUIRED` with one `blockingItems` entry (type PERSON, `reasonCode` a
+          `ShareBlockReason`); the UI offers the one-click (re)send `POST /people/{id}/consent/requests`.
+        - **Exposure.** The first move to PRESENTED writes a `candidate_exposure` row (channel PIPELINE)
+          for the job order's account; see `GET /people/{id}/exposure`.
+        - **Warnings.** The response may carry `warnings` (non-blocking), e.g. the person was already
+          presented to this account for another job order.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1702,6 +1776,13 @@ paths:
         Queues one e-mail with the current notice for the chosen language and a one-time link
         (valid 30 days). This is an action, not a status transition: the status moves to SENT from NOT_SENT, REFUSED or WITHDRAWN, and when it is already SENT the e-mail is re-sent and the status stays SENT. Not allowed (409 `STATE_CONFLICT`) when GIVEN. The person needs an e-mail
         address (else 409 `STATE_CONFLICT`). Delivery is asynchronous: watch `deliveryStatus`.
+
+        Since 1.2.0 (ADR 0011): this is also the **one-click resend** of the sharing guard (409
+        `CONSENT_REQUIRED`). `purpose: RENEWAL` sends the renewal e-mail and is allowed only while the
+        status is GIVEN (otherwise 409 `STATE_CONFLICT`); the status stays GIVEN, and a GIVEN answer
+        restarts the retention clock (`RetentionRenewed`). Without `purpose`, INITIAL is used. The
+        nightly job sends RENEWAL requests itself at `renewalReminderDays` (default 60 and 14 days)
+        before `retainUntil`.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: privacy / security-privacy
       requestBody:
@@ -1807,6 +1888,7 @@ paths:
       tags: [Public consent]
       operationId: getPublicConsent
       summary: Show the information notice and consent text to the person
+      description: The first successful call sets `ConsentRequest.openedAt` (tracked link, since 1.2.0). No other tracking (no pixel, no IP stored on open).
       security: []
       x-roles: [PUBLIC]
       x-owner: privacy / security-privacy
@@ -2382,6 +2464,541 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  # ---------- 1.2.0: candidate pool, files, duplicates, exposure, off-limits, sharing guard (ADR 0011) ----------
+  /people/{id}/files:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Candidate files]
+      operationId: listPersonFiles
+      summary: CVs (all versions, newest first) and documents of a person
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Files
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PersonFile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Candidate files]
+      operationId: uploadPersonFile
+      summary: Upload a CV or document for a known person (drag and drop on the person page)
+      description: |
+        Max 10 MB. Accepted types (detected from the bytes by Tika, not from the file name): PDF, DOCX,
+        DOC, RTF, ODT, TXT; else 415 `UNSUPPORTED_MEDIA_TYPE`. A CV becomes the person's current CV with
+        `version` = previous + 1; older versions stay until the retention period ends. The same bytes
+        (SHA-256) uploaded twice for the same person give 409 `DUPLICATE` with `existingId`.
+        Text extraction runs asynchronously (`textStatus` PENDING, then DONE, NO_TEXT or FAILED).
+        Publishes `PersonFileUploaded`; for a CV, privacy then sends the KVKK notice and consent e-mail
+        when `autoSendOnCvUpload` is on and the person has an e-mail, no GIVEN consent and no request
+        younger than 7 days (REFUSED/WITHDRAWN people are not re-asked automatically). Anonymised
+        people: 409 `STATE_CONFLICT`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/octet-stream
+                  description: The file; its original name is kept as `fileName`.
+                kind: { $ref: '#/components/schemas/PersonFileKind' }
+      responses:
+        '201':
+          description: Stored; text extraction queued
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonFile' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+  /people/{id}/files/{fileId}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+      - $ref: '#/components/parameters/FileIdPath'
+    delete:
+      tags: [Candidate files]
+      operationId: deletePersonFile
+      summary: Delete one file (row and bytes)
+      description: Hard delete, recorded by Envers (DEL revision without file data). Deleting the current CV makes the next older version current. The bytes are removed after the commit.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /people/{id}/files/{fileId}/content:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+      - $ref: '#/components/parameters/FileIdPath'
+    get:
+      tags: [Candidate files]
+      operationId: downloadPersonFile
+      summary: Download the file
+      description: Recorded in the access log (DOWNLOAD, entity PERSON_FILE). Always served as an attachment with `application/octet-stream` and `X-Content-Type-Options nosniff`, never rendered inline.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: File bytes
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename*=UTF-8''<fileName>
+          content:
+            application/octet-stream:
+              schema: { type: string, contentMediaType: application/octet-stream }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /cv-intake:
+    get:
+      tags: [CV intake]
+      operationId: listCvIntake
+      summary: Uploaded CVs that are not yet attached to a person
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - name: status
+          in: query
+          description: Default PENDING.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/CvIntakeStatus' }
+          style: form
+          explode: true
+        - name: uploadedBy
+          in: query
+          description: Only items uploaded by this user (`me` is resolved by the client).
+          schema: { $ref: '#/components/schemas/Id' }
+        - name: batchId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of intake items, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CvIntakeItemPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [CV intake]
+      operationId: uploadCvIntake
+      summary: Bulk (or single) CV upload for people who may not exist yet
+      description: |
+        1 to 50 files, each at most 10 MB, same types as `POST /people/{id}/files`. Files that fail
+        size or type are listed in `rejected`; the others become PENDING intake items. For each item the
+        server extracts the text (Tika, async) and finds e-mail addresses, phone numbers and LinkedIn URLs
+        with plain patterns (no AI parsing), then runs the duplicate check on them (`duplicates`). The
+        consultant attaches each item to a matching person or creates a new one
+        (`POST /cv-intake/{id}/attach`). **Pending items and their files are deleted after 14 days**
+        (ASSUMPTION, ADR 0011): no consent e-mail goes out before a person exists.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  description: One `files` part per file (repeat the part name). Declared as one file or an array because the Prism mock does not collect repeated parts into an array.
+                  oneOf:
+                    - type: string
+                      contentMediaType: application/octet-stream
+                    - type: array
+                      minItems: 1
+                      maxItems: 50
+                      items:
+                        type: string
+                        contentMediaType: application/octet-stream
+                sourceChannel:
+                  $ref: '#/components/schemas/SourceChannel'
+                  description: Proposed source channel for the people created from this batch (default CV_UPLOAD).
+      responses:
+        '201':
+          description: Batch accepted (some files may be rejected)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CvIntakeBatch' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '413': { $ref: '#/components/responses/Problem' }
+  /cv-intake/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [CV intake]
+      operationId: getCvIntakeItem
+      summary: One intake item (poll `textStatus` and `detected`)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Item
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CvIntakeItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [CV intake]
+      operationId: discardCvIntakeItem
+      summary: Discard a pending item; its file and extracted text are deleted
+      description: The row stays as DISCARDED with no file name, text or detected values (minimised). Not PENDING gives 409 `STATE_CONFLICT`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '204': { description: Discarded }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /cv-intake/{id}/content:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [CV intake]
+      operationId: downloadCvIntakeFile
+      summary: Download the uploaded file of a pending item
+      description: Recorded in the access log (DOWNLOAD, entity CV_INTAKE_ITEM). Served as an attachment like person files.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: File bytes
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename*=UTF-8''<fileName>
+          content:
+            application/octet-stream:
+              schema: { type: string, contentMediaType: application/octet-stream }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /cv-intake/{id}/attach:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [CV intake]
+      operationId: attachCvIntakeItem
+      summary: Attach a pending CV to an existing person, or create the person from it
+      description: |
+        Either `personId` (attach as the person's new current CV) or `person` (create, exactly like
+        `POST /people`, then attach). The file becomes a `person_file` (kind CV) and the item ATTACHED;
+        its text and detected values are removed from the intake row. Publishes `PersonCreated` (new
+        person) and `PersonFileUploaded`, so the consent e-mail rule of `POST /people/{id}/files`
+        applies. A new person whose e-mail exists gives 409 `DUPLICATE` with `existingId` (attach to that
+        person instead). Not PENDING gives 409 `STATE_CONFLICT`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CvIntakeAttachRequest' }
+      responses:
+        '201':
+          description: Attached
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CvIntakeAttachResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /duplicates/check:
+    post:
+      tags: [Duplicates]
+      operationId: checkDuplicates
+      summary: Find people who may be the same person, before creating or saving one (B-04)
+      description: |
+        Matches on e-mail (case-insensitive), phone (normalised to digits with country code, default +90),
+        LinkedIn URL (normalised) and name + current company (accent- and case-insensitive, exact after
+        normalising). Anonymised people never match. Returns at most 10 matches, strongest first (EMAIL,
+        LINKEDIN_URL, PHONE, NAME_COMPANY). Read-only; nothing is queued.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DuplicateCheckRequest' }
+      responses:
+        '200':
+          description: Matches (empty array when none)
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 10
+                items: { $ref: '#/components/schemas/DuplicateMatch' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /duplicates:
+    get:
+      tags: [Duplicates]
+      operationId: listDuplicates
+      summary: Duplicate queue — pairs found after create, update, CV attach and by the nightly scan
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - name: status
+          in: query
+          description: Default OPEN.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/DuplicateStatus' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/PersonIdQuery'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of duplicate pairs, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DuplicateCandidatePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /duplicates/{id}/dismiss:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Duplicates]
+      operationId: dismissDuplicate
+      summary: Mark a pair as different people; it is not proposed again
+      description: Only OPEN pairs (else 409 `STATE_CONFLICT`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Dismissed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DuplicateCandidate' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/merge:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Duplicates]
+      operationId: mergePeople
+      summary: Merge another person into this one (the survivor); audited, not reversible
+      description: |
+        One transaction, orchestrated by `privacy` (the only module allowed to reach accounts, pipeline
+        and privacy, ADR 0001/0011):
+        1. accounts: copy the fields named in `takeFromMerged` from the merged person (others keep the
+           survivor's value; empty survivor fields are filled from the merged person), union the tags
+           (at most 20), append employments, educations and languages that the survivor lacks, move
+           files (CV versions renumbered by upload time), contacts and network links (duplicates and
+           self-links dropped), close duplicate pairs of both as MERGED.
+        2. pipeline: move applications (if both are on the same job order, keep the further stage and
+           drop the other), activities, next actions, exposures and timeline `person_id`.
+        3. privacy: move consent records and requests; the survivor's consent status becomes the latest
+           decision of the two; recompute the retention clock; move DSRs.
+        4. accounts: write `person_merge(survivor_id, merged_id)`, delete the merged person through
+           JPA (Envers DEL row), publish `PersonMerged`.
+        The `_aud` purge of the survivor later also covers the merged id (via `person_merge`).
+        Errors: same id, or either person anonymised → 409 `STATE_CONFLICT`; `version` mismatch on the
+        survivor → 409 `VERSION_CONFLICT`. **ASSUMPTION:** MANAGER/ADMIN only (403 for consultants).
+      x-roles: [MANAGER, ADMIN]
+      x-owner: privacy / security-privacy (orchestration); steps in accounts (backend-accounts) and pipeline (backend-pipeline)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonMergeRequest' }
+      responses:
+        '200':
+          description: Merged; the survivor
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/exposure:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Exposure]
+      operationId: listPersonExposure
+      summary: Which client accounts saw this person, for which job order, when, and the outcome (B-05)
+      description: |
+        One entry per presentation, newest first: the first move of an application to PRESENTED
+        (channel PIPELINE; Wave 2d adds REPORT and SHARE_LINK). `stage` is the application's current
+        stage, i.e. the outcome so far (null if the application was removed). Exposures are kept when
+        the person is anonymised (ids and dates only) and deleted with the person.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+      responses:
+        '200':
+          description: Exposures
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ExposureEntry' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /off-limits:
+    get:
+      tags: [Off-limits]
+      operationId: listOffLimitsRules
+      summary: Companies the firm must not recruit from
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - name: active
+          in: query
+          description: '`true`: rules in force today (`startsOn <= today` and `endsOn` null or `>= today`); `false`: ended or future ones; omitted: all rules.'
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of rules
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OffLimitsRulePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Off-limits]
+      operationId: createOffLimitsRule
+      summary: Mark a client account or another company as off-limits
+      description: |
+        Exactly one of `accountId` (a client in the CRM) or `companyName` (a company that is not an
+        account). The guard compares the person's current company with the account name or
+        `companyName` (accent- and case-insensitive, trimmed). An active rule for the same account or
+        company gives 409 `DUPLICATE` with `existingId`. **ASSUMPTION:** MANAGER/ADMIN only.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OffLimitsRuleCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OffLimitsRule' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /off-limits/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Off-limits]
+      operationId: getOffLimitsRule
+      summary: One rule
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Rule
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OffLimitsRule' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Off-limits]
+      operationId: updateOffLimitsRule
+      summary: Change reason, note or dates (end a rule by setting `endsOn`)
+      description: The target (account or company) cannot change; create a new rule instead.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OffLimitsRuleUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OffLimitsRule' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Off-limits]
+      operationId: deleteOffLimitsRule
+      summary: Delete a rule entered by mistake (Envers keeps the history; prefer `endsOn`)
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /consent/share-check:
+    post:
+      tags: [Consent]
+      operationId: checkShareable
+      summary: Which of these people may be shared with a client (sharing guard)
+      description: |
+        A person is shareable only with consent GIVEN and not anonymised (ADR 0011). The UI calls this
+        before presenting people or (Wave 2d) adding them to a report or share link; the server enforces
+        the same rule with 409 `CONSENT_REQUIRED`. Unknown ids are left out of the result.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: privacy / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShareCheckRequest' }
+      responses:
+        '200':
+          description: One result per known id, in request order
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ShareCheckResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   securitySchemes:
     sessionCookie:
@@ -2396,6 +3013,11 @@ components:
   parameters:
     IdPath:
       name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Id' }
+    FileIdPath:
+      name: fileId
       in: path
       required: true
       schema: { $ref: '#/components/schemas/Id' }
@@ -2491,11 +3113,38 @@ components:
       description: |
         `ILLEGAL_TRANSITION` (with `currentStatus`, `requestedStatus`, `allowed`),
         `TRANSITION_GUARD_FAILED` (with `blockingItems` where records block the move), `VERSION_CONFLICT`,
-        `DUPLICATE` (with `existingId`) or `STATE_CONFLICT`
+        `DUPLICATE` (with `existingId`) or `STATE_CONFLICT`; since 1.2.0 also `CONSENT_REQUIRED` (sharing
+        guard) and `OFF_LIMITS` (off-limits guard), both with `blockingItems[].reasonCode`
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/ProblemDetail' }
           examples:
+            consentRequired:
+              summary: Presenting a person without valid consent (sharing guard, 1.2.0)
+              value:
+                type: urn:recruiting:problem:consent-required
+                title: Consent required
+                status: 409
+                detail: This person has not given consent yet. Send the consent request first.
+                code: CONSENT_REQUIRED
+                blockingItems:
+                  - id: 0192a5b8-0000-7000-8000-000000000102
+                    title: Elif Yıldırım
+                    type: PERSON
+                    reasonCode: CONSENT_PENDING
+            offLimits:
+              summary: Adding a person who works at an off-limits company (1.2.0)
+              value:
+                type: urn:recruiting:problem:off-limits
+                title: Off-limits company
+                status: 409
+                detail: The person works at an off-limits company.
+                code: OFF_LIMITS
+                blockingItems:
+                  - id: 0192a5b8-0000-7000-8000-00000000d001
+                    title: Anadolu Lojistik
+                    type: OFF_LIMITS_RULE
+                    reasonCode: CLIENT_AGREEMENT
             illegalTransition:
               summary: Move outside the transition table
               value:
@@ -2590,6 +3239,10 @@ components:
               id: { $ref: '#/components/schemas/Id' }
               title: { type: string, examples: [Chief Financial Officer] }
               type: { type: string, description: Entity kind, examples: [JOB_ORDER] }
+              reasonCode:
+                type: string
+                description: 'Since 1.2.0. CONSENT_REQUIRED: a `ShareBlockReason` (type PERSON); OFF_LIMITS: an `OffLimitsReason` (type OFF_LIMITS_RULE).'
+                examples: [CONSENT_PENDING]
     FieldError:
       type: object
       required: [field, code, message]
@@ -2671,7 +3324,7 @@ components:
       enum: [ACTIVE, FLAGGED, ANONYMISED]
     RetentionBasis:
       type: string
-      enum: [FROM_CREATED, FROM_LAST_CONTACT]
+      enum: [FROM_CREATED, FROM_LAST_CONTACT, FROM_LAST_CONSENT]
     RetentionAction:
       type: string
       enum: [ANONYMISE, DELETE]
@@ -2686,7 +3339,7 @@ components:
       enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE]
     EntityType:
       type: string
-      enum: [ACCOUNT, PERSON, CONTACT, NETWORK_LINK, JOB_ORDER, APPLICATION, PROPOSAL, ACTIVITY, NEXT_ACTION, USER, CONSENT_RECORD, CONSENT_REQUEST, PRIVACY_NOTICE, DATA_SUBJECT_REQUEST, IMPORT_JOB]
+      enum: [ACCOUNT, PERSON, CONTACT, NETWORK_LINK, JOB_ORDER, APPLICATION, PROPOSAL, ACTIVITY, NEXT_ACTION, USER, CONSENT_RECORD, CONSENT_REQUEST, PRIVACY_NOTICE, DATA_SUBJECT_REQUEST, IMPORT_JOB, PERSON_FILE, CV_INTAKE_ITEM, OFF_LIMITS_RULE]
     AccessAction:
       type: string
       enum: [VIEW, EXPORT, DOWNLOAD]
@@ -2704,7 +3357,7 @@ components:
       enum: [NEUTRAL, INFO, PROGRESS, GOOD, WARN, BAD, MUTED]
     ErrorCode:
       type: string
-      enum: [VALIDATION_FAILED, REASON_REQUIRED, UNAUTHENTICATED, BAD_CREDENTIALS, FORBIDDEN, NOT_FOUND, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, VERSION_CONFLICT, DUPLICATE, STATE_CONFLICT, GONE, PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE, INTERNAL_ERROR]
+      enum: [VALIDATION_FAILED, REASON_REQUIRED, UNAUTHENTICATED, BAD_CREDENTIALS, FORBIDDEN, NOT_FOUND, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, VERSION_CONFLICT, DUPLICATE, STATE_CONFLICT, CONSENT_REQUIRED, OFF_LIMITS, GONE, PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE, TOO_MANY_REQUESTS, INTERNAL_ERROR]
     # ---------- auth and users ----------
     LoginRequest:
       type: object
@@ -2926,6 +3579,20 @@ components:
         lastContactAt: { type: [string, 'null'], format: date-time }
         consentStatus: { $ref: '#/components/schemas/ConsentStatus' }
         retentionStatus: { $ref: '#/components/schemas/RetentionStatus' }
+        tags:
+          type: array
+          description: Since 1.2.0 (optional for 1.1.x servers). Lower-case; a tag can stand for a talent pool.
+          items: { $ref: '#/components/schemas/Tag' }
+        sourceChannel:
+          oneOf: [{ $ref: '#/components/schemas/SourceChannel' }, { type: 'null' }]
+          description: Since 1.2.0.
+        shareable:
+          type: boolean
+          description: Since 1.2.0. May be shared with a client (consent GIVEN, not anonymised); from the copies on `person`, for badges only — the server guard decides.
+        cvMatch:
+          type: [string, 'null']
+          maxLength: 300
+          description: Since 1.2.0. Only with the `cv` filter — a short excerpt of the current CV around the match (`ts_headline`), match marked with `«` and `»`.
     PersonSummaryPage:
       type: object
       required: [content, page]
@@ -2945,6 +3612,16 @@ components:
     Person:
       allOf:
         - $ref: '#/components/schemas/PersonSummary'
+        - $ref: '#/components/schemas/CandidateProfileFields'
+        - type: object
+          properties:
+            currentCv:
+              oneOf: [{ $ref: '#/components/schemas/PersonFile' }, { type: 'null' }]
+              description: Since 1.2.0. The current CV, if any; all files via `GET /people/{id}/files`.
+            offLimits:
+              type: array
+              description: Since 1.2.0. Active off-limits rules that match the person's current company (the pipeline guard uses the same match).
+              items: { $ref: '#/components/schemas/OffLimitsRule' }
         - type: object
           required: [employments, anonymised, createdAt, updatedAt, version]
           properties:
@@ -2963,7 +3640,20 @@ components:
     PersonCreateRequest:
       type: object
       required: [name, type]
+      description: Since 1.2.0 also takes the candidate profile fields (`sourceChannel`, `noticePeriodDays`, `mobility`, `compensation`, `languages`, `educations`; see `CandidateProfileFields`).
       properties:
+        sourceChannel: { oneOf: [{ $ref: '#/components/schemas/SourceChannel' }, { type: 'null' }] }
+        noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365 }
+        mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
+        compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        languages:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/LanguageSkill' }
+        educations:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/Education' }
         name: { type: string, minLength: 1, maxLength: 200 }
         type: { $ref: '#/components/schemas/PersonType' }
         title: { type: [string, 'null'], maxLength: 200 }
@@ -2982,7 +3672,20 @@ components:
           items: { $ref: '#/components/schemas/Employment' }
     PersonUpdateRequest:
       type: object
+      description: Since 1.2.0 also takes the candidate profile fields; `languages` and `educations` replace the whole list when sent, `compensation` replaces the whole value (`null` clears it).
       properties:
+        sourceChannel: { oneOf: [{ $ref: '#/components/schemas/SourceChannel' }, { type: 'null' }] }
+        noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365 }
+        mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
+        compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        languages:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/LanguageSkill' }
+        educations:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/Education' }
         name: { type: string, minLength: 1, maxLength: 200 }
         type: { $ref: '#/components/schemas/PersonType' }
         title: { type: [string, 'null'], maxLength: 200 }
@@ -3212,11 +3915,21 @@ components:
         addedAt: { type: string, format: date-time }
         addedBy: { $ref: '#/components/schemas/UserRef' }
         version: { $ref: '#/components/schemas/Version' }
+        offLimitsOverrideReason:
+          type: [string, 'null']
+          description: Since 1.2.0. Set when a manager added the person despite an off-limits rule.
+        warnings:
+          type: array
+          description: Since 1.2.0. Only in the responses of `POST /job-orders/{id}/applications` and `PATCH /applications/{id}/stage`; non-blocking.
+          items: { $ref: '#/components/schemas/PipelineWarning' }
     ApplicationCreateRequest:
       type: object
       required: [personId]
       properties:
         personId: { $ref: '#/components/schemas/Id' }
+        offLimitsOverrideReason:
+          $ref: '#/components/schemas/Reason'
+          description: Since 1.2.0. MANAGER/ADMIN only (403 for consultants); adds the person despite matching off-limits rules.
     StageChangeRequest:
       type: object
       required: [stage]
@@ -3493,6 +4206,13 @@ components:
         failureReason: { type: [string, 'null'] }
         expiresAt: { type: string, format: date-time }
         respondedAt: { type: [string, 'null'], format: date-time }
+        openedAt: { type: [string, 'null'], format: date-time, description: Since 1.2.0. First time the link was opened (tracked link). }
+        purpose:
+          $ref: '#/components/schemas/ConsentRequestPurpose'
+          description: Since 1.2.0; INITIAL for older requests.
+        reminderDaysBefore:
+          type: [integer, 'null']
+          description: Since 1.2.0. For automatic reminders (RENEWAL, or INITIAL resent while SENT), the days before `retainUntil` it was sent at (60, 14).
         response: { oneOf: [{ $ref: '#/components/schemas/ConsentDecision' }, { type: 'null' }] }
         requestedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }], description: '`null` when sent automatically.' }
     ConsentRequestPage:
@@ -3509,6 +4229,9 @@ components:
         language:
           $ref: '#/components/schemas/Language'
           description: Defaults to TR.
+        purpose:
+          $ref: '#/components/schemas/ConsentRequestPurpose'
+          description: Since 1.2.0. Defaults to INITIAL; RENEWAL only while consent is GIVEN.
     ConsentRequestBulkRequest:
       type: object
       properties:
@@ -3547,6 +4270,12 @@ components:
         noticeSentAt: { type: [string, 'null'], format: date-time, description: First time the information notice was sent (NFR-01). }
         lastRequest: { oneOf: [{ $ref: '#/components/schemas/ConsentRequest' }, { type: 'null' }] }
         retention: { $ref: '#/components/schemas/RetentionInfo' }
+        shareable: { type: boolean, description: 'Since 1.2.0. Sharing guard: consent GIVEN and not anonymised.' }
+        shareBlockReason:
+          oneOf: [{ $ref: '#/components/schemas/ShareBlockReason' }, { type: 'null' }]
+          description: Since 1.2.0. Null when shareable.
+        lastConsentAt: { type: [string, 'null'], format: date-time, description: Since 1.2.0. Last GIVEN decision (start of the clock with FROM_LAST_CONSENT). }
+        nextReminderOn: { type: [string, 'null'], format: date, description: 'Since 1.2.0. Date of the next automatic renewal reminder, if any.' }
         records:
           type: array
           description: All consent records, newest first.
@@ -3582,6 +4311,17 @@ components:
           description: Person types that get the automatic e-mail (default CANDIDATE, EXECUTIVE).
           items: { $ref: '#/components/schemas/PersonType' }
         renewOnConsent: { type: boolean, default: true, description: A GIVEN consent restarts the retention period. }
+        autoSendOnCvUpload:
+          type: boolean
+          default: true
+          description: Since 1.2.0. Queue the notice and consent e-mail when a CV is attached to a person with e-mail and without GIVEN consent, whatever the person type (S-01; ASSUMPTION consent on every candidate). Omitted in a PUT keeps the current value.
+        renewalReminderDays:
+          type: array
+          description: Since 1.2.0. Days before `retainUntil` at which the nightly job sends a reminder to people with an e-mail - purpose RENEWAL when consent is GIVEN, a resent INITIAL request when it is SENT (none for REFUSED, WITHDRAWN or NOT_SENT). Default [60, 14]. Omitted in a PUT keeps the current value.
+          maxItems: 5
+          uniqueItems: true
+          items: { type: integer, minimum: 1, maximum: 365 }
+          default: [60, 14]
         version: { $ref: '#/components/schemas/Version' }
     RetentionItem:
       type: object
@@ -3696,6 +4436,14 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Application' }
         consent: { $ref: '#/components/schemas/ConsentOverview' }
+        files:
+          type: array
+          description: Since 1.2.0. Metadata of every CV and document; the bytes are delivered separately on request.
+          items: { $ref: '#/components/schemas/PersonFile' }
+        exposure:
+          type: array
+          description: Since 1.2.0. Which client accounts the person was presented to.
+          items: { $ref: '#/components/schemas/ExposureEntry' }
     # ---------- audit ----------
     AccessLogEntry:
       type: object
@@ -3772,7 +4520,8 @@ components:
         endpoint (`GET /people`, `/accounts`, `/job-orders`, `/proposals`), so the allowed filter keys are
         that endpoint's query parameters except `page`, `size` and `sort`:
         - PEOPLE: `q`, `type`, `ownerId`, `consentStatus`, `lastContactBefore`, `lastContactAfter`, `city`,
-          `company` (since 1.1.1)
+          `company` (since 1.1.1), `tag`, `sourceChannel`, `cv`, `shareable` (since 1.2.0). A saved search
+          is a PEOPLE view; a talent pool is a tag plus a SHARED view with `tag` (ADR 0011).
         - ACCOUNTS: `q`, `status`, `sector`, `ownerId`
         - JOB_ORDERS: `q`, `accountId`, `status`, `open`, `ownerId`
         - PROPOSALS: `accountId`, `status`, `ownerId`
@@ -4027,3 +4776,351 @@ components:
           type: array
           description: One entry per requested id, in request order.
           items: { $ref: '#/components/schemas/BulkRecordResult' }
+    # ---------- candidate pool and consent engine (1.2.0, ADR 0011) ----------
+    SourceChannel:
+      type: string
+      description: How the candidate reached the firm (B-03, `contracts/enums/SourceChannel.java`).
+      enum: [LINKEDIN_AD, LINKEDIN_DIRECT, WEBSITE, REFERRAL, EXISTING_POOL, EMAIL, CV_UPLOAD]
+    Mobility:
+      type: string
+      enum: [NONE, WITHIN_COUNTRY, INTERNATIONAL]
+    CompensationPeriod:
+      type: string
+      enum: [MONTHLY, ANNUAL]
+    SalaryBasis:
+      type: string
+      enum: [GROSS, NET]
+    LanguageLevel:
+      type: string
+      enum: [BASIC, INTERMEDIATE, FLUENT, NATIVE]
+    PersonFileKind:
+      type: string
+      enum: [CV, DOCUMENT]
+    TextExtractionStatus:
+      type: string
+      description: Tika text extraction (no AI, no OCR), `contracts/enums/TextExtractionStatus.java`.
+      enum: [PENDING, DONE, NO_TEXT, FAILED]
+    CvIntakeStatus:
+      type: string
+      enum: [PENDING, ATTACHED, DISCARDED]
+    DuplicateMatchReason:
+      type: string
+      enum: [EMAIL, PHONE, LINKEDIN_URL, NAME_COMPANY]
+    DuplicateStatus:
+      type: string
+      enum: [OPEN, MERGED, DISMISSED]
+    ConsentRequestPurpose:
+      type: string
+      enum: [INITIAL, RENEWAL]
+    ShareBlockReason:
+      type: string
+      description: Why a person may not be shared with a client (`contracts/enums/ShareBlockReason.java`).
+      enum: [CONSENT_NOT_REQUESTED, CONSENT_PENDING, CONSENT_REFUSED, CONSENT_WITHDRAWN, ANONYMISED]
+    ExposureChannel:
+      type: string
+      description: PIPELINE now; REPORT and SHARE_LINK are reserved for Wave 2d.
+      enum: [PIPELINE, REPORT, SHARE_LINK]
+    OffLimitsReason:
+      type: string
+      enum: [CLIENT_AGREEMENT, GUARANTEE_PERIOD, CLIENT_REQUEST, OTHER]
+    PipelineWarningCode:
+      type: string
+      enum: [PREVIOUSLY_PRESENTED_TO_ACCOUNT, ACTIVE_IN_OTHER_PROCESS]
+    Compensation:
+      type: object
+      description: |
+        Stored encrypted as one value (field-level encryption, AES-256-GCM, key outside the database;
+        ADR 0011), so it cannot be filtered or sorted. Amounts are in `currency` per `period`.
+      required: [currency, period, basis]
+      properties:
+        currentBase: { type: [number, 'null'], minimum: 0, examples: [250000] }
+        currentVariable: { type: [number, 'null'], minimum: 0, description: Bonus and other variable pay per period. }
+        expected: { type: [number, 'null'], minimum: 0, examples: [300000] }
+        currency: { type: string, pattern: '^[A-Z]{3}$', description: ISO 4217, examples: [TRY] }
+        period: { $ref: '#/components/schemas/CompensationPeriod' }
+        basis: { $ref: '#/components/schemas/SalaryBasis' }
+        benefits: { type: [string, 'null'], maxLength: 500, examples: ['Car, private health insurance'] }
+        updatedOn: { type: [string, 'null'], format: date, description: When the candidate gave these figures. }
+    LanguageSkill:
+      type: object
+      required: [language, level]
+      properties:
+        language: { type: string, pattern: '^[a-z]{2}$', description: ISO 639-1 code, examples: [en] }
+        level: { $ref: '#/components/schemas/LanguageLevel' }
+    Education:
+      type: object
+      required: [school]
+      properties:
+        school: { type: string, minLength: 1, maxLength: 200, examples: [Boğaziçi Üniversitesi] }
+        degree: { type: [string, 'null'], maxLength: 100, examples: [MBA] }
+        field: { type: [string, 'null'], maxLength: 200, examples: [Finance] }
+        startYear: { type: [integer, 'null'], minimum: 1940, maximum: 2100 }
+        endYear: { type: [integer, 'null'], minimum: 1940, maximum: 2100, description: '`null` = ongoing' }
+    CandidateProfileFields:
+      type: object
+      description: Candidate profile fields on the person (1.2.0). All optional; any person type may have them.
+      properties:
+        sourceChannel: { oneOf: [{ $ref: '#/components/schemas/SourceChannel' }, { type: 'null' }] }
+        noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365, examples: [60] }
+        mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
+        compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        languages:
+          type: array
+          maxItems: 20
+          description: Replaces the whole list when sent.
+          items: { $ref: '#/components/schemas/LanguageSkill' }
+        educations:
+          type: array
+          maxItems: 20
+          description: Most recent first; replaces the whole list when sent (like `employments`).
+          items: { $ref: '#/components/schemas/Education' }
+    PersonFile:
+      type: object
+      required: [id, personId, kind, version, current, fileName, contentType, sizeBytes, textStatus, uploadedAt, uploadedBy]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        personId: { $ref: '#/components/schemas/Id' }
+        kind: { $ref: '#/components/schemas/PersonFileKind' }
+        version: { type: integer, minimum: 1, description: CV version per person; 1 for documents. }
+        current: { type: boolean, description: The current CV (newest CV version); false for older CVs and for documents. }
+        fileName: { type: string, examples: [cv-2026.pdf] }
+        contentType: { type: string, description: Detected by Tika from the bytes., examples: [application/pdf] }
+        sizeBytes: { type: integer, format: int64 }
+        textStatus: { $ref: '#/components/schemas/TextExtractionStatus' }
+        uploadedAt: { type: string, format: date-time }
+        uploadedBy: { $ref: '#/components/schemas/UserRef' }
+    DetectedContacts:
+      type: object
+      description: Found in the extracted text with plain patterns (no AI). Suggestions only.
+      required: [emails, phones, linkedinUrls]
+      properties:
+        emails: { type: array, maxItems: 5, items: { type: string } }
+        phones: { type: array, maxItems: 5, items: { type: string } }
+        linkedinUrls: { type: array, maxItems: 5, items: { type: string } }
+    CvIntakeItem:
+      type: object
+      required: [id, batchId, status, textStatus, detected, duplicates, uploadedAt, uploadedBy, expiresAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        batchId: { $ref: '#/components/schemas/Id' }
+        status: { $ref: '#/components/schemas/CvIntakeStatus' }
+        fileName: { type: [string, 'null'], description: Null once ATTACHED or DISCARDED (minimised). }
+        contentType: { type: [string, 'null'] }
+        sizeBytes: { type: [integer, 'null'], format: int64 }
+        textStatus: { $ref: '#/components/schemas/TextExtractionStatus' }
+        detected: { $ref: '#/components/schemas/DetectedContacts' }
+        duplicates:
+          type: array
+          description: Duplicate check on the detected values (empty until the text is extracted).
+          items: { $ref: '#/components/schemas/DuplicateMatch' }
+        sourceChannel: { oneOf: [{ $ref: '#/components/schemas/SourceChannel' }, { type: 'null' }] }
+        uploadedAt: { type: string, format: date-time }
+        uploadedBy: { $ref: '#/components/schemas/UserRef' }
+        expiresAt: { type: string, format: date-time, description: uploadedAt + 14 days; a PENDING item is deleted then. }
+        attachedPerson: { oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }] }
+    CvIntakeItemPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/CvIntakeItem' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    CvIntakeBatch:
+      type: object
+      required: [batchId, items, rejected]
+      properties:
+        batchId: { $ref: '#/components/schemas/Id' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CvIntakeItem' }
+        rejected:
+          type: array
+          description: Files not accepted, with the reason.
+          items:
+            type: object
+            required: [fileName, code]
+            properties:
+              fileName: { type: string }
+              code:
+                type: string
+                enum: [PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE]
+    CvIntakeAttachRequest:
+      description: Attach to an existing person, or create a new one.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [personId]
+          properties:
+            personId: { $ref: '#/components/schemas/Id' }
+        - type: object
+          additionalProperties: false
+          required: [person]
+          properties:
+            person: { $ref: '#/components/schemas/PersonCreateRequest' }
+    CvIntakeAttachResult:
+      type: object
+      required: [person, file]
+      properties:
+        person: { $ref: '#/components/schemas/Person' }
+        file: { $ref: '#/components/schemas/PersonFile' }
+    DuplicateCheckRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: [string, 'null'], maxLength: 200 }
+        company: { type: [string, 'null'], maxLength: 200 }
+        email: { type: [string, 'null'], maxLength: 254 }
+        phone: { type: [string, 'null'], maxLength: 50 }
+        linkedinUrl: { type: [string, 'null'], maxLength: 300 }
+        excludePersonId:
+          $ref: '#/components/schemas/Id'
+          description: Leave this person out (when editing an existing person).
+    DuplicateMatch:
+      type: object
+      required: [person, reasons]
+      properties:
+        person: { $ref: '#/components/schemas/PersonSummary' }
+        reasons:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/DuplicateMatchReason' }
+    DuplicateCandidate:
+      type: object
+      required: [id, personA, personB, reasons, status, detectedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        personA: { $ref: '#/components/schemas/PersonSummary' }
+        personB: { $ref: '#/components/schemas/PersonSummary' }
+        reasons:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/DuplicateMatchReason' }
+        status: { $ref: '#/components/schemas/DuplicateStatus' }
+        detectedAt: { type: string, format: date-time }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        resolvedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+    DuplicateCandidatePage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/DuplicateCandidate' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    PersonMergeRequest:
+      type: object
+      required: [mergedPersonId]
+      properties:
+        mergedPersonId:
+          $ref: '#/components/schemas/Id'
+          description: The person that is merged into the survivor and then deleted.
+        takeFromMerged:
+          type: array
+          uniqueItems: true
+          description: Fields whose value comes from the merged person even when the survivor has one.
+          items:
+            type: string
+            enum: [name, type, title, company, email, phone, city, linkedinUrl, howWeKnow, notes, ownerId, sourceChannel, noticePeriodDays, mobility, compensation]
+        version:
+          $ref: '#/components/schemas/Version'
+          description: Survivor's version (optimistic lock).
+    ExposureEntry:
+      type: object
+      required: [id, account, jobOrder, applicationId, channel, presentedAt, presentedBy, stage]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        jobOrder: { $ref: '#/components/schemas/JobOrderRef' }
+        applicationId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
+        channel: { $ref: '#/components/schemas/ExposureChannel' }
+        presentedAt: { type: string, format: date-time }
+        presentedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        stage:
+          oneOf: [{ $ref: '#/components/schemas/PipelineStage' }, { type: 'null' }]
+          description: Current stage of the application (the outcome so far); null if it was removed.
+    OtherProcessRef:
+      type: object
+      required: [applicationId, jobOrder, account, stage]
+      properties:
+        applicationId: { $ref: '#/components/schemas/Id' }
+        jobOrder: { $ref: '#/components/schemas/JobOrderRef' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        stage: { $ref: '#/components/schemas/PipelineStage' }
+    PipelineWarning:
+      type: object
+      description: Non-blocking hint shown with the result of adding or presenting a person.
+      required: [code, message]
+      properties:
+        code: { $ref: '#/components/schemas/PipelineWarningCode' }
+        message: { type: string, description: Fixed English text per code; the UI translates `code`., examples: ['Already presented to this account for another job order.'] }
+        exposures:
+          type: array
+          description: PREVIOUSLY_PRESENTED_TO_ACCOUNT — the earlier presentations to this account.
+          items: { $ref: '#/components/schemas/ExposureEntry' }
+        otherProcesses:
+          type: array
+          description: ACTIVE_IN_OTHER_PROCESS — the other open applications.
+          items: { $ref: '#/components/schemas/OtherProcessRef' }
+    OffLimitsRule:
+      type: object
+      required: [id, account, companyName, reason, startsOn, endsOn, active, createdAt, createdBy, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+        companyName: { type: [string, 'null'], description: Set when the company is not an account., examples: [Anadolu Lojistik] }
+        reason: { $ref: '#/components/schemas/OffLimitsReason' }
+        note: { type: [string, 'null'], description: No personal data., examples: [Retained search agreement until end of 2027] }
+        startsOn: { type: string, format: date }
+        endsOn: { type: [string, 'null'], format: date, description: Last day in force; null = open-ended. }
+        active: { type: boolean, description: In force today. }
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/UserRef' }
+        version: { $ref: '#/components/schemas/Version' }
+    OffLimitsRulePage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/OffLimitsRule' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    OffLimitsRuleCreateRequest:
+      type: object
+      required: [reason]
+      description: Exactly one of `accountId` and `companyName` (else 400).
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        companyName: { type: string, minLength: 1, maxLength: 200 }
+        reason: { $ref: '#/components/schemas/OffLimitsReason' }
+        note: { type: [string, 'null'], maxLength: 500 }
+        startsOn: { type: string, format: date, description: Defaults to today. }
+        endsOn: { type: [string, 'null'], format: date, description: Not before `startsOn`. }
+    OffLimitsRuleUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        reason: { $ref: '#/components/schemas/OffLimitsReason' }
+        note: { type: [string, 'null'], maxLength: 500 }
+        startsOn: { type: string, format: date }
+        endsOn: { type: [string, 'null'], format: date }
+        version: { $ref: '#/components/schemas/Version' }
+    ShareCheckRequest:
+      type: object
+      required: [personIds]
+      properties:
+        personIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Id' }
+    ShareCheckResult:
+      type: object
+      required: [personId, shareable, reason]
+      properties:
+        personId: { $ref: '#/components/schemas/Id' }
+        shareable: { type: boolean }
+        reason:
+          oneOf: [{ $ref: '#/components/schemas/ShareBlockReason' }, { type: 'null' }]
+          description: Null when shareable.

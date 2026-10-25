@@ -9,6 +9,6 @@ public enum AccessAction {
     VIEW,
     /** Person data exported (S-04 access request, NFR-11). */
     EXPORT,
-    /** CV or other file downloaded (Phase 2). */
+    /** CV, document or intake file downloaded (since 1.2.0; entity PERSON_FILE or CV_INTAKE_ITEM). */
     DOWNLOAD
 }
