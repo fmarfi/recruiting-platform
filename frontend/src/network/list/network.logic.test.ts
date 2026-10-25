@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { toCsv } from './csv';
-import { DEFAULT_FILTERS, PRESETS, sameFilters } from './savedViews';
+import { toCsv, visibleCsv } from './csv';
+import { migrateLegacyViews, NEW_KEY } from './legacyViews';
+import { DEFAULT_FILTERS, PRESETS, clientFilter, filtersFromParams, gridKey, paramsFromFilters, sameFilters } from './networkFilters';
 import { layoutMap } from '../person/RelationshipMap';
 
 describe('toCsv', () => {
@@ -39,5 +40,65 @@ describe('layoutMap', () => {
     expect(ids).toEqual(['a', 'b', 'c', 'x']);
     expect(m.edges.filter((e) => e.to === 'x')).toHaveLength(2);
     expect(m.edges.some((e) => e.to === 'c' && e.from !== 'c' && e.from === 'a')).toBe(false);
+  });
+});
+
+describe('network URL params (command bar)', () => {
+  const parse = (q: string) => filtersFromParams(new URLSearchParams(q));
+  it('reads owner, stale, type, consent, city, company and q', () => {
+    const { filters: f, page } = parse('owner=me&stale=90&type=EXECUTIVE,referrer&consent=GIVEN&city=Izmir&company=Y%20Holding&q=ayse&page=3&sort=lastContactAt,desc');
+    expect(f).toMatchObject({ mine: true, staleDays: 90, types: ['EXECUTIVE', 'REFERRER'], consent: 'GIVEN', city: 'Izmir', company: 'Y Holding', q: 'ayse', sort: 'lastContactAt,desc' });
+    expect(page).toBe(2);
+  });
+  it('drops unknown values and keeps the last repeated one', () => {
+    const { filters: f } = parse('type=ALIEN,CANDIDATE&consent=BOGUS&stale=-4&sort=password,asc&owner=all&owner=me');
+    expect(f).toMatchObject({ types: ['CANDIDATE'], consent: undefined, staleDays: 0, sort: '', mine: true });
+  });
+  it('round-trips and leaves defaults out of the URL', () => {
+    expect(paramsFromFilters(DEFAULT_FILTERS, 0).toString()).toBe('');
+    const f = { ...DEFAULT_FILTERS, mine: true, staleDays: 30, types: ['EXECUTIVE' as const], city: 'Ankara' };
+    expect(parse(paramsFromFilters(f, 1).toString())).toEqual({ filters: f, page: 1 });
+  });
+  it('city/company narrow the loaded page, Turkish case-insensitive', () => {
+    const rows = [{ city: 'İzmir', company: 'Y Holding' }, { city: 'Ankara', company: 'Z' }, { city: null, company: null }];
+    expect(clientFilter(rows, { city: 'izmir', company: '' })).toHaveLength(1);
+    expect(clientFilter(rows, { city: '', company: 'holding' })).toHaveLength(1);
+    expect(clientFilter(rows, { city: '', company: '' })).toHaveLength(3);
+  });
+});
+
+describe('visibleCsv', () => {
+  it('writes only the given columns, header from column headers', () => {
+    const cols = [{ id: 'a', header: 'A', accessor: (r: { a: string; b: string }) => r.a }, { id: 'b', header: 'B', accessor: (r: { a: string; b: string }) => r.b }];
+    expect(visibleCsv(cols.slice(1), [{ a: '1', b: '2' }])).toEqual({ header: ['B'], rows: [['2']] });
+  });
+});
+
+describe('grid key (selection reset)', () => {
+  it('changes with filters and page, so the grid remounts and clears its selection', () => {
+    const a = gridKey(DEFAULT_FILTERS, 0);
+    expect(gridKey(DEFAULT_FILTERS, 0)).toBe(a);
+    expect(gridKey(DEFAULT_FILTERS, 1)).not.toBe(a);
+    expect(gridKey({ ...DEFAULT_FILTERS, q: 'x' }, 0)).not.toBe(a);
+  });
+});
+
+describe('legacy saved views migration', () => {
+  const mem = (init: Record<string, string>) => {
+    const m = { ...init };
+    return { m, getItem: (k: string) => m[k] ?? null, setItem: (k: string, v: string) => void (m[k] = v), removeItem: (k: string) => void delete m[k] };
+  };
+  it('moves old views into the grid store and removes the old key', () => {
+    const s = mem({ 'network.savedViews.v1': JSON.stringify([{ id: 'a', name: 'Mine', filters: { q: 'ali', mine: true } }, { bad: 1 }]) });
+    migrateLegacyViews(s);
+    expect(s.m['network.savedViews.v1']).toBeUndefined();
+    const v = JSON.parse(s.m[NEW_KEY]!);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatchObject({ id: 'a', name: 'Mine', filters: JSON.parse(JSON.stringify({ ...DEFAULT_FILTERS, q: 'ali', mine: true })) });
+  });
+  it('does nothing without an old key and keeps existing new views', () => {
+    const s = mem({ [NEW_KEY]: '[{"id":"z","name":"Z","filters":{}}]' });
+    migrateLegacyViews(s);
+    expect(JSON.parse(s.m[NEW_KEY]!)).toHaveLength(1);
   });
 });
