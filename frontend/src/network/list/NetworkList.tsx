@@ -10,10 +10,11 @@ import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
 import { DataGrid, ViewsMenu, formatSort, localViewStore, useGridColumns } from '../../shell/grid';
 import { tokens } from '../../theme/tokens';
+import { migrateLegacyViews } from './legacyViews';
 import { downloadCsv, toCsv, visibleCsv } from './csv';
 import { NewPersonDialog } from './NewPersonDialog';
 import { PresetsBar } from './PresetsBar';
-import { clientFilter, DEFAULT_FILTERS, filtersFromParams, paramsFromFilters, PERSON_TYPES, viewSort, type ViewFilters } from './networkFilters';
+import { clientFilter, DEFAULT_FILTERS, filtersFromParams, gridKey, paramsFromFilters, PERSON_TYPES, viewSort, type ViewFilters } from './networkFilters';
 import { PersonCard, usePersonColumns, type Person } from './personColumns';
 import { EXPORT_LIMIT, fetchAllPeople, usePeople, type PeopleFilters } from './usePeople';
 
@@ -34,11 +35,14 @@ export function NetworkList() {
   const [viewWarn, setViewWarn] = useState(false);
   const defs = usePersonColumns();
   const columns = useGridColumns<Person>(GRID_ID, defs);
-  const views = useMemo(() => localViewStore<ViewFilters>(GRID_ID, () => setViewWarn(true)), []);
+  const views = useMemo(() => {
+    migrateLegacyViews();
+    return localViewStore<ViewFilters>(GRID_ID, () => setViewWarn(true));
+  }, []);
 
   const filters: PeopleFilters = { q: f.q, types: f.types, ownerId: f.mine ? me?.id : undefined, consent: f.consent, staleDays: f.staleDays, sort: f.sort, page };
   const res = usePeople(filters);
-  const people = useMemo(() => clientFilter(res.data?.content ?? [], f), [res.data, f.city, f.company]);
+  const people = useMemo(() => clientFilter(res.data?.content ?? [], f), [res.data, f]);
   const set = (next: ViewFilters, p = 0) => setParams(paramsFromFilters(next, p), { replace: true });
   const change = (patch: Partial<ViewFilters>) => set({ ...f, ...patch });
   const filtered = !!(f.q || f.types.length || f.mine || f.consent || f.staleDays || f.city || f.company);
@@ -74,8 +78,6 @@ export function NetworkList() {
       res.reload();
     } else setNotice({ color: 'red', text: t('network.consentFailed') });
   };
-
-  const pending = [f.city && `${t('network.fields.city')}: ${f.city}`, f.company && `${t('network.fields.company')}: ${f.company}`].filter(Boolean) as string[];
 
   return (
     <Container maw="var(--content-max-width)" fluid>
@@ -126,7 +128,7 @@ export function NetworkList() {
           ))}
         </Group>
       </Chip.Group>
-      {pending.length > 0 && (
+      {(f.city || f.company) && (
         <Group gap="xs" mb="sm" data-testid="pending-chips">
           {(['city', 'company'] as const).map(
             (k) =>
@@ -146,6 +148,7 @@ export function NetworkList() {
       )}
       <Stack>
         <DataGrid<Person>
+          key={gridKey(f, page)}
           gridId={GRID_ID}
           columns={defs}
           columnsController={columns}

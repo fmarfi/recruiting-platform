@@ -7,7 +7,7 @@ export type JobOrderFilters = {
   openOnly: boolean;
   ownerId?: string;
   page: number;
-  /** ield,dir; empty = openedOn,desc. */
+  /** ield,dir; empty = openedOn,desc. */
   sort?: string;
 };
 
