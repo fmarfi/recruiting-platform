@@ -1,5 +1,9 @@
 package com.recruiting.platform.accounts.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.persistence.*;
 import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.PersonType;
@@ -71,6 +75,11 @@ public class Person extends AuditableEntity {
 
     @Column(name = "anonymised_at")
     private Instant anonymisedAt;
+
+    /** Lower-case labels, at most 20 (ADR 0010); column {@code tags varchar(50)[]}. */
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "tags", length = 50)
+    private List<String> tags = new ArrayList<>();
 
     public Person() {
         // for JPA
@@ -200,4 +209,12 @@ public class Person extends AuditableEntity {
         this.anonymisedAt = anonymisedAt;
     }
 
+
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
+    }
 }
