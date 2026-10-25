@@ -7,6 +7,8 @@ export type JobOrderFilters = {
   openOnly: boolean;
   ownerId?: string;
   page: number;
+  /** ield,dir; empty = openedOn,desc. */
+  sort?: string;
 };
 
 /** Job orders for the list screen; defaults are open jobs owned by me (set by the screen). */
@@ -22,10 +24,11 @@ export function useJobOrders(f: JobOrderFilters) {
             ownerId: f.ownerId,
             page: f.page,
             size: 20,
-            sort: ['openedOn,desc'],
+            sort: [f.sort || 'openedOn,desc'],
           },
         },
       }),
-    [f.q, f.status.join(','), f.openOnly, f.ownerId, f.page],
+    [f.q, f.status.join(','), f.openOnly, f.ownerId, f.page, f.sort],
   );
 }
+

@@ -1,22 +1,8 @@
-// CSV export of the network list. Cells starting with = + - @ are prefixed so spreadsheets do not run them as formulas.
-const cell = (v: unknown) => {
-  let s = v == null ? '' : String(v);
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
-  return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
+// Re-export: the grid's CSV helper is identical.
+export { toCsv, downloadCsv } from '../../shell/grid/csv';
+import type { ColumnDef } from '../../shell/grid';
 
-export function toCsv(header: string[], rows: unknown[][]): string {
-  return [header, ...rows].map((r) => r.map(cell).join(';')).join('\r\n');
-}
-
-/** Semicolon separated with a BOM: opens correctly in Excel with Turkish regional settings. */
-export function downloadCsv(fileName: string, csv: string) {
-  const url = URL.createObjectURL(new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+/** Header and rows of the visible columns (same data the grid's own CSV button writes, but for any set of rows). */
+export function visibleCsv<T>(cols: ColumnDef<T>[], rows: T[]): { header: string[]; rows: unknown[][] } {
+  return { header: cols.map((c) => c.header), rows: rows.map((r) => cols.map((c) => c.accessor?.(r) ?? '')) };
 }
