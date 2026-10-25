@@ -57,6 +57,11 @@ public class Proposal extends AuditableEntity {
     @Column(name = "owner_id")
     private UUID ownerId;
 
+    /** Lower-case labels, at most 20 (ADR 0010); column {@code tags varchar(50)[]}. */
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    @Column(name = "tags", length = 50)
+    private java.util.List<String> tags = new java.util.ArrayList<>();
+
     public Proposal() {
         // for JPA
     }
@@ -153,4 +158,12 @@ public class Proposal extends AuditableEntity {
         this.ownerId = ownerId;
     }
 
+
+    public java.util.List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(java.util.List<String> tags) {
+        this.tags = tags;
+    }
 }
