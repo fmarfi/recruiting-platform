@@ -4,7 +4,7 @@ The shared interfaces every agent builds against. Owner: architect (`design-toke
 
 | File | What it is | Who uses it |
 | --- | --- | --- |
-| `openapi.yaml` | OpenAPI 3.1 contract, version 1.1.0: 95 operations on 63 paths (auth, users, reference data, accounts, contacts, people, network links, import, search, job orders, pipeline, proposals, activities, next actions, timeline, dashboard, My day, consent, privacy notices, retention, data-subject requests, audit; since 1.1.0 saved views and bulk actions, ADR 0010). Conventions are in its `info.description` and ADR 0006. `x-owner` = implementing module/agent, `x-roles` = allowed roles. | backends implement it, frontends generate types and use the mock, QA writes contract tests |
+| `openapi.yaml` | OpenAPI 3.1 contract, version 1.1.1 (see the changelog below): 95 operations on 63 paths (auth, users, reference data, accounts, contacts, people, network links, import, search, job orders, pipeline, proposals, activities, next actions, timeline, dashboard, My day, consent, privacy notices, retention, data-subject requests, audit; since 1.1.0 saved views and bulk actions, ADR 0010). Conventions are in its `info.description` and ADR 0006. `x-owner` = implementing module/agent, `x-roles` = allowed roles. | backends implement it, frontends generate types and use the mock, QA writes contract tests |
 | `enums/*.java` | Status lifecycles (`AccountStatus`, `ProposalStatus`, `JobOrderStatus`, `PipelineStage`, `ConsentStatus`, `DataSubjectRequestStatus`) implementing `Lifecycle` with transition table, reason rule, manager-only rule, labels and tone; plain vocabularies (`PersonType`, `ActivityType`, `LinkType`, `Role`, …); `ErrorCode`. Must match `docs/status-lifecycles.md`. | all backend modules, db-engineer (CHECK constraints), `/reference-data` |
 | `events/*.java` | Domain event records (`DomainEvent` header + one record per event). | publishers and listeners across modules |
 | `errors/*.java` | `ApiException` and `IllegalTransitionException` (with `check(from, to, reason)`). Mapped to RFC 9457 by `platform-app`. | all backend modules |
@@ -62,3 +62,10 @@ server: {
 1. Open a change request in your hand-off note (field, endpoint, reason, who is affected).
 2. The architect updates `openapi.yaml` / enums / events / schema in one PR, re-runs lint, compile and the mock smoke test, and lists affected owners in the PR.
 3. Adding is cheap (new optional field, new endpoint); renaming or removing needs every affected owner in the same merge window.
+
+## Changelog
+
+| Version | Date | Change | Affected owners |
+| --- | --- | --- | --- |
+| 1.1.0 | 2026-10-23 | Saved views, bulk actions, `ListEntity`/`ViewVisibility`/`Bulk*` enums, tags columns (ADR 0010). | backend-accounts, backend-pipeline, security-privacy, db-engineer, frontends |
+| 1.1.1 | 2026-10-25 | `city`, `company` filters on `GET /people` (+ PEOPLE view keys). Bulk audit holds no personal data: `BulkResultCode.message()` fixed texts, `bulk_action_item.message` dropped, `title`/`reason` not stored in `bulk_action.params` (ADR 0010 amendment 1). Tags cleared in `person_aud` by the purge (ADR 0009). | db-engineer, backend-accounts, backend-pipeline, security-privacy |

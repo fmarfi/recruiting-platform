@@ -112,7 +112,7 @@ Phase 2 adds `candidate_profile` (1–1 with `person`, owned by `ai`), `cv_file`
 | company | varchar(200) | null; trigram index |
 | email | varchar(254) | null; unique on `lower(email)` where not null |
 | phone | varchar(50) | null |
-| city | varchar(100) | null |
+| city | varchar(100) | null; btree index on `immutable_unaccent(lower(trim(city)))` for the `city` filter (1.1.1) |
 | linkedin_url | varchar(300) | null |
 | how_we_know | text | null |
 | notes | text | null |
@@ -289,7 +289,7 @@ Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold id
 | id | uuid PK | returned as `BulkActionResult.id` |
 | entity | varchar(40) | `ListEntity` |
 | action | varchar(40) | `BulkActionType` |
-| params | jsonb | the typed params as sent (owner id, status and reason, tag, next-action title and date, language) |
+| params | jsonb | the typed params **without free text** (1.1.1): owner id, status, tag, next-action due date and owner, language. `title` (SET_NEXT_ACTION) and `reason` (CHANGE_STATUS) are removed before insert; they live only in the changed records, which the anonymisation scrub covers. `CHECK (NOT (params ?\| array['title','reason']))` |
 | actor_id | uuid FK app_user | not null; index `(actor_id, started_at desc)` |
 | started_at, finished_at | timestamptz | not null |
 | requested_count, ok_count, skipped_count, failed_count | int | not null |
@@ -302,7 +302,8 @@ Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold id
 | entity_id | uuid | no FK (the record may be deleted or anonymised later, like `access_log`); index `(entity_id)` |
 | outcome | varchar(40) | `BulkOutcome` |
 | code | varchar(40) | `BulkResultCode`; null when OK, not null otherwise (`CHECK`) |
-| message | varchar(500) | null; no personal data |
+
+No `message` column (dropped in 1.1.1): the response message is `BulkResultCode.message()`, a fixed text per code, so nothing free-form is stored. With no free text and no names, `bulk_action` and `bulk_action_item` hold only ids and codes and need no anonymisation step; `entity_id` of an erased person points at nothing, like `access_log`.
 
 Each OK record also gets its normal Envers revision, domain event and timeline entry, because the handlers call the same services as the single endpoints. A failed record rolls back only its own transaction; its `bulk_action_item` row is written in a separate transaction so the evidence survives.
 ### privacy
@@ -410,7 +411,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 | `network_link_aud` | `from_person_id = :p OR to_person_id = :p` |
 | `person_privacy_aud` | `person_id = :p` |
 
-   - ANONYMISE: `DELETE` the matching rows `WHERE revend IS NOT NULL`. In the matching rows `WHERE revend IS NULL`, set the personal columns to the same placeholders as the live row (`[removed]` or null; DSR values from step 1). The current revision must stay, because `ValidityAuditStrategy` updates its `revend` on the next change.
+   - ANONYMISE: `DELETE` the matching rows `WHERE revend IS NOT NULL`. In the matching rows `WHERE revend IS NULL`, set the personal columns to the same placeholders as the live row (`[removed]` or null; DSR values from step 1). In `person_aud` this includes `tags = '{}'` (AuditPurger), matching step 2 (`PersonDataService.anonymise`). The current revision must stay, because `ValidityAuditStrategy` updates its `revend` on the next change.
    - DELETE: `DELETE` all matching rows except two. Keep the `person_aud` row with `revtype = 2` (id only; the NFR-03 deletion record). Keep the current `data_subject_request_aud` row (`revend IS NULL`, already minimised), and set its `person_id` to null, because the database's SET NULL is not audited.
    - Imports: set `import_job.file_content` and `errors` to null for every import that has ended (`status IN ('COMPLETED','FAILED','DISCARDED')`). A committed CSV would otherwise still hold the person's data.
    - `account_aud`, `job_order_aud`, `proposal_aud`, `app_user_aud` and `retention_settings_aud` hold no person data. Any new audited table that holds person data must be added to this table. Otherwise the history keeps the personal data.

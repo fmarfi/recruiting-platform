@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Recruiting Platform API
-  version: 1.1.0
+  version: 1.1.1
   summary: Phase 1 (Module A, CRM) REST contract plus users, roles, KVKK consent and audit.
   description: |
     Contract owned by the architect (Wave 0). Backends implement it, frontends build against the
@@ -44,6 +44,9 @@ info:
     **Changes**
     - 1.1.0 (Wave 2a, additive only): saved list views (`/views`, `/views/{id}`) and bulk actions
       (`POST /bulk-actions`), ADR 0010. No existing operation or schema changed.
+    - 1.1.1 (additive, descriptions): `city` and `company` filters on `GET /people` (and as PEOPLE view
+      filter keys); no personal data in the bulk audit: `BulkRecordResult.message` is the fixed text of
+      the code and is not stored, free-text params (`title`, `reason`) are not stored (ADR 0010 amendment).
   contact:
     name: architect agent
   license:
@@ -643,6 +646,19 @@ paths:
         - name: lastContactAfter
           in: query
           schema: { type: string, format: date }
+        - name: city
+          in: query
+          description: City equals one of the values (accent- and case-insensitive, trimmed). Since 1.1.1.
+          schema:
+            type: array
+            maxItems: 50
+            items: { type: string, minLength: 1, maxLength: 100 }
+          style: form
+          explode: true
+        - name: company
+          in: query
+          description: Current company contains this text (accent- and case-insensitive, trigram index on `person.company`). Since 1.1.1.
+          schema: { type: string, minLength: 1, maxLength: 200 }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -2311,6 +2327,10 @@ paths:
           people who refused or withdrew; use the single `POST /people/{id}/consent/requests` for that.
         - **Audit.** Every requested id gets an audit entry (`bulk_action_item`) with its outcome and code,
           including SKIPPED and FAILED ones, linked to one `bulk_action` row with the actor and the params.
+          **No personal data in the audit (since 1.1.1):** the stored params keep ids, enum names, dates,
+          the tag and the language only; the free-text `SetNextActionParams.title` and
+          `ChangeStatusParams.reason` are applied to the records but never stored in `bulk_action`. The
+          item row stores no message; `message` in the response is the fixed text of the code.
         - Records that already have the requested value (same owner, tag already there or missing, same
           status) are `SKIPPED` with `NO_CHANGE`; unknown ids are `FAILED` with `NOT_FOUND`.
 
@@ -2358,7 +2378,7 @@ paths:
                 results:
                   - { id: 0192a5b8-0000-7000-8000-000000000101, outcome: OK, code: null, message: null }
                   - { id: 0192a5b8-0000-7000-8000-000000000102, outcome: SKIPPED, code: NO_EMAIL, message: The person has no e-mail address. }
-                  - { id: 0192a5b8-0000-7000-8000-000000000103, outcome: SKIPPED, code: CONSENT_WITHDRAWN, message: Consent was withdrawn; bulk requests do not re-ask. }
+                  - { id: 0192a5b8-0000-7000-8000-000000000103, outcome: SKIPPED, code: CONSENT_WITHDRAWN, message: 'Consent was withdrawn; bulk requests do not re-ask.' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -3751,7 +3771,8 @@ components:
         What a grid shows. The client turns `filters` and `sort` into the query of the matching list
         endpoint (`GET /people`, `/accounts`, `/job-orders`, `/proposals`), so the allowed filter keys are
         that endpoint's query parameters except `page`, `size` and `sort`:
-        - PEOPLE: `q`, `type`, `ownerId`, `consentStatus`, `lastContactBefore`, `lastContactAfter`
+        - PEOPLE: `q`, `type`, `ownerId`, `consentStatus`, `lastContactBefore`, `lastContactAfter`, `city`,
+          `company` (since 1.1.1)
         - ACCOUNTS: `q`, `status`, `sector`, `ownerId`
         - JOB_ORDERS: `q`, `accountId`, `status`, `open`, `ownerId`
         - PROPOSALS: `accountId`, `status`, `ownerId`
@@ -3867,7 +3888,9 @@ components:
           type: string
           description: Target status from the entity's lifecycle (`AccountStatus`, `JobOrderStatus` or `ProposalStatus`); another value gives 400.
           examples: [ON_HOLD]
-        reason: { $ref: '#/components/schemas/Reason' }
+        reason:
+          $ref: '#/components/schemas/Reason'
+          description: Stored on each record's status change (timeline, Envers) like a single move; never stored in the bulk audit row (1.1.1).
     TagParams:
       type: object
       additionalProperties: false
@@ -3879,7 +3902,11 @@ components:
       additionalProperties: false
       required: [title, dueOn]
       properties:
-        title: { type: string, minLength: 1, maxLength: 300 }
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+          description: Written to each created next action (scrubbed there on anonymisation); never stored in the bulk audit row (1.1.1).
         dueOn: { type: string, format: date }
         ownerId:
           $ref: '#/components/schemas/Id'
@@ -3979,7 +4006,10 @@ components:
           description: Null when OK; always set when SKIPPED or FAILED.
         message:
           type: [string, 'null']
-          description: Short English explanation for the user (the UI translates `code`). Never contains personal data.
+          description: |
+            Null when OK; otherwise exactly `BulkResultCode.message()`, the one fixed English text of the
+            code (the UI translates `code`). Never a name, e-mail, record value or exception message, and
+            not stored: the audit row keeps the code only (since 1.1.1, ADR 0010).
     BulkActionResult:
       type: object
       required: [id, entity, action, requested, ok, skipped, failed, results]
