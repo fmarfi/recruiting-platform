@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { toCsv } from './csv';
-import { DEFAULT_FILTERS, PRESETS, sameFilters } from './savedViews';
+import { toCsv, visibleCsv } from './csv';
+import { DEFAULT_FILTERS, PRESETS, clientFilter, filtersFromParams, paramsFromFilters, sameFilters } from './networkFilters';
 import { layoutMap } from '../person/RelationshipMap';
 
 describe('toCsv', () => {
@@ -39,5 +39,36 @@ describe('layoutMap', () => {
     expect(ids).toEqual(['a', 'b', 'c', 'x']);
     expect(m.edges.filter((e) => e.to === 'x')).toHaveLength(2);
     expect(m.edges.some((e) => e.to === 'c' && e.from !== 'c' && e.from === 'a')).toBe(false);
+  });
+});
+
+describe('network URL params (command bar)', () => {
+  const parse = (q: string) => filtersFromParams(new URLSearchParams(q));
+  it('reads owner, stale, type, consent, city, company and q', () => {
+    const { filters: f, page } = parse('owner=me&stale=90&type=EXECUTIVE,referrer&consent=GIVEN&city=Izmir&company=Y%20Holding&q=ayse&page=3&sort=lastContactAt,desc');
+    expect(f).toMatchObject({ mine: true, staleDays: 90, types: ['EXECUTIVE', 'REFERRER'], consent: 'GIVEN', city: 'Izmir', company: 'Y Holding', q: 'ayse', sort: 'lastContactAt,desc' });
+    expect(page).toBe(2);
+  });
+  it('drops unknown values and keeps the last repeated one', () => {
+    const { filters: f } = parse('type=ALIEN,CANDIDATE&consent=BOGUS&stale=-4&sort=password,asc&owner=all&owner=me');
+    expect(f).toMatchObject({ types: ['CANDIDATE'], consent: undefined, staleDays: 0, sort: '', mine: true });
+  });
+  it('round-trips and leaves defaults out of the URL', () => {
+    expect(paramsFromFilters(DEFAULT_FILTERS, 0).toString()).toBe('');
+    const f = { ...DEFAULT_FILTERS, mine: true, staleDays: 30, types: ['EXECUTIVE' as const], city: 'Ankara' };
+    expect(parse(paramsFromFilters(f, 1).toString())).toEqual({ filters: f, page: 1 });
+  });
+  it('city/company narrow the loaded page, Turkish case-insensitive', () => {
+    const rows = [{ city: 'İzmir', company: 'Y Holding' }, { city: 'Ankara', company: 'Z' }, { city: null, company: null }];
+    expect(clientFilter(rows, { city: 'izmir', company: '' })).toHaveLength(1);
+    expect(clientFilter(rows, { city: '', company: 'holding' })).toHaveLength(1);
+    expect(clientFilter(rows, { city: '', company: '' })).toHaveLength(3);
+  });
+});
+
+describe('visibleCsv', () => {
+  it('writes only the given columns, header from column headers', () => {
+    const cols = [{ id: 'a', header: 'A', accessor: (r: { a: string; b: string }) => r.a }, { id: 'b', header: 'B', accessor: (r: { a: string; b: string }) => r.b }];
+    expect(visibleCsv(cols.slice(1), [{ a: '1', b: '2' }])).toEqual({ header: ['B'], rows: [['2']] });
   });
 });

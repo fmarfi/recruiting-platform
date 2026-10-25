@@ -17,7 +17,7 @@
     "views": "Lists", "saveCurrent": "Save this view", "saveView": "Save", "viewName": "Name this view", "deleteView": "Delete view {{name}}",
     "presets": { "needsCall": "Needs a call", "noConsent": "No consent request yet", "executives": "Executives", "referrers": "Referrers" },
     "selectAll": "Select all on this page", "selected": "{{count}} selected", "clearSelection": "Clear selection",
-    "exportCsv": "Export CSV", "exportSelected": "Export selected", "exportFailed": "Could not export the list.", "exportCapped": "Exported the first {{count}} people (limit {{limit}}). Narrow the filters to export the rest.",
+    "exportAll": "Export all (CSV)", "pageOnly": "this page only", "pageOnlyHint": "Not applied yet on the server: narrows the loaded page only.", "removeFilter": "Remove filter", "exportSelected": "Export selected", "exportFailed": "Could not export the list.", "exportCapped": "Exported the first {{count}} people (limit {{limit}}). Narrow the filters to export the rest.",
     "requestConsent": "Request consent", "bulkConsentDone": "Consent requests queued: {{queued}}. Skipped: {{skipped}}.",
     "map": { "label": "Relationship map of {{name}}", "more": "{{count}} more connections are listed on the Connections tab.", "expandFailed": "Could not load their connections.", "open": "Open profile", "expand": "Show who they know", "noMore": "No further connections recorded.", "hint": "Select a person to see details and who they know." },
     "snapshot": {
@@ -30,3 +30,4 @@
     }
   }
 }
+

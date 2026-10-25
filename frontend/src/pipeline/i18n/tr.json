@@ -4,7 +4,7 @@
     "activeCandidates": "{{count}} aktif aday", "add": "Ekle", "addCandidate": "Aday ekle", "addFailed": "Eklenemedi.", "backTo": "{{stage}} aşamasına geri al",
     "changeStatus": "Durumu değiştir", "daysOpen": "{{count}} gündür açık", "emptyBody": "Süreci başlatmak için ilk adayı ekleyin.", "emptyColumn": "Boş",
     "emptyTitle": "Henüz aday yok", "fee": "Ücret koşulları", "hint": "Aşamayı değiştirmek için kartı sürükleyin",
-    "list": { "active": "Açık", "all": "Tümü", "client": "Müşteri", "daysOpen": "Açık gün", "empty": "Eşleşen pozisyon yok.", "mine": "Benim", "searchPlaceholder": "Pozisyon ara", "status": "Durum", "title": "Pozisyonlar" },
+    "list": { "active": "Açık", "all": "Tümü", "clear": "Filtreleri temizle", "client": "Müşteri", "daysOpen": "Açık gün", "empty": "Eşleşen pozisyon yok.", "mine": "Benim", "searchPlaceholder": "Pozisyon ara", "status": "Durum", "title": "Pozisyonlar" },
     "loadFailed": "Süreç yüklenemedi.", "logActivity": "Hareket ekle", "logWithPerson": "Bu kişiyle kaydet", "managerOnly": "Yalnızca yöneticiler {{action}} yapabilir",
     "markFilled": "Dolduruldu olarak işaretle", "markFilledAsk": "Bu pozisyon dolduruldu olarak işaretlensin mi?", "move": "Taşı", "moved": "{{name}} {{stage}} aşamasına taşındı",
     "moveFailed": "Aday taşınamadı.", "notFound": "Pozisyon bulunamadı.", "opened": "Açılış", "openProfile": "Profili aç", "owner": "Sorumlu",
