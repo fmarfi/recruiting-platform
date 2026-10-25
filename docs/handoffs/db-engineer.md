@@ -46,3 +46,7 @@
 
 **Verified with**
 - `mvn -q -B verify` green; `mvn -B verify -Pintegration` with Docker: 69 tests, 0 failures, BUILD SUCCESS (2026-10-25).
+
+## Review fixes
+- BulkActionItem implements Persistable (isNew flag, cleared on PostLoad/PostPersist); duplicate (bulk_action_id, entity_id) now fails; IT asserts it.
+- setTags null-safe (null -> empty list, defensive copy) on Person/Account/JobOrder/Proposal; imports replace FQNs; V202610230001 gains ck_*_tags_lower CHECK (tags = lower(tags::text)::varchar[]), IT asserts upper-case rejected.

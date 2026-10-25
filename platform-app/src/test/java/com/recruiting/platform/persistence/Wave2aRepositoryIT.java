@@ -153,6 +153,12 @@ class Wave2aRepositoryIT extends AbstractPersistenceIT {
         assertThatThrownBy(() -> tx.executeWithoutResult(s -> bulkItems.saveAndFlush(
                 new BulkActionItem(b.getId(), UUID.randomUUID(), BulkOutcome.FAILED, null, null))))
                 .isInstanceOf(DataIntegrityViolationException.class);
+        UUID dup = UUID.randomUUID();
+        tx.executeWithoutResult(s -> bulkItems.saveAndFlush(
+                new BulkActionItem(b.getId(), dup, BulkOutcome.OK, null, null)));
+        assertThatThrownBy(() -> tx.executeWithoutResult(s -> bulkItems.saveAndFlush(
+                new BulkActionItem(b.getId(), dup, BulkOutcome.OK, null, null))))
+                .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> jdbc.update(
                 "insert into bulk_action_item (bulk_action_id, entity_id, outcome, code) values (?, ?, 'SKIPPED', 'BOGUS')",
                 b.getId(), UUID.randomUUID())).isInstanceOf(DataIntegrityViolationException.class);
@@ -161,6 +167,12 @@ class Wave2aRepositoryIT extends AbstractPersistenceIT {
                         + "requested_count, ok_count, skipped_count, failed_count) "
                         + "values (?, 'PEOPLE', 'DELETE_ALL', '{}'::jsonb, ?, now(), now(), 0, 0, 0, 0)",
                 UUID.randomUUID(), b.getActorId())).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void upperCaseTagIsRejectedByTheDatabase() {
+        assertThatThrownBy(() -> account(List.of("Upper")))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private Account account(List<String> tags) {

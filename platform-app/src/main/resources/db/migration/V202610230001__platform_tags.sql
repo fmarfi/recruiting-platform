@@ -1,8 +1,8 @@
 -- Wave 2a (ADR 0010): tags on person, account, job_order, proposal (and their _aud tables).
-ALTER TABLE person    ADD COLUMN tags varchar(50)[] NOT NULL DEFAULT '{}' CONSTRAINT ck_person_tags_max CHECK (cardinality(tags) <= 20);
-ALTER TABLE account   ADD COLUMN tags varchar(50)[] NOT NULL DEFAULT '{}' CONSTRAINT ck_account_tags_max CHECK (cardinality(tags) <= 20);
-ALTER TABLE job_order ADD COLUMN tags varchar(50)[] NOT NULL DEFAULT '{}' CONSTRAINT ck_job_order_tags_max CHECK (cardinality(tags) <= 20);
-ALTER TABLE proposal  ADD COLUMN tags varchar(50)[] NOT NULL DEFAULT '{}' CONSTRAINT ck_proposal_tags_max CHECK (cardinality(tags) <= 20);
+ALTER TABLE person    ADD COLUMN tags varchar(50)[] NOT NULL DEFAULT '{}' CONSTRAINT ck_person_tags_max CHECK (cardinality(tags) <= 20) CONSTRAINT ck_person_tags_lower CHECK (tags = lower(tags::text)::varchar[]);
+ALTER TABLE account   ADD COLUMN tags varchar(50)[] NOT NULL DEFAULT '{}' CONSTRAINT ck_account_tags_max CHECK (cardinality(tags) <= 20) CONSTRAINT ck_account_tags_lower CHECK (tags = lower(tags::text)::varchar[]);
+ALTER TABLE job_order ADD COLUMN tags varchar(50)[] NOT NULL DEFAULT '{}' CONSTRAINT ck_job_order_tags_max CHECK (cardinality(tags) <= 20) CONSTRAINT ck_job_order_tags_lower CHECK (tags = lower(tags::text)::varchar[]);
+ALTER TABLE proposal  ADD COLUMN tags varchar(50)[] NOT NULL DEFAULT '{}' CONSTRAINT ck_proposal_tags_max CHECK (cardinality(tags) <= 20) CONSTRAINT ck_proposal_tags_lower CHECK (tags = lower(tags::text)::varchar[]);
 
 CREATE INDEX idx_person_tags    ON person    USING gin (tags);
 CREATE INDEX idx_account_tags   ON account   USING gin (tags);
