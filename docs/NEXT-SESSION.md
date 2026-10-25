@@ -1,6 +1,8 @@
 # Next session: where we stopped (2026-10-23) and what to do
 
-Start the next session with: "Read CLAUDE.md, docs/NEXT-SESSION.md and docs/mastermind-plan.md, then continue."
+Start the next session with: "Read CLAUDE.md, docs/NEXT-SESSION.md and docs/work-plan-v2.md, then continue."
+
+> 2026-10-25: scope and wave order changed by the Product Plan; **`docs/work-plan-v2.md` supersedes the wave order below and in `docs/mastermind-plan.md`** (the feature ideas there still hold). State on 2026-10-25: db branch `worktree-wave2a-db` (verified with `-Pintegration`, reviewed, review fixes in progress) and `worktree-wave2a-frontend-pipeline` (504e382, verified: tsc, 90 tests, build; reviewed) are ready to merge into `wave2a-integration`. Docker Desktop and WSL now work. Next: merge, architect contract 1.2.0 for the candidate pool, then the 2a backends.
 
 ## Setup facts (this machine)
 - Repo: `C:\Users\SID-DRW\Desktop\New folder\recruiting-platform` (branch `feature/network-customer-tools`). Sibling worktrees: `..\wt-architect`, `..\wt-frontend-shell`.

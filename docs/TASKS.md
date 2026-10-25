@@ -57,7 +57,16 @@ Shared briefing: `docs/context/wave-1b.md` (ports, shared files, auth, demo logi
 - [x] All Phase 1 Must endpoints and screens merged (2026-10-20; `mvn -Pintegration verify` and frontend tests green; screens not yet clicked through against the real backend)
 - [x] Demo data loads with one command (`seed/load.sh` / `load.ps1`; includes Envers baseline rows)
 
-## Wave 2 — integrate and harden
+## Wave 2 — integrate and harden (re-arranged 2026-10-25, see `docs/work-plan-v2.md`)
+
+| Wave | Scope | Status |
+| --- | --- | --- |
+| 2a | Speed layer: DataGrid, command bar, saved views, bulk actions, composer, path component | in progress: contract 1.1.0, frontend-shell and db merged or in review; `/views` and `/bulk-actions` backends todo |
+| 2b | Candidate pool and consent engine: candidate profile, CV files + Tika, duplicates, consent e-mail + retention reminders, sharing guard, talent pools, exposure history, off-limits guard | todo: architect contract 1.2.0 first |
+| 2c | BD and assignments: opportunities, proposals with versions and PDF, search brief, longlist/shortlist stages, scorecards, org chart, account health | todo |
+| 2d | Client-ready output: branded and anonymised candidate report, weekly progress report, share link, e-mail templates, calendar, dashboards v1 | todo |
+| 2e | Relationship edge and integrations: strength, warm path, alumni alerts, compliance cockpit, assessments, Outlook/Gmail sync, SSO | todo |
+| Parked | Volume staffing (model stays open), AI (Phase 2), LinkedIn integration (decided: none) | – |
 
 **Gate 2 → 3**
 - [ ] End-to-end tests pass on every Must story
@@ -85,8 +94,13 @@ Shared briefing: `docs/context/wave-1b.md` (ports, shared files, auth, demo logi
 | db-engineer | security-privacy | `AuditorAware` bean + Envers `RevisionListener`, so `created_by`/`updated_by`/`revinfo.user_id` get filled | W1-12 |
 | devops | security-privacy | Permit `/actuator/health` (unauthenticated, no details); then devops adds Dockerfile HEALTHCHECK | W1-12 |
 | devops | devops | Bundle frontend into the app jar; add ESLint + CI lint step; dark-mode tokens into the Mantine dark palette | before pilot |
+| code-reviewer | backend-accounts, security-privacy | Anonymisation must clear `tags` (ADR 0010): `PersonDataService` and the `person_aud` scrub in `AuditPurger` | todo, with 2a backends |
+| code-reviewer | architect | `bulk_action.params` / `bulk_action_item.message` can hold free text (SET_NEXT_ACTION title) that no purge covers: store only ids and enums, or add a purge | todo, before `/bulk-actions` |
+| frontend-pipeline | architect, backend-accounts | `GET /people` needs `city` and `company` filters (command bar sends them; only filtered client-side per page today) | todo |
 
 ## Decisions log
+
+- 2026-10-25 · Product Plan (Phase 1, non-AI) adopted as scope input: candidate pool, CV capture, consent engine, assignments and branded/blind reports move into Phase 1; volume staffing deferred; no LinkedIn API or scraping. Wave order in `docs/work-plan-v2.md`. ASSUMPTIONS until the client answers: retention from last consent, consent on every candidate, PDF + share link instead of a portal, no website form yet.
 
 - 2026-10-16 · S-02 (website consent form) moves to Phase 2 with B-13: no website form in Phase 1.
 - 2026-10-16 · Pilot: any consultant may change any record; manager-only moves stay manager-only (ASSUMPTION).
