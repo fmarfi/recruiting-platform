@@ -3,6 +3,7 @@ package com.recruiting.platform.pipeline.domain;
 import com.recruiting.platform.contracts.BulkOutcome;
 import com.recruiting.platform.contracts.BulkResultCode;
 import jakarta.persistence.*;
+import org.springframework.data.domain.Persistable;
 import java.io.Serializable;
 import java.util.UUID;
 
@@ -10,7 +11,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "bulk_action_item")
 @IdClass(BulkActionItem.Key.class)
-public class BulkActionItem {
+public class BulkActionItem implements Persistable<BulkActionItem.Key> {
 
     @Id
     @Column(name = "bulk_action_id")
@@ -33,6 +34,9 @@ public class BulkActionItem {
     @Column(name = "message", length = 500)
     private String message;
 
+    @Transient
+    private boolean isNew = true;
+
     public BulkActionItem() {
         // for JPA
     }
@@ -43,6 +47,22 @@ public class BulkActionItem {
         this.outcome = outcome;
         this.code = code;
         this.message = message;
+    }
+
+    @Override
+    public Key getId() {
+        return new Key(bulkActionId, entityId);
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this.isNew = false;
     }
 
     public UUID getBulkActionId() {

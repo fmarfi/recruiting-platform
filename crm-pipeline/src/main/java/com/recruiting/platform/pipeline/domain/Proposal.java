@@ -1,5 +1,7 @@
 package com.recruiting.platform.pipeline.domain;
 
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.persistence.*;
 import com.recruiting.platform.contracts.ProposalStatus;
 import java.math.BigDecimal;
@@ -58,9 +60,9 @@ public class Proposal extends AuditableEntity {
     private UUID ownerId;
 
     /** Lower-case labels, at most 20 (ADR 0010); column {@code tags varchar(50)[]}. */
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "tags", length = 50)
-    private java.util.List<String> tags = new java.util.ArrayList<>();
+    private List<String> tags = new ArrayList<>();
 
     public Proposal() {
         // for JPA
@@ -159,11 +161,11 @@ public class Proposal extends AuditableEntity {
     }
 
 
-    public java.util.List<String> getTags() {
+    public List<String> getTags() {
         return tags;
     }
 
-    public void setTags(java.util.List<String> tags) {
-        this.tags = tags;
+    public void setTags(List<String> tags) {
+        this.tags = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
     }
 }
