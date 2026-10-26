@@ -129,6 +129,57 @@
         "REPORT": "Report",
         "SHARE_LINK": "Share link"
       }
+    },
+    "dup": {
+      "nav": "Duplicates",
+      "title": "Possible duplicates",
+      "phone": "Phone",
+      "empty": "No open duplicates.",
+      "loadFailed": "Could not load the duplicates.",
+      "managersOnly": "Only managers and admins can review duplicates.",
+      "reason": {
+        "EMAIL": "Same email",
+        "PHONE": "Same phone",
+        "LINKEDIN_URL": "Same LinkedIn",
+        "NAME_COMPANY": "Same name and company"
+      },
+      "promptTitle": "Possible duplicate",
+      "promptBody": "{{count}} existing person(s) look like this one. Use an existing record, or create a new one anyway.",
+      "useExisting": "Use existing",
+      "createAnyway": "Create anyway",
+      "back": "Back to edit",
+      "detected": "Found {{date}}",
+      "dismiss": "Not the same person",
+      "merge": "Merge",
+      "dismissFailed": "Could not dismiss the pair.",
+      "merged": "People merged.",
+      "mergeTitle": "Merge people",
+      "survivorHelp": "Choose the person to keep. The other record is merged into it and deleted. This cannot be undone.",
+      "mergeSummary": "{{drop}} will be merged into {{keep}}.",
+      "takeTitle": "Take these fields from {{name}} even if the kept record has a value:",
+      "irreversible": "The merge is audited but cannot be reversed. Applications, activities, files, consent records and exposures move to the kept person.",
+      "mergeConfirm": "Merge people",
+      "mergeFailed": "Could not merge the people.",
+      "forbidden": "Only managers and admins can merge people.",
+      "versionConflict": "The kept person was changed by someone else. The latest version is loaded; check and confirm again.",
+      "loadSurvivorFailed": "Could not load the person to keep.",
+      "field": {
+        "name": "Name",
+        "type": "Type",
+        "title": "Title",
+        "company": "Company",
+        "email": "Email",
+        "phone": "Phone",
+        "city": "City",
+        "linkedinUrl": "LinkedIn",
+        "howWeKnow": "How we know them",
+        "notes": "Notes",
+        "ownerId": "Owner",
+        "sourceChannel": "Source channel",
+        "noticePeriodDays": "Notice period",
+        "mobility": "Mobility",
+        "compensation": "Compensation"
+      }
     }
   }
 }

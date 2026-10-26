@@ -129,6 +129,57 @@
         "REPORT": "Rapor",
         "SHARE_LINK": "Paylaşım bağlantısı"
       }
+    },
+    "dup": {
+      "nav": "Mükerrer kayıtlar",
+      "title": "Olası mükerrer kayıtlar",
+      "phone": "Telefon",
+      "empty": "Açık mükerrer kayıt yok.",
+      "loadFailed": "Mükerrer kayıtlar yüklenemedi.",
+      "managersOnly": "Mükerrer kayıtları yalnızca yöneticiler ve adminler inceleyebilir.",
+      "reason": {
+        "EMAIL": "Aynı e-posta",
+        "PHONE": "Aynı telefon",
+        "LINKEDIN_URL": "Aynı LinkedIn",
+        "NAME_COMPANY": "Aynı ad ve şirket"
+      },
+      "promptTitle": "Olası mükerrer kayıt",
+      "promptBody": "{{count}} mevcut kişi bu kayda benziyor. Mevcut kaydı kullanın ya da yine de yeni kayıt açın.",
+      "useExisting": "Mevcut olanı kullan",
+      "createAnyway": "Yine de oluştur",
+      "back": "Düzenlemeye dön",
+      "detected": "Bulundu: {{date}}",
+      "dismiss": "Aynı kişi değil",
+      "merge": "Birleştir",
+      "dismissFailed": "Çift kapatılamadı.",
+      "merged": "Kişiler birleştirildi.",
+      "mergeTitle": "Kişileri birleştir",
+      "survivorHelp": "Saklanacak kişiyi seçin. Diğer kayıt ona birleştirilir ve silinir. Bu işlem geri alınamaz.",
+      "mergeSummary": "{{drop}}, {{keep}} kaydına birleştirilecek.",
+      "takeTitle": "Saklanan kayıtta değer olsa bile şu alanları {{name}} kaydından al:",
+      "irreversible": "Birleştirme denetim kaydına yazılır ancak geri alınamaz. Başvurular, hareketler, dosyalar, rıza kayıtları ve sunumlar saklanan kişiye taşınır.",
+      "mergeConfirm": "Kişileri birleştir",
+      "mergeFailed": "Kişiler birleştirilemedi.",
+      "forbidden": "Kişileri yalnızca yöneticiler ve adminler birleştirebilir.",
+      "versionConflict": "Saklanan kişi başka biri tarafından değiştirildi. Son sürüm yüklendi; kontrol edip yeniden onaylayın.",
+      "loadSurvivorFailed": "Saklanacak kişi yüklenemedi.",
+      "field": {
+        "name": "Ad",
+        "type": "Tür",
+        "title": "Unvan",
+        "company": "Şirket",
+        "email": "E-posta",
+        "phone": "Telefon",
+        "city": "Şehir",
+        "linkedinUrl": "LinkedIn",
+        "howWeKnow": "Nasıl tanıyoruz",
+        "notes": "Notlar",
+        "ownerId": "Sorumlu",
+        "sourceChannel": "Kaynak kanal",
+        "noticePeriodDays": "İhbar süresi",
+        "mobility": "Hareketlilik",
+        "compensation": "Ücret"
+      }
     }
   }
 }
