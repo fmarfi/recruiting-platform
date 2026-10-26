@@ -50,3 +50,29 @@
 ## Review fixes
 - BulkActionItem implements Persistable (isNew flag, cleared on PostLoad/PostPersist); duplicate (bulk_action_id, entity_id) now fails; IT asserts it.
 - setTags null-safe (null -> empty list, defensive copy) on Person/Account/JobOrder/Proposal; imports replace FQNs; V202610230001 gains ck_*_tags_lower CHECK (tags = lower(tags::text)::varchar[]), IT asserts upper-case rejected.
+
+# Hand-off: db-engineer · Wave 2b (contract 1.1.1 + 1.2.0) · 2026-10-26
+
+**Branch:** `worktree-wave2b-db` (based on 1a6461f)
+
+**Done** (migrations `V2026102600{01..11}`, one concern each)
+- 1.1.1: `bulk_action_item.message` dropped; `ck_bulk_action_params_no_free_text` (old rows stripped first); `idx_person_city`.
+- 1.2.0 accounts: person columns + `person_aud`; `person_education`, `person_file` (tr_unaccent config, `text_tsv` generated + partial GIN), `cv_intake_item` (+GIN on `detected`), `duplicate_candidate`, `person_merge`, `off_limits_rule` (partial unique open rule per target), all `_aud` where audited.
+- pipeline: `candidate_exposure` + idempotent backfill (own migration, re-runnable), `application.off_limits_override_reason` (+aud).
+- privacy: `consent_request` additions + partial unique reminder index, `person_privacy.last_consent_at`, `retention_settings` additions, basis CHECK, default FROM_LAST_CONSENT; basis-switch migration (recompute only while basis is still FROM_CREATED; admin basis kept; never anonymises).
+- `V...011`: access_log/timeline_entry `entity_type` CHECK widened (EntityType gained PERSON_FILE, CV_INTAKE_ITEM, OFF_LIMITS_RULE).
+- Entities + repositories for every new table; `Person`, `Application`, `ConsentRequest`, `PersonPrivacy`, `RetentionSettings` extended; `BulkActionItem` lost `message` (ctor now 4 args).
+- All person FKs cascade; `person_merge` cascade kept.
+
+**Not done / notes**
+- `person.compensation_enc` is mapped as raw `byte[]`; security-privacy replaces it with the `FieldCipher` converter.
+- Backfill ids are UUID v4 (`gen_random_uuid()`); calendar days in the basis switch use Europe/Istanbul.
+
+**Change requests**
+- architect · `person_file.version` (file number) and the audit `version` clash; I used `row_version` for the JPA `@Version` column. Please rename in schema.md.
+- architect · schema.md `DuplicateMatchReason`/`ExposureChannel` etc. already match; no other diffs.
+- backend-pipeline · `new BulkActionItem(...)` has no message argument; message comes from `BulkResultCode`.
+- security-privacy · add `person_education_aud`, `person_file_aud` to the purge (tables exist); `DuplicateCandidate.reasons`/`PersonMerge.fieldsTaken` are `List<String>`.
+
+**Verified with**
+- `mvn -q -B verify` exit 0; `mvn -B verify -Pintegration`: 98 ITs, 0 failures, BUILD SUCCESS (new: Wave2bAccountsRepositoryIT 14, Wave2bPipelinePrivacyRepositoryIT 8, RetentionBasisMigrationIT 2, MigrationIT 8).

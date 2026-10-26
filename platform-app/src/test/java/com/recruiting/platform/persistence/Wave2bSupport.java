@@ -41,8 +41,8 @@ abstract class Wave2bSupport extends AbstractPersistenceIT {
 
     protected UUID application(UUID jobOrder, UUID person, String stage) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO application (id, job_order_id, person_id, stage) VALUES (?, ?, ?, ?)",
-                id, jobOrder, person, stage);
+        jdbc.update("INSERT INTO application (id, job_order_id, person_id, stage, rejection_reason) VALUES (?, ?, ?, ?, CASE WHEN ? = 'REJECTED' THEN 'fictional reason' END)",
+                id, jobOrder, person, stage, stage);
         return id;
     }
 

@@ -62,6 +62,22 @@ public class ConsentRequest {
     @Column(name = "requested_by")
     private UUID requestedBy;
 
+    @Column(name = "purpose")
+    @Enumerated(EnumType.STRING)
+    private ConsentRequestPurpose purpose = ConsentRequestPurpose.INITIAL;
+
+    /** First successful GET of the public link (1.2.0). Not a consent signal. */
+    @Column(name = "opened_at")
+    private Instant openedAt;
+
+    /** Set on automatic reminders only (1.2.0). */
+    @Column(name = "reminder_days_before")
+    private Short reminderDaysBefore;
+
+    /** The retain_until the reminder was for; unique per person and step (1.2.0). */
+    @Column(name = "reminder_for_retain_until")
+    private LocalDate reminderForRetainUntil;
+
     public ConsentRequest() {
         // for JPA
     }
@@ -164,6 +180,38 @@ public class ConsentRequest {
 
     public void setRequestedBy(UUID requestedBy) {
         this.requestedBy = requestedBy;
+    }
+
+    public ConsentRequestPurpose getPurpose() {
+        return purpose;
+    }
+
+    public void setPurpose(ConsentRequestPurpose purpose) {
+        this.purpose = purpose;
+    }
+
+    public Instant getOpenedAt() {
+        return openedAt;
+    }
+
+    public void setOpenedAt(Instant openedAt) {
+        this.openedAt = openedAt;
+    }
+
+    public Short getReminderDaysBefore() {
+        return reminderDaysBefore;
+    }
+
+    public void setReminderDaysBefore(Short reminderDaysBefore) {
+        this.reminderDaysBefore = reminderDaysBefore;
+    }
+
+    public LocalDate getReminderForRetainUntil() {
+        return reminderForRetainUntil;
+    }
+
+    public void setReminderForRetainUntil(LocalDate reminderForRetainUntil) {
+        this.reminderForRetainUntil = reminderForRetainUntil;
     }
 
 }

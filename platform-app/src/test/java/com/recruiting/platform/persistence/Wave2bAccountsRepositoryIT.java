@@ -117,7 +117,7 @@ class Wave2bAccountsRepositoryIT extends Wave2bSupport {
 
         assertThat(people.findByCityNormalized(" " + city.toUpperCase().replace("Ç", "c") + " "))
                 .extracting(Person::getId).contains(id);
-        assertThat(people.findByNameAndCompanyNormalized(name.toLowerCase().replace("ö", "o"), "SIRKET a.as."))
+        assertThat(people.findByNameAndCompanyNormalized(name.toLowerCase().replace("ö", "o"), "SIRKET a.s."))
                 .extracting(Person::getId).containsExactly(id);
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM pg_indexes WHERE indexname IN ('idx_person_city', 'idx_person_name_company_norm')",
@@ -131,7 +131,7 @@ class Wave2bAccountsRepositoryIT extends Wave2bSupport {
         UUID owner = newUser().getId();
         UUID personId = person(owner);
         PersonEducation e = education(personId, 2008, 2012, 0);
-        education(personId, null, 2016, 1);
+        tx.execute(s -> educations.save(education(personId, null, 2016, 1)));
         tx.execute(s -> educations.save(e));
         assertThat(educations.findByPersonIdOrderBySortOrder(personId)).hasSize(2)
                 .first().satisfies(x -> assertThat(x.getSchool()).isEqualTo("Fictional University"));
