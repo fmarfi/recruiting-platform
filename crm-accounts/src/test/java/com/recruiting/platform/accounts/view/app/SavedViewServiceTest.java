@@ -130,6 +130,53 @@ class SavedViewServiceTest {
     }
 
     @Test
+    void createIsRejectedAtThePrivateCap() {
+        when(repo.countByOwnerIdAndEntityAndVisibility(consultant.id(), ListEntity.ACCOUNTS, ViewVisibility.PRIVATE))
+                .thenReturn(50L);
+        assertCode(() -> service.create(new SavedViewCreateRequest(ListEntity.ACCOUNTS, "N", null, definition),
+                consultant), ErrorCode.VALIDATION_FAILED);
+    }
+
+    @Test
+    void onlyOwnerMayMakeSharedViewPrivate() {
+        SavedView v = view(consultant.id(), ViewVisibility.SHARED);
+        assertCode(() -> service.update(v.getId(), patch(new SavedViewUpdateRequest(null, ViewVisibility.PRIVATE, null,
+                null), "visibility"), manager), ErrorCode.FORBIDDEN);
+        var back = service.update(v.getId(), patch(new SavedViewUpdateRequest(null, ViewVisibility.PRIVATE, null,
+                null), "visibility"), consultant);
+        assertThat(back.visibility()).isEqualTo(ViewVisibility.PRIVATE);
+    }
+
+    @Test
+    void sharedToPrivateRespectsTheCap() {
+        SavedView v = view(consultant.id(), ViewVisibility.SHARED);
+        when(repo.countByOwnerIdAndEntityAndVisibility(consultant.id(), ListEntity.ACCOUNTS, ViewVisibility.PRIVATE))
+                .thenReturn(50L);
+        assertCode(() -> service.update(v.getId(), patch(new SavedViewUpdateRequest(null, ViewVisibility.PRIVATE, null,
+                null), "visibility"), consultant), ErrorCode.VALIDATION_FAILED);
+    }
+
+    @Test
+    void sharedViewsDropFreeTextQ() {
+        var shared = service.create(new SavedViewCreateRequest(ListEntity.ACCOUNTS, "S", ViewVisibility.SHARED,
+                definition), manager);
+        assertThat(shared.definition().filters()).doesNotContainKey("q");
+        var priv = service.create(new SavedViewCreateRequest(ListEntity.ACCOUNTS, "P", null, definition), manager);
+        assertThat(priv.definition().filters()).containsKey("q");
+        SavedView v = view(manager.id(), ViewVisibility.PRIVATE);
+        var switched = service.update(v.getId(), patch(new SavedViewUpdateRequest(null, ViewVisibility.SHARED, null,
+                null), "visibility"), manager);
+        assertThat(switched.definition().filters()).doesNotContainKey("q");
+    }
+
+    @Test
+    void versionOnlyPatchIsValidationError() {
+        SavedView v = view(consultant.id(), ViewVisibility.PRIVATE);
+        assertCode(() -> service.update(v.getId(), patch(new SavedViewUpdateRequest(null, null, null, 3L), "version"),
+                consultant), ErrorCode.VALIDATION_FAILED);
+    }
+
+    @Test
     void staleVersionIsConflict() {
         SavedView v = view(consultant.id(), ViewVisibility.PRIVATE);
         assertCode(() -> service.update(v.getId(), patch(new SavedViewUpdateRequest("X", null, null, 2L), "name",

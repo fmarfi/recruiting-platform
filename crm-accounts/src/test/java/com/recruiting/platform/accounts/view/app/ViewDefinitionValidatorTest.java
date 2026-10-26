@@ -65,6 +65,16 @@ class ViewDefinitionValidatorTest {
     }
 
     @Test
+    void sortKeysFollowTheListEndpoints() {
+        assertThatCode(() -> ViewDefinitionValidator.validate(ListEntity.PEOPLE,
+                def(Map.of(), List.of(), List.of("createdAt,desc"), null))).doesNotThrowAnyException();
+        assertThatThrownBy(() -> ViewDefinitionValidator.validate(ListEntity.PEOPLE,
+                def(Map.of(), List.of(), List.of("email,asc"), null))).isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> ViewDefinitionValidator.validate(ListEntity.ACCOUNTS,
+                def(Map.of(), List.of(), List.of("sector"), null))).isInstanceOf(ApiException.class);
+    }
+
+    @Test
     void rejectsUnknownColumnSortAndGroupBy() {
         assertThatThrownBy(() -> ViewDefinitionValidator.validate(ListEntity.ACCOUNTS,
                 def(Map.of(), List.of("nope"), List.of(), null))).isInstanceOf(ApiException.class);

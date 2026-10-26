@@ -17,6 +17,9 @@ public interface SavedViewRepository extends JpaRepository<SavedView, UUID> {
     List<SavedView> findVisible(@Param("entity") ListEntity entity, @Param("ownerId") UUID ownerId,
             @Param("shared") ViewVisibility shared);
 
+    @Query("select v from SavedView v where v.ownerId = :ownerId or v.visibility = :shared")
+    List<SavedView> findVisibleAll(@Param("ownerId") UUID ownerId, @Param("shared") ViewVisibility shared);
+
     long countByOwnerIdAndEntityAndVisibility(UUID ownerId, ListEntity entity, ViewVisibility visibility);
 
     @Query("select v from SavedView v where v.ownerId = :ownerId and v.entity = :entity and lower(v.name) = lower(:name)")
