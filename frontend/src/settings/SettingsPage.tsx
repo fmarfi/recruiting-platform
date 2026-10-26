@@ -4,12 +4,13 @@ import { Link, NavLink, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../shell/auth/useAuth';
 import { AuditSection } from './AuditSection';
 import { ImportSection } from './ImportSection';
+import { OffLimitsSection } from './OffLimitsSection';
 import { RetentionSection } from './RetentionSection';
 import { RolesSection } from './RolesSection';
 import { StatusListsSection } from './StatusListsSection';
 import { UsersSection } from './users/UsersSection';
 
-const SECTIONS = ['users', 'roles', 'statuses', 'import', 'retention', 'audit'] as const;
+const SECTIONS = ['users', 'roles', 'statuses', 'import', 'retention', 'offlimits', 'audit'] as const;
 
 /** Settings (UX-07): section list on the left (wraps on phone), manager and admin only. */
 export function SettingsPage() {
@@ -42,6 +43,7 @@ export function SettingsPage() {
           {section === 'statuses' && <StatusListsSection />}
           {section === 'import' && <ImportSection />}
           {section === 'retention' && <RetentionSection />}
+          {section === 'offlimits' && <OffLimitsSection />}
           {section === 'audit' && <AuditSection />}
         </div>
       </Group>

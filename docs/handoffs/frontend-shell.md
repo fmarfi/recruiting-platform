@@ -1,29 +1,27 @@
-# Hand-off: frontend-shell · Wave 2a (DataGrid, command bar, accounts adoption) · 2026-10-23
+# Hand-off: frontend-shell · Wave 2b (server-backed views, off-limits admin, retention, operators) · 2026-10-26
 
-**Branch / commits:** `worktree-wave2a-frontend-shell` · see `git log --oneline` (earlier wave notes: git history of this file)
+**Branch / commits:** `worktree-wave2b-frontend-shell` · see `git log --oneline` (earlier wave notes: git history of this file)
 
 **Done**
-- shell/grid: generic `DataGrid<T>` (typed ColumnDef, sort callback + aria-sort, row select + select-all-on-page + `bulkActions` slot, density, sticky header, skeleton/empty/error, phone cards, CSV of visible columns of the current page), column chooser (order+visibility in localStorage `grid.<id>.columns`), `ViewStore` interface + `localViewStore`, `ViewsMenu`, `groupBy` prop as extension point (renders group header rows; no UI yet). Import from `shell/grid` (index.ts).
-- shell/command: Ctrl/Cmd+K palette + header button; pure `parseQuery`/`routeFor`; grouped /search results (existing endpoint), quick actions, combobox/listbox keyboard nav. Recent items (KVKK): only kind+id+time in `command.recent.<userId>`, 30-day expiry, names fetched on open.
-- accounts/list: grid adoption, column chooser, saved views (local, overwrite confirm, warning if storage fails), CSV export; filters, page and sort live in the URL (replace, so Back and Ctrl+K work while open).
-- Tests: 79 total (baseline 24).
+- ViewStore over /views: `shell/grid/apiViewStore.ts` (list/save/rename/delete, versions kept for optimistic lock, SHARED only if `canShare`), `viewErrors.ts` (409 DUPLICATE, 400 LIMIT, 409 VERSION_CONFLICT to CONFLICT, 403, 404, 5xx/network to UNAVAILABLE), `viewStoreFactory.ts` `createViewStore()` (API first, `localViewStore` fallback when unavailable, one-time migration of local views as PRIVATE with a notice (views the server rejects are dropped and counted in the notice, the rest is written back and retried; flag cleared on fallback; concurrent list() shares one run), flag `grid.<id>.views.migrated`), hook `useViewStore(options)` (adds user id and `canShare = isManager`). All exported from `shell/grid`.
+- ViewsMenu: shared badge, rename, share checkbox (managers), notice line (fallback/migrated/storage), error messages in TR/EN, warning that free-text `q` is not stored in shared views. Hidden edit/delete when `editable === false`.
+- Accounts list now uses it (`VIEW_OPTIONS` in `accounts/list/accountFilters.ts`: `q`, `status`, `ownerId=me`).
+- Settings: new section `/settings/offlimits` (list active/all, create for account or company with reason, note, start and optional end date, End now (yesterday, or its start day if later; shows Ends today), delete with confirm; 409 DUPLICATE message). Retention: basis select, auto-send on CV upload, renewal reminder days (max 5, 1..365); read-only for non-admins.
+- Command bar: `tag:`, `source:`, `cv:` operators with tests (125 tests total, baseline 90).
+- Account page shows off-limits rules in force (`OffLimitsBanner`, `GET /off-limits?accountId&active=true`).
 
 **Not done / left**
-- Bulk selection is off on accounts (no bulk endpoint yet); CSV exports the current page only (a full export needs a server endpoint).
-- Server-backed ViewStore: implement `ViewStore<F>` over /views and swap in `localViewStore(...)` call sites.
+- Mock/backends for /off-limits and retention fields were not run against a live server (Prism not started; typed against the contract).
+- NetworkList and JobOrdersList still use `localViewStore`; frontend-pipeline adopts `useViewStore` (see below).
 
-**Others must know: URL params written by the command bar (frontend-pipeline to read)**
-- `/network`: `owner=me`, `stale=<days>`, `type=<PersonType>[,<PersonType>]` (EXECUTIVE|CLIENT_CONTACT|REFERRER|CANDIDATE), `consent=<ConsentStatus>` (NOT_SENT|SENT|GIVEN|REFUSED|WITHDRAWN), `city=<text>`, `company=<text>`, `q=<free text>`.
-- `/job-orders`: `owner=me`, `status=<JobOrderStatus>`, `q=<free text>`.
-- `/accounts` (done here): `owner=me|all` (absent = me), `status=<AccountStatus>` (last one wins), `q`, `page` (1-based), `sort`.
-- Operator syntax: `owner:me stale:90 type:exec consent:given city:izmir company:"Y Holding" status:active`; routing is in `shell/command/operators.ts` (`routeFor`). Unknown operators stay free text.
-- /network has no city/company filter in the API: the bar still sends them, but shows those chips dimmed as 
-ot applied yet. Repeated owner/stale/status keep the last value.
+**Others must know (frontend-pipeline)**
+- Adopt: `const { store, notice } = useViewStore<MyFilters>({ gridId, entity: 'PEOPLE'|'JOB_ORDERS', toFilters, fromFilters, hasFreeText })`, pass `store` and `notice` to `ViewsMenu`. Allowed server filter keys per entity are in `ViewDefinition`; `columns` must be list-item property names.
+- URL params from the command bar to `/network`: `tag=<t1>,<t2>` (lower-case, OR), `sourceChannel=<SourceChannel>[,<..>]`, `cv=<text>` (a multi-word phrase arrives quoted, e.g. `"project manager"`), besides the existing owner, stale, type, consent, city, company, q.
 
-**Change requests** (for files you don't own)
-- frontend-pipeline · network/list, joborders/list · read the params above on mount and on query change.
-- frontend-pipeline · network/list/csv.ts · may re-export `shell/grid/csv.ts` (identical helper) to avoid duplicates.
+**Change requests**
+- architect: the brief asked for `cv:yes|no`, but contract `cv` on `GET /people` is a full-text query over the CV text, with no "has CV" filter. I implemented `cv:<text>` (min 2 chars) to `cv=`; `cv:yes|no` stays free text. Repeated `cv:` join with a space (AND); user quotes are kept as typed. Add a boolean `hasCv` if yes/no is wanted.
+- architect: `SavedView`/`ViewDefinition` has no free-text-safe marker; fine, but `columns` validation of unknown names returns 400 so account column ids must stay equal to `Account` property names (they do today).
+- frontend-pipeline: network/list read `tag`, `sourceChannel`, `cv` on mount; NetworkList to adopt `useViewStore`.
 
 **Verified with**
-- `npx tsc --noEmit` clean; `npx vitest run` 79 passed; `npx vite build` ok (in frontend/).
-
+- `npx tsc --noEmit` clean; `npx vitest run` 125 passed; `npx vite build` ok (in frontend/).

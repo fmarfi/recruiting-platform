@@ -85,3 +85,36 @@ describe('keyboard helpers', () => {
     expect(matchesText('New client', 'xyz')).toBe(false);
   });
 });
+
+describe('Wave 2b operators: tag, source, cv', () => {
+  it('parses and normalizes them', () => {
+    const p = parseQuery('tag:Java source:referral cv:"project manager" cv:sap');
+    expect(p.operators.map((o) => [o.key, o.value])).toEqual([['tag', 'java'], ['source', 'REFERRAL'], ['cv', '"project manager"'], ['cv', 'sap']]);
+  });
+  it('maps source aliases and constants, rejects unknown ones', () => {
+    expect(parseQuery('source:linkedin_ad source:upload source:pool').operators.map((o) => o.value)).toEqual(['LINKEDIN_AD', 'CV_UPLOAD', 'EXISTING_POOL']);
+    expect(parseQuery('source:fax').operators).toEqual([]);
+    expect(parseQuery('source:fax').text).toBe('source:fax');
+  });
+  it('keeps empty, too short or comma-holding values as free text', () => {
+    expect(parseQuery('tag: cv:a tag:a,b').operators).toEqual([]);
+  });
+  it('routes to /network with the /people parameter names', () => {
+    const r = routeFor(parseQuery('tag:java tag:sap source:referral source:email cv:"project manager" ali'))!;
+    expect(r.path).toBe('/network');
+    expect(r.params).toEqual([['tag', 'java,sap'], ['sourceChannel', 'REFERRAL,EMAIL'], ['cv', '"project manager"'], ['q', 'ali']]);
+    expect(r.pending).toEqual([]);
+  });
+  it('routes to /network on their own and drops them from accounts lists', () => {
+    expect(routeFor(parseQuery('tag:java'))!.to).toBe('/network?tag=java');
+    const r = routeFor(parseQuery('status:active tag:java source:email'))!;
+    expect(r.path).toBe('/network');
+    expect(r.params).toEqual([['tag', 'java'], ['sourceChannel', 'EMAIL']]);
+    expect(r.dropped.map((o) => o.key)).toEqual(['status']);
+  });
+  it('joins repeated cv with a space and quotes only what the user quoted', () => {
+    expect(routeFor(parseQuery('cv:java cv:sap'))!.to).toBe('/network?cv=java+sap');
+    expect(routeFor(parseQuery('cv:-intern cv:"project manager"'))!.params).toEqual([['cv', '-intern "project manager"']]);
+    expect(parseQuery('cv:sap').operators[0]!.value).toBe('sap');
+  });
+});

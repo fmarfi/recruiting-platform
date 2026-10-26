@@ -57,6 +57,9 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
     consent: t('command.op.consent'),
     company: t('command.op.company'),
     status: t('command.op.status'),
+    tag: t('command.op.tag'),
+    source: t('command.op.source'),
+    cv: t('command.op.cv'),
   };
 
   const items = useMemo<Item[]>(() => {
