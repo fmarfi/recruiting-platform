@@ -12,7 +12,7 @@
     "noOpenJobs": "Uygun açık pozisyon yok.", "noPipelines": "Henüz bir pozisyonda değil.", "note": "Not", "notFound": "Kişi bulunamadı.", "openExisting": "Mevcut kaydı aç",
     "person": "Kişi", "pipelines": "Süreçler", "privacy": "Gizlilik", "privacyUnavailable": "Gizlilik bilgileri görüntülenemiyor.",
     "retention": "Saklama süresi {{date}} tarihinde bitiyor", "retentionWarning": "Veriler silinmek üzere planlandı.", "search": "Kişi ara", "sendConsent": "Onay isteği gönder",
-    "tabs": { "activity": "Hareketler", "connections": "Bağlantılar", "jobs": "Müşteriler ve pozisyonlar", "map": "Harita", "overview": "Genel", "privacy": "Gizlilik" },
+    "tabs": { "activity": "Hareketler", "connections": "Bağlantılar", "jobs": "Müşteriler ve pozisyonlar", "map": "Harita", "overview": "Genel", "privacy": "Gizlilik", "files": "CV dosyaları", "exposure": "Sunum geçmişi" },
     "types": { "EXECUTIVE": "Yönetici", "CLIENT_CONTACT": "Müşteri kontağı", "REFERRER": "Yönlendiren", "CANDIDATE": "Aday" },
     "views": "Listeler", 
     "presets": { "needsCall": "Aranması gerekenler", "noConsent": "Onay isteği gönderilmeyenler", "executives": "Yöneticiler", "referrers": "Yönlendirenler" }, 
@@ -46,6 +46,88 @@
         "EXISTING_POOL": "Mevcut havuz",
         "EMAIL": "E-posta",
         "CV_UPLOAD": "CV yükleme"
+      }
+    },
+    "profile": {
+      "title": "Aday profili",
+      "source": "Kaynak kanal",
+      "notice": "İhbar süresi",
+      "days": "{{count}} gün",
+      "mobility": "Hareketlilik",
+      "languages": "Diller",
+      "education": "Eğitim",
+      "compensation": "Ücret",
+      "base": "Sabit",
+      "variable": "Değişken",
+      "expected": "Beklenti",
+      "restricted": "Kısıtlı: yalnızca yöneticiler ve sorumlu kişi görebilir.",
+      "mobilities": {
+        "NONE": "Hareketli değil",
+        "WITHIN_COUNTRY": "Yurt içi",
+        "INTERNATIONAL": "Yurt dışı"
+      },
+      "levels": {
+        "BASIC": "Temel",
+        "INTERMEDIATE": "Orta",
+        "FLUENT": "İleri",
+        "NATIVE": "Ana dil"
+      },
+      "periods": {
+        "MONTHLY": "aylık",
+        "ANNUAL": "yıllık"
+      },
+      "bases": {
+        "GROSS": "brüt",
+        "NET": "net"
+      },
+      "notShareable": "Rıza verilene kadar müşterilerle paylaşılamaz.",
+      "sendConsentNow": "Rıza isteği gönder",
+      "resendConsent": "Rıza isteğini yeniden gönder",
+      "consentSent": "Rıza isteği {{email}} adresine gönderildi."
+    },
+    "files": {
+      "dropOne": "CV'yi buraya bırakın",
+      "dropMany": "CV'leri buraya bırakın",
+      "chooseOne": "Dosya seç",
+      "chooseMany": "Dosyaları seç",
+      "limits": "PDF, DOCX, DOC, RTF, ODT veya TXT; her biri en fazla 10 MB.",
+      "file": "Dosya",
+      "version": "Sürüm",
+      "uploaded": "Yüklendi",
+      "text": "Metin çıkarma",
+      "document": "Belge",
+      "current": "Güncel",
+      "status": {
+        "PENDING": "Bekliyor",
+        "DONE": "Tamamlandı",
+        "NO_TEXT": "Metin bulunamadı",
+        "FAILED": "Başarısız"
+      },
+      "reject": {
+        "PAYLOAD_TOO_LARGE": "10 MB'tan büyük",
+        "UNSUPPORTED_MEDIA_TYPE": "desteklenmeyen dosya türü",
+        "TOO_MANY": "çok fazla dosya (en fazla 50)",
+        "EMPTY": "dosya boş"
+      },
+      "duplicateFile": "Bu dosya bu kişi için zaten yüklenmiş.",
+      "uploadFailed": "Yükleme başarısız.",
+      "loadFailed": "Dosyalar yüklenemedi.",
+      "empty": "Henüz CV yok. Yukarıya bırakın.",
+      "anonymised": "Bu kişi anonimleştirildi; dosya eklenemez.",
+      "consentNote": "CV yüklendiğinde, ayar açıksa ve kişinin e-postası varsa aydınlatma metni ve rıza isteği otomatik gönderilir."
+    },
+    "exposure": {
+      "account": "Müşteri",
+      "jobOrder": "İş emri",
+      "date": "Sunuldu",
+      "outcome": "Şimdiki sonuç",
+      "empty": "Henüz hiçbir müşteriye sunulmadı.",
+      "removed": "Süreçten çıkarıldı",
+      "loadFailed": "Sunum geçmişi yüklenemedi.",
+      "channel": {
+        "PIPELINE": "Süreç",
+        "REPORT": "Rapor",
+        "SHARE_LINK": "Paylaşım bağlantısı"
       }
     }
   }
