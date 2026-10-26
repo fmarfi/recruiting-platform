@@ -51,7 +51,8 @@
       "fallback": "Saved views are stored in this browser only while the server is unavailable.",
       "migrated": "{{moved}} view(s) from this browser were copied to your account.",
       "migratedLeft": " {{left}} could not be moved and stay in this browser.",
-      "persist": "Views could not be saved in this browser; they last until you reload."
+      "persist": "Views could not be saved in this browser; they last until you reload.",
+      "migratedDropped": " {{dropped}} could not be stored on the server and were removed from this browser."
     },
     "err": {
       "DUPLICATE": "You already have a view with this name.",

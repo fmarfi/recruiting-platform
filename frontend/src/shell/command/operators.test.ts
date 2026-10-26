@@ -112,7 +112,9 @@ describe('Wave 2b operators: tag, source, cv', () => {
     expect(r.params).toEqual([['tag', 'java'], ['sourceChannel', 'EMAIL']]);
     expect(r.dropped.map((o) => o.key)).toEqual(['status']);
   });
-  it('last cv wins', () => {
-    expect(routeFor(parseQuery('cv:java cv:sap'))!.to).toBe('/network?cv=sap');
+  it('joins repeated cv with a space and quotes only what the user quoted', () => {
+    expect(routeFor(parseQuery('cv:java cv:sap'))!.to).toBe('/network?cv=java+sap');
+    expect(routeFor(parseQuery('cv:-intern cv:"project manager"'))!.params).toEqual([['cv', '-intern "project manager"']]);
+    expect(parseQuery('cv:sap').operators[0]!.value).toBe('sap');
   });
 });

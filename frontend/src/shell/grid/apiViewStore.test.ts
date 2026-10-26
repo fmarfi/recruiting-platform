@@ -116,7 +116,7 @@ describe('createViewStore (fallback and migration)', () => {
       .mockResolvedValueOnce(json(200, [apiView({ name: 'One' })])); // re-list
     const s = make(notices);
     expect(await s.list()).toHaveLength(1);
-    expect(notices).toEqual([{ type: 'migrated', moved: 2, left: 0 }]);
+    expect(notices).toEqual([{ type: 'migrated', moved: 2, left: 0, dropped: 0 }]);
     expect(localStorage.getItem('grid.g.views')).toBeNull();
     expect(localStorage.getItem('grid.g.views.migrated')).toBe('1');
     fetchMock.mockResolvedValueOnce(json(200, []));
@@ -129,8 +129,48 @@ describe('createViewStore (fallback and migration)', () => {
     const notices: ViewNotice[] = [];
     fetchMock.mockResolvedValueOnce(json(200, [])).mockResolvedValueOnce(json(400, { status: 400, errors: [{ code: 'LIMIT' }] }));
     await make(notices).list();
-    expect(notices).toEqual([{ type: 'migrated', moved: 0, left: 1 }]);
+    expect(notices).toEqual([{ type: 'migrated', moved: 0, left: 1, dropped: 0 }]);
     expect(localStorage.getItem('grid.g.views')).not.toBeNull();
     expect(localStorage.getItem('grid.g.views.migrated')).toBeNull();
+  });
+
+  it('drops views the server rejects (VALIDATION) and writes back only the unmigrated ones', async () => {
+    localStorage.setItem('grid.g.views', JSON.stringify([{ id: 'a', name: 'Bad', filters: { status: 'A' } }, { id: 'b', name: 'Ok', filters: { status: 'B' } }, { id: 'c', name: 'Later', filters: { status: 'C' } }]));
+    const notices: ViewNotice[] = [];
+    fetchMock
+      .mockResolvedValueOnce(json(200, []))
+      .mockResolvedValueOnce(json(400, { status: 400, code: 'VALIDATION_FAILED', errors: [{ field: 'definition.filters.x', code: 'UNKNOWN' }] }))
+      .mockResolvedValueOnce(json(201, apiView({ name: 'Ok' })))
+      .mockResolvedValueOnce(json(400, { status: 400, errors: [{ code: 'LIMIT' }] }))
+      .mockResolvedValueOnce(json(200, []));
+    await make(notices).list();
+    expect(notices).toEqual([{ type: 'migrated', moved: 1, left: 1, dropped: 1 }]);
+    expect((JSON.parse(localStorage.getItem('grid.g.views')!) as { name: string }[]).map((v) => v.name)).toEqual(['Later']);
+    expect(localStorage.getItem('grid.g.views.migrated')).toBeNull();
+  });
+
+  it('clears the migrated flag on fallback so views saved offline migrate later', async () => {
+    localStorage.setItem('grid.g.views.migrated', '1');
+    fetchMock.mockResolvedValue(json(503, { status: 503 }));
+    const s = make([]);
+    await s.list();
+    expect(localStorage.getItem('grid.g.views.migrated')).toBeNull();
+    await s.save({ name: 'Offline', filters: { status: 'A' } });
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValueOnce(json(200, [])).mockResolvedValueOnce(json(201, apiView({ name: 'Offline' }))).mockResolvedValueOnce(json(200, []));
+    const notices: ViewNotice[] = [];
+    await make(notices).list();
+    expect(notices).toEqual([{ type: 'migrated', moved: 1, left: 0, dropped: 0 }]);
+  });
+
+  it('shares one list run between concurrent callers (one migration, one notice)', async () => {
+    localStorage.setItem('grid.g.views', JSON.stringify([{ id: 'a', name: 'One', filters: { status: 'A' } }]));
+    const notices: ViewNotice[] = [];
+    fetchMock.mockResolvedValueOnce(json(200, [])).mockResolvedValueOnce(json(201, apiView())).mockResolvedValueOnce(json(200, [apiView()]));
+    const s = make(notices);
+    const [a, b] = await Promise.all([s.list(), s.list()]);
+    expect(a).toBe(b);
+    expect(notices).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

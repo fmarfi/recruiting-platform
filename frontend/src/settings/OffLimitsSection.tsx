@@ -9,7 +9,7 @@ import { EmptyState } from '../shell/components/EmptyState';
 import { ErrorBanner } from '../shell/components/ErrorBanner';
 import { SkeletonRows } from '../shell/components/SkeletonRows';
 import { fmtDate } from '../shell/lib/format';
-import { emptyForm, OFF_LIMITS_REASONS, offLimitsErrorKey, toCreateBody, todayIso, useOffLimitsRules, validateForm, type OffLimitsForm, type OffLimitsRule } from './offLimits';
+import { emptyForm, endDateFor, endsToday, OFF_LIMITS_REASONS, offLimitsErrorKey, toCreateBody, todayIso, useOffLimitsRules, validateForm, type OffLimitsForm, type OffLimitsRule } from './offLimits';
 
 /** Off-limits companies (modules 5 + 9, ADR 0011): list, add with reason and optional end date, end or delete. MANAGER/ADMIN write. */
 export function OffLimitsSection() {
@@ -40,8 +40,12 @@ export function OffLimitsSection() {
     setCreating(false);
     rules.reload();
   };
+  const [ending, setEnding] = useState<string | null>(null);
   const end = async (rule: OffLimitsRule) => {
-    const r = await api.PATCH('/off-limits/{id}', { params: { path: { id: rule.id } }, body: { endsOn: todayIso(), version: rule.version } });
+    if (ending) return; // one request at a time
+    setEnding(rule.id);
+    const r = await api.PATCH('/off-limits/{id}', { params: { path: { id: rule.id } }, body: { endsOn: endDateFor(rule, todayIso()), version: rule.version } });
+    setEnding(null);
     if (r.error !== undefined) fail(r.response.status, r.error);
     else setMsg(undefined);
     rules.reload();
@@ -94,11 +98,11 @@ export function OffLimitsSection() {
                   </Table.Td>
                   <Table.Td>{t(`settings.offLimits.reasons.${r.reason}`)}</Table.Td>
                   <Table.Td>{fmtDate(r.startsOn, lng)} - {r.endsOn ? fmtDate(r.endsOn, lng) : t('settings.offLimits.openEnded')}</Table.Td>
-                  <Table.Td><Badge color={r.active ? 'red' : 'gray'} variant="light">{t(r.active ? 'settings.offLimits.active' : 'settings.offLimits.ended')}</Badge></Table.Td>
+                  <Table.Td><Badge color={r.active ? 'red' : 'gray'} variant="light">{t(endsToday(r, todayIso()) ? 'settings.offLimits.endsToday' : r.active ? 'settings.offLimits.active' : 'settings.offLimits.ended')}</Badge></Table.Td>
                   {isManager && (
                     <Table.Td>
                       <Group gap="xs" wrap="nowrap">
-                        {r.active && <Button size="xs" variant="default" onClick={() => void end(r)}>{t('settings.offLimits.end')}</Button>}
+                        {r.active && !endsToday(r, todayIso()) && <Button size="xs" variant="default" loading={ending === r.id} disabled={!!ending} onClick={() => void end(r)}>{t('settings.offLimits.end')}</Button>}
                         <Button size="xs" variant="subtle" color="red" onClick={() => setConfirmDelete(r)}>{t('settings.offLimits.delete')}</Button>
                       </Group>
                     </Table.Td>

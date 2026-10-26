@@ -149,7 +149,7 @@
       "active": "Yürürlükte",
       "ended": "Bitti",
       "openEnded": "süresiz",
-      "end": "Bugün bitir",
+      "end": "Şimdi bitir",
       "delete": "Sil",
       "deleteConfirm": "Bu kural silinsin mi? Geçmişi korumak için Bugün bitir'i kullanın; silme, hatalı girişler içindir.",
       "targetKind": "Şirket türü",
@@ -176,7 +176,8 @@
         "forbidden": "Yasaklı şirket kurallarını yalnızca yönetici ve admin değiştirebilir.",
         "validation": "Formu kontrol edip tekrar deneyin.",
         "generic": "Kaydedilemedi. Tekrar deneyin."
-      }
+      },
+      "endsToday": "Bugün bitiyor"
     }
   }
 }

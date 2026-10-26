@@ -8,7 +8,7 @@ import { SkeletonRows } from '../shell/components/SkeletonRows';
 import { useAsync } from '../shell/hooks/useAsync';
 import { fmtDate } from '../shell/lib/format';
 import { problemText } from '../shell/lib/problem';
-import { parseReminderDays, RETENTION_BASES } from './retentionForm';
+import { reminderState, RETENTION_BASES } from './retentionForm';
 
 type Settings = components['schemas']['RetentionSettings'];
 
@@ -23,13 +23,15 @@ export function RetentionSection() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   useEffect(() => setForm(settings.data), [settings.data]);
 
-  const [reminderErr, setReminderErr] = useState(false);
+  const [rawTags, setRawTags] = useState<string[] | null>(null);
+  const reminders = reminderState(rawTags, form?.renewalReminderDays ?? [60, 14]);
   const save = async () => {
-    if (!form || reminderErr) return;
+    if (!form || reminders.error) return;
     const r = await api.PUT('/retention/settings', { body: form });
     if (r.error) setMsg({ ok: false, text: problemText(r.error, t('shell.saveError')) });
     else {
       setMsg({ ok: true, text: t('settings.retention.saved') });
+      setRawTags(null);
       settings.reload();
     }
   };
@@ -65,14 +67,14 @@ export function RetentionSection() {
       <TagsInput
         label={t('settings.retention.reminders')}
         description={t('settings.retention.remindersHint')}
-        error={reminderErr ? t('settings.retention.remindersError') : undefined}
+        error={reminders.error ? t('settings.retention.remindersError') : undefined}
         disabled={!isAdmin}
         maw={420}
-        value={(form.renewalReminderDays ?? [60, 14]).map(String)}
+        value={reminders.tags}
         onChange={(vals) => {
-          const days = parseReminderDays(vals);
-          setReminderErr(days === null);
-          if (days) setForm({ ...form, renewalReminderDays: days });
+          setRawTags(vals);
+          const next = reminderState(vals, form.renewalReminderDays ?? [60, 14]);
+          if (!next.error) setForm({ ...form, renewalReminderDays: next.days });
         }}
       />
       {msg && <Alert color={msg.ok ? 'green' : 'red'} role={msg.ok ? 'status' : 'alert'}>{msg.text}</Alert>}
