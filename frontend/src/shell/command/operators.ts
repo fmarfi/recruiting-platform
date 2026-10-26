@@ -51,7 +51,7 @@ const NORMALIZERS: Record<OperatorKey, (v: string) => string | null> = {
   },
   // full-text query over the current CV (web-search syntax); a phrase of several words is sent as one quoted phrase
   cv: (v) => {
-    const t = v.trim().replace(/s+/g, ' ');
+    const t = v.trim().replace(/\s+/g, ' ');
     return t.length >= 2 && t.length <= 200 ? (t.includes(' ') ? `"${t}"` : t) : null;
   },
   type: (v) => TYPE_ALIASES[constant(v).toLowerCase()] ?? null,
