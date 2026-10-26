@@ -1340,7 +1340,9 @@ paths:
           `ShareBlockReason`); the UI offers the one-click (re)send `POST /people/{id}/consent/requests`.
         - **Off-limits guard.** The first move into a client-facing stage re-runs the off-limits check of
           `POST /job-orders/{id}/applications` (a rule created later, or a company change, is caught):
-          409 `OFF_LIMITS` unless the application already has `offLimitsOverrideReason`.
+          409 `OFF_LIMITS` unless the application already has `offLimitsOverrideReason` or a MANAGER/ADMIN
+          sends one in this request (a consultant sending it gets 403 `FORBIDDEN`). The consent guard
+          has no override.
         - **Exposure.** The first move into a client-facing stage writes a `candidate_exposure` row
           (channel PIPELINE) for the job order's account; see `GET /people/{id}/exposure`.
         - This is the only operation that changes an application's stage: bulk `CHANGE_STATUS` does not
@@ -1361,6 +1363,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Application' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
@@ -3956,7 +3959,14 @@ components:
         stage: { $ref: '#/components/schemas/PipelineStage' }
         reason: { $ref: '#/components/schemas/Reason' }
         version: { $ref: '#/components/schemas/Version' }
-    # ---------- proposals ----------
+        offLimitsOverrideReason:
+          $ref: '#/components/schemas/Reason'
+          description: |
+            Since 1.2.0. Same semantics as on `ApplicationCreateRequest`: MANAGER/ADMIN only (403 for
+            consultants), 3 to 500 characters, stored on the application (`offLimitsOverrideReason`,
+            audited by Envers). Only lifts the off-limits check on the first move into a client-facing
+            stage (e.g. a rule created after the person was added); ignored when the application already
+            has an override. It never lifts `CONSENT_REQUIRED`, which cannot be overridden.
     Proposal:
       type: object
       required: [id, account, title, status, statusChangedAt, owner, createdAt, updatedAt, version]

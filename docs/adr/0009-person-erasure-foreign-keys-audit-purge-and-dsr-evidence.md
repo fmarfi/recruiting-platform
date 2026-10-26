@@ -32,7 +32,7 @@
 - Deleting a person always succeeds. `PersonDeleteIT` checks this through JPA, including the `revtype = 2` row, and checks the FK rule against `pg_constraint`, so a new FK to `person` that breaks the rule fails the build.
 - Rows removed by a database cascade get no Envers DEL revision. The purge in rule 3 removes their history. `retention_run.deleted_count` and the person's `revtype = 2` revision log the deletion (NFR-03).
 - Ops must provision and back up `PRIVACY_HMAC_KEY` separately from the database. If the key is lost, DSR e-mails can no longer be matched. The records themselves stay valid.
-- security-privacy implements the order: minimise DSRs → `PersonDataApi.anonymise` or `delete` → `PersonAnonymised(deleted)` listeners scrub → `_aud` purge.
+- security-privacy implements the order (authoritative version: `contracts/schema.md`, "Anonymisation and deletion"): **step 0 (since contract 1.2.0, ADR 0011): collect the person-id set (the person plus every `person_merge.merged_id`) and the file storage keys, before anything is deleted, because the DELETE cascade removes those rows** → minimise DSRs → `PersonDataApi.anonymise` or `delete` → `PersonAnonymised(deleted)` listeners scrub → `_aud` purge over the collected id set → delete file bytes after commit.
 
 ## Alternatives considered
 

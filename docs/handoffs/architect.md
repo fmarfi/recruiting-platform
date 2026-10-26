@@ -149,3 +149,8 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 - `/views`: 50-cap → 400 `LIMIT`, empty PATCH → 400; `q` stripped from SHARED views (ADR 0010 amendment 2).
 - Added change requests: db-engineer · basis-switch migration + `RetentionBasisMigrationIT`, GIN on `cv_intake_item.detected`. backend-accounts · `CvIntakeApi.findPendingByEmail`, compensation access rule, view cap/`q` strip. backend-pipeline · guards on `sharedWithClient()`. security-privacy · step 0, intake in DSR export/deletion, one-off `RetentionRenewed` job after the basis switch.
 - Verified: Redocly valid (0 warnings), javac -Werror 0, `mvn -q -B verify` 0, gen:api + tsc 0, Prism: merge without version 400, stage CLIENT_INTERVIEW 200, OFF_LIMITS 409 example, intake 201.
+
+### Re-review fixes (87925bc) · 2026-10-26
+- ADR 0009 consequences now give the order with step 0 (collect merged ids and file keys first) and point to schema.md as authoritative; ADR 0011 and schema.md agree.
+- `StageChangeRequest.offLimitsOverrideReason` (MANAGER/ADMIN, Reason 3..500, stored and audited on the application); 403 added to `PATCH /applications/{id}/stage`; `CONSENT_REQUIRED` stays non-overridable. backend-pipeline: accept the override on the first client-facing move.
+- Verified: Redocly valid, javac -Werror 0, `mvn -q -B verify` 0, gen:api + tsc 0.
