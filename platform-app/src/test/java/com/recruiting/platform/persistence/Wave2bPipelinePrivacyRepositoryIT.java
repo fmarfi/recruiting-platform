@@ -124,17 +124,17 @@ class Wave2bPipelinePrivacyRepositoryIT extends Wave2bSupport {
         UUID viaStage = application(job, person(owner), "OFFER");
         UUID viaHistory = application(job, person(owner), "REJECTED");
         UUID viaHistoryOnlyLater = application(job, person(owner), "REJECTED");
-        UUID never = application(job, person(owner), "SCREENING");
+        UUID never = application(job, person(owner), "SCREENED");
         UUID sourced = application(job, person(owner), "SOURCED");
 
         long early = Instant.parse("2026-03-01T10:00:00Z").toEpochMilli();
         long late = Instant.parse("2026-04-01T10:00:00Z").toEpochMilli();
         auditRow(viaStage, "PRESENTED", early);
         auditRow(viaStage, "CLIENT_INTERVIEW", late);
-        auditRow(viaHistory, "SCREENING", early);
+        auditRow(viaHistory, "SCREENED", early);
         auditRow(viaHistory, "PRESENTED", late);
         auditRow(viaHistoryOnlyLater, "PRESENTED", early);
-        auditRow(never, "SCREENING", early);
+        auditRow(never, "SCREENED", early);
 
         String sql = new String(new ClassPathResource("db/migration/V202610260008__pipeline_candidate_exposure_backfill.sql")
                 .getInputStream().readAllBytes(), StandardCharsets.UTF_8);
