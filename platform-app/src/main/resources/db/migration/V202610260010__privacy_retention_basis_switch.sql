@@ -5,6 +5,8 @@
 -- 3) switch the settings row to FROM_LAST_CONSENT (a basis chosen by an admin is kept, and then nothing is recomputed).
 -- Never anonymises: the nightly run does that with the normal rules. The person.retention_status copy follows
 -- through RetentionRenewed, published by a one-off privacy job, not by SQL. Calendar days use Europe/Istanbul.
+-- NOTE: these SQL updates bypass Envers, so the latest person_privacy_aud row is stale. The one-off job must
+-- re-save the changed person_privacy rows through JPA so that a fresh revision is written.
 UPDATE person_privacy pp
 SET last_consent_at = c.recorded_at
 FROM (SELECT person_id, max(recorded_at) AS recorded_at
