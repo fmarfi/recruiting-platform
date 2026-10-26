@@ -87,7 +87,9 @@
       "overrideHint": "3 ile 500 karakter. Başvuru üzerinde saklanır ve denetlenir.",
       "reasonInvalid": "3 ile 500 karakter girin.",
       "moveAnyway": "Aş ve taşı",
-      "managerOnly": "Bu kuralı yalnızca yönetici veya admin aşabilir. Adayı taşıması için birinden isteyin."
+      "managerOnly": "Bu kuralı yalnızca yönetici veya admin aşabilir. Adayı taşıması için birinden isteyin.",
+      "noResend": "Bu kişi rızayı reddetti, geri çekti ya da anonimleştirildi: iletişime geçmeyin. Yeni bir istek yalnızca kişi sayfasındaki gizlilik sekmesinden bilinçli olarak yapılabilir.",
+      "addOffLimits": "Yasaklı şirket ({{rules}}). Aşma yetkisi yalnızca yönetici veya admindedir; adayı süreç panosunda taşırken kullanılır."
     },
     "warn": {
       "PREVIOUSLY_PRESENTED_TO_ACCOUNT": "Bu müşteriye daha önce sunuldu ({{count}}).",

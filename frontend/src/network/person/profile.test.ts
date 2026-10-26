@@ -42,3 +42,10 @@ describe('file pre-checks', () => {
     expect(daysLeft('2026-09-01T00:00:00Z', now)).toBe(0);
   });
 });
+
+describe('do-not-contact people', () => {
+  it('get no one-click consent send', () => {
+    expect(canResendConsent('REFUSED', true, false)).toBe(false);
+    expect(canResendConsent('WITHDRAWN', true, false)).toBe(false);
+  });
+});

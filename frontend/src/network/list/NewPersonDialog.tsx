@@ -23,6 +23,12 @@ export function NewPersonDialog({ opened, onClose, onCreated }: { opened: boolea
     setF({ ...f, [k]: e.currentTarget.value });
     setMatches(undefined);
   };
+  const cancel = () => {
+    setF(EMPTY);
+    setMatches(undefined);
+    setErr(undefined);
+    onClose();
+  };
   const orNull = (v: string) => (v.trim() ? v.trim() : null);
 
   const create = async () => {
@@ -81,7 +87,7 @@ export function NewPersonDialog({ opened, onClose, onCreated }: { opened: boolea
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title={t('network.newPerson')} centered>
+    <Modal opened={opened} onClose={cancel} title={t('network.newPerson')} centered>
       <Stack>
         <TextInput label={t('network.fields.name')} required value={f.name} onChange={set('name')} data-autofocus />
         <Select
@@ -123,7 +129,7 @@ export function NewPersonDialog({ opened, onClose, onCreated }: { opened: boolea
           </Text>
         )}
         <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
+          <Button variant="default" onClick={cancel}>
             {t('common.cancel')}
           </Button>
           {!matches && (

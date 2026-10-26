@@ -25,8 +25,15 @@ export const validOverrideReason = (s: string): boolean => {
 /** Only MANAGER and ADMIN may override; the server answers 403 for anyone else. */
 export const canOverrideOffLimits = (role?: string | null): boolean => role === 'MANAGER' || role === 'ADMIN';
 
-/** A consent request can be sent unless the person is anonymised; REFUSED and WITHDRAWN need a deliberate resend, which the button is. */
-export const consentResendPossible = (items: GuardItem[]): boolean => !items.some((i) => i.reasonCode === 'ANONYMISED');
+const NO_RESEND = ['ANONYMISED', 'CONSENT_REFUSED', 'CONSENT_WITHDRAWN'];
+/** No resend button for anonymised, refused or withdrawn people (do not contact); those go through the privacy tab on the person page. */
+export const consentResendPossible = (items: GuardItem[]): boolean => !items.some((i) => i.reasonCode && NO_RESEND.includes(i.reasonCode));
+
+/** Message for add-to-job failures: the OFF_LIMITS rules, or undefined for other errors. */
+export const offLimitsRules = (error: unknown): string | undefined => {
+  const g = classifyStageError(error);
+  return g?.kind === 'OFF_LIMITS' ? g.items.map((i) => i.title).join(', ') : undefined;
+};
 
 /** The request body of a retry after the override reason was typed: the trimmed reason, only for managers. */
 export function overrideBody(reason: string): { offLimitsOverrideReason: string } {
