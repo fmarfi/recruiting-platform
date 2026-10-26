@@ -2,6 +2,7 @@ import { Anchor, Button, Card, Container, Grid, Group, Skeleton, Stack, Tabs, Te
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
 import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { SkeletonRows } from '../../shell/components/SkeletonRows';
@@ -9,6 +10,7 @@ import { AddContactDialog } from '../components/AddContactDialog';
 import { NewRecordDialog } from '../components/NewRecordDialog';
 import { AddActionDialog } from '../components/AddActionDialog';
 import { LogActivityDialog } from '../components/LogActivityDialog';
+import { OffLimitsBanner } from './OffLimitsBanner';
 import { AccountHeader } from './AccountHeader';
 import { ContactsTab } from './ContactsTab';
 import { DashboardStrip } from './DashboardStrip';
@@ -22,6 +24,7 @@ import { useAccountPage } from './useAccountPage';
 export function AccountPage() {
   const { t } = useTranslation();
   const { id = '' } = useParams();
+  const { isManager } = useAuth();
   const page = useAccountPage(id);
   const [dialog, setDialog] = useState<null | 'log' | 'action' | 'contact' | 'job' | 'proposal'>(null);
   const a = page.account.data;
@@ -62,6 +65,7 @@ export function AccountPage() {
           </Anchor>{' '}
           / {a.name}
         </Text>
+        <OffLimitsBanner accountId={a.id} canManage={isManager} />
         <AccountHeader account={a} onLog={() => setDialog('log')} onAddAction={() => setDialog('action')} onChanged={page.reloadAll} />
         <DashboardStrip dashboard={page.dashboard.data} onAddAction={() => setDialog('action')} />
         <Grid>
