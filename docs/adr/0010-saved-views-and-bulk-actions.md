@@ -39,3 +39,8 @@ Decision (the simplest rule that is safe by construction, instead of a purge rul
 - With this, `bulk_action` and `bulk_action_item` hold only ids and codes and are out of the anonymisation scope; `entity_id` of an erased person points at nothing, like `access_log.entity_id`.
 
 Consequences: db-engineer drops `bulk_action_item.message` and adds the CHECK; backend-pipeline strips the free-text members before insert and fills `message` from the code. No API shape changes (1.1.1 is additive).
+
+## Amendment 2 (contract 1.2.0 review, 2026-10-26): view limits and free text in shared views
+
+- **Limit.** At most 50 PRIVATE views per owner and entity; the 51st gives 400 `VALIDATION_FAILED` with `errors[0] = {field: entity, code: LIMIT}`. An empty `PATCH /views/{id}` body (`{}` or only `version`) gives 400 `VALIDATION_FAILED`.
+- **`q` in SHARED views is stripped.** `q` is free text and may be a person's name; a SHARED view shows it to every user and outlives that person's erasure. Options were: warn in the UI, strip, or accept. Decision: the service removes `definition.filters.q` when a view is created as SHARED, switched to SHARED or saved while SHARED, and the UI warns before sharing a view that has one. Other free-text keys (`company`, `cv`) are kept: they hold company names and skills, which are what shared saved searches and talent pools are for. PRIVATE views keep `q`: they are the owner's own setting, not a record about the person.
