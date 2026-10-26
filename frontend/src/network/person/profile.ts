@@ -20,9 +20,9 @@ export const safeLinkedIn = (url?: string | null): string | undefined => {
   }
 };
 
-/** Consent states from which a one-click (re)send makes sense: not given yet, pending, or withdrawn/refused (manual only). */
+/** One-click send only for NOT_SENT and SENT. REFUSED and WITHDRAWN people are do-not-contact: they go through the privacy-tab dialog (explicit confirmation) only. */
 export const canResendConsent = (status: Schemas['ConsentStatus'], hasEmail: boolean, anonymised: boolean): boolean =>
-  hasEmail && !anonymised && status !== 'GIVEN';
+  hasEmail && !anonymised && (status === 'NOT_SENT' || status === 'SENT');
 
 export const hasProfile = (p: Schemas['Person']): boolean =>
   !!(p.sourceChannel || p.noticePeriodDays != null || p.mobility || p.languages?.length || p.educations?.length || p.linkedinUrl || p.compensationRestricted || p.compensation);

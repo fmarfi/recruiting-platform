@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
 import { problemCode, problemText, useAsync, type Schemas } from '../../pipeline/shared';
-import { MERGE_FIELDS, mergeRequest, type Take } from './duplicateLogic';
+import { MERGE_FIELDS, mergeRequest, versionFor, type Take } from './duplicateLogic';
 
 type Pair = Schemas['DuplicateCandidate'];
 
@@ -21,6 +21,8 @@ export function MergeDialog({ pair, onClose, onMerged }: { pair: Pair | undefine
 
   const merge = async () => {
     if (!keep || !drop) return;
+    // useAsync keeps the previous person while refetching: never send another person's version.
+    if (!versionFor(loaded.data, keep.id)) return;
     const body = mergeRequest(drop.id, loaded.data?.version, take);
     if (!body) return;
     setBusy(true);
@@ -82,7 +84,7 @@ export function MergeDialog({ pair, onClose, onMerged }: { pair: Pair | undefine
             <Button variant="default" onClick={onClose}>
               {t('common.cancel')}
             </Button>
-            <Button color="red" disabled={loaded.data?.version == null} loading={busy} onClick={() => void merge()} leftSection={loaded.loading ? <Loader size="xs" /> : undefined}>
+            <Button color="red" disabled={versionFor(loaded.data, keep.id) == null || loaded.loading} loading={busy} onClick={() => void merge()} leftSection={loaded.loading ? <Loader size="xs" /> : undefined}>
               {t('network.dup.mergeConfirm')}
             </Button>
           </Group>

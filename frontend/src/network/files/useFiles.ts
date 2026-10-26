@@ -1,4 +1,4 @@
-import { api } from '../../api';
+import { api, API_BASE } from '../../api';
 import { useAsync } from '../../pipeline/shared';
 
 /** openapi-fetch sends FormData as multipart (it drops the JSON Content-Type); the typed `file: string` is the generator's view of a binary field. */
@@ -25,5 +25,5 @@ export const uploadCvIntake = (files: File[]) =>
     },
   });
 
-export const personFileUrl = (id: string, fileId: string) => `/api/v1/people/${id}/files/${fileId}/content`;
-export const intakeFileUrl = (id: string) => `/api/v1/cv-intake/${id}/content`;
+export const personFileUrl = (id: string, fileId: string) => `${API_BASE}/people/${id}/files/${fileId}/content`;
+export const intakeFileUrl = (id: string) => `${API_BASE}/cv-intake/${id}/content`;

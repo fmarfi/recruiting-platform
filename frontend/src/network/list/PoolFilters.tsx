@@ -1,11 +1,21 @@
 // Talent pool filters (ADR 0011): tag = pool, source channel, CV full text, shareable. Chips and inputs write the URL through the parent.
 import { Chip, Group, TagsInput, TextInput } from '@mantine/core';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Schemas } from '../../pipeline/shared';
 import { MAX_TAG_LENGTH, normTags, SOURCE_CHANNELS, type ViewFilters } from './networkFilters';
 
 export function PoolFilters({ f, onChange }: { f: ViewFilters; onChange: (patch: Partial<ViewFilters>) => void }) {
   const { t } = useTranslation();
+  // CV search is a full-text query: wait for a pause in typing before it reaches the URL and the server.
+  const [cv, setCv] = useState(f.cv);
+  useEffect(() => setCv(f.cv), [f.cv]);
+  useEffect(() => {
+    if (cv === f.cv) return;
+    const id = setTimeout(() => onChange({ cv }), 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cv]);
   return (
     <>
       <Group mb="sm" align="flex-end">
@@ -23,8 +33,8 @@ export function PoolFilters({ f, onChange }: { f: ViewFilters; onChange: (patch:
         <TextInput
           label={t('network.pool.cv')}
           description={t('network.pool.cvHint')}
-          value={f.cv}
-          onChange={(e) => onChange({ cv: e.currentTarget.value })}
+          value={cv}
+          onChange={(e) => setCv(e.currentTarget.value)}
           style={{ minWidth: 240 }}
         />
       </Group>

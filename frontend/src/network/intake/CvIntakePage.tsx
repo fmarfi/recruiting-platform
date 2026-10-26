@@ -1,6 +1,6 @@
 // CV intake: bulk CV drop zone and the review list. Each pending item is attached to a person (existing or new) or discarded; items expire after 14 days.
-import { Alert, Anchor, Badge, Button, Card, Container, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { Alert, Anchor, Badge, Button, Card, Container, Group, Modal, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
@@ -26,6 +26,17 @@ export function CvIntakePage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [creating, setCreating] = useState<Item>();
   const [createErr, setCreateErr] = useState<string>();
+  const [confirmDiscard, setConfirmDiscard] = useState<Item>();
+  // Async handlers must see whether the create dialog is open now, not when they were created.
+  const createOpen = useRef(false);
+  const openCreate = (it: Item) => {
+    createOpen.current = true;
+    setCreating(it);
+  };
+  const closeCreate = () => {
+    createOpen.current = false;
+    setCreating(undefined);
+  };
 
   // Text extraction is async: refresh every 4 s while something is still PENDING.
   const polling = needsPolling(items);
@@ -65,16 +76,16 @@ export function CvIntakePage() {
         const code = problemCode(r.error);
         const existing = (r.error as { existingId?: string }).existingId;
         const text = code === 'DUPLICATE' ? t('network.intake.emailExists') : problemText(r.error, t('network.intake.attachFailed'));
-        if (creating) setCreateErr(text);
+        if (createOpen.current) setCreateErr(text);
         else setNotes([{ color: 'red', text }]);
         // The e-mail already belongs to a person: offer to attach the CV there instead.
         if (code === 'DUPLICATE' && existing) {
-          setCreating(undefined);
+          closeCreate();
           setNotes([{ color: 'yellow', text, action: { label: t('network.intake.attachToThat'), run: () => void attach(item, attachExisting(existing)) } }]);
         }
         return;
       }
-      setCreating(undefined);
+      closeCreate();
       setNotes([{ color: 'green', text: t('network.intake.attached', { name: r.data.person.name }) }]);
       res.reload();
     } catch {
@@ -86,10 +97,15 @@ export function CvIntakePage() {
 
   const discard = async (item: Item) => {
     setWorking(item.id);
-    const r = await api.DELETE('/cv-intake/{id}', { params: { path: { id: item.id } } });
-    setWorking(undefined);
-    if (r.error) setNotes([{ color: 'red', text: problemText(r.error, t('network.intake.discardFailed')) }]);
-    else res.reload();
+    try {
+      const r = await api.DELETE('/cv-intake/{id}', { params: { path: { id: item.id } } });
+      if (r.error) setNotes([{ color: 'red', text: problemText(r.error, t('network.intake.discardFailed')) }]);
+      else res.reload();
+    } catch {
+      setNotes([{ color: 'red', text: t('network.intake.discardFailed') }]);
+    } finally {
+      setWorking(undefined);
+    }
   };
 
   return (
@@ -173,10 +189,10 @@ export function CvIntakePage() {
                   ))}
                 </Stack>
                 <Group gap="xs">
-                  <Button size="compact-sm" variant="default" disabled={working === it.id} onClick={() => void discard(it)}>
+                  <Button size="compact-sm" variant="default" disabled={working === it.id} onClick={() => setConfirmDiscard(it)}>
                     {t('network.intake.discard')}
                   </Button>
-                  <Button size="compact-sm" disabled={working === it.id} onClick={() => setCreating(it)}>
+                  <Button size="compact-sm" disabled={working === it.id} onClick={() => openCreate(it)}>
                     {t('network.intake.createPerson')}
                   </Button>
                 </Group>
@@ -185,7 +201,27 @@ export function CvIntakePage() {
           );
         })}
       </Stack>
-      <CreatePersonDialog item={creating} error={createErr} busy={!!creating && working === creating.id} onClose={() => setCreating(undefined)} onCreate={(p) => creating && void attach(creating, { person: p })} />
+      <Modal opened={!!confirmDiscard} onClose={() => setConfirmDiscard(undefined)} title={t('network.intake.discardTitle')} centered>
+        <Stack>
+          <Text size="sm">{t('network.intake.discardBody', { name: confirmDiscard?.fileName ?? '' })}</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setConfirmDiscard(undefined)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              color="red"
+              onClick={() => {
+                const it = confirmDiscard;
+                setConfirmDiscard(undefined);
+                if (it) void discard(it);
+              }}
+            >
+              {t('network.intake.discard')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <CreatePersonDialog item={creating} error={createErr} busy={!!creating && working === creating.id} onClose={closeCreate} onCreate={(p) => creating && void attach(creating, { person: p })} />
     </Container>
   );
 }

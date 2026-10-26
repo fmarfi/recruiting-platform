@@ -87,7 +87,9 @@
       "overrideHint": "3 to 500 characters. Stored and audited on the application.",
       "reasonInvalid": "Enter 3 to 500 characters.",
       "moveAnyway": "Override and move",
-      "managerOnly": "Only a manager or admin can override this rule. Ask one to move the candidate."
+      "managerOnly": "Only a manager or admin can override this rule. Ask one to move the candidate.",
+      "noResend": "This person refused or withdrew consent, or is anonymised: do not contact. Any new request must be made deliberately from the privacy tab on the person page.",
+      "addOffLimits": "Off-limits company ({{rules}}). Only a manager or admin can override this when moving the candidate on the pipeline board."
     },
     "warn": {
       "PREVIOUSLY_PRESENTED_TO_ACCOUNT": "Already presented to this client before ({{count}}).",

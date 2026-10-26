@@ -34,3 +34,12 @@ describe('merge', () => {
     expect(mergeRequest('m', 0, ['email', 'name'])).toEqual({ mergedPersonId: 'm', version: 0, takeFromMerged: ['name', 'email'] });
   });
 });
+
+import { versionFor } from './duplicateLogic';
+describe('survivor version', () => {
+  it('is used only for the person being merged into', () => {
+    expect(versionFor({ id: 'a', version: 4 }, 'a')).toBe(4);
+    expect(versionFor({ id: 'a', version: 4 }, 'b')).toBeUndefined();
+    expect(versionFor(undefined, 'a')).toBeUndefined();
+  });
+});

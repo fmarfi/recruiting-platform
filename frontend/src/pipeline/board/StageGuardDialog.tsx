@@ -62,6 +62,11 @@ export function StageGuardDialog({
           <Text size="xs" c="dimmed">
             {t('pipeline.guard.notOverridable')}
           </Text>
+          {!consentResendPossible(guard.items) && (
+            <Alert color="orange" data-testid="guard-no-resend">
+              {t('pipeline.guard.noResend')}
+            </Alert>
+          )}
           {sent && (
             <Alert color="green" role="status">
               {t('pipeline.guard.consentSent', { name: sent })}

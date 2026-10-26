@@ -202,7 +202,9 @@
       "attachFailed": "Could not attach the CV.",
       "discardFailed": "Could not discard the CV.",
       "emailExists": "A person with this email already exists.",
-      "attachToThat": "Attach to that person"
+      "discardTitle": "Discard this CV?",
+ "discardBody": "{{name}} and its extracted text will be deleted. This cannot be undone.",
+ "attachToThat": "Attach to that person"
     }
   }
 }

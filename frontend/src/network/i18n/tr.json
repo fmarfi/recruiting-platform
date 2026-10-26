@@ -202,7 +202,9 @@
       "attachFailed": "CV eklenemedi.",
       "discardFailed": "CV silinemedi.",
       "emailExists": "Bu e-postaya sahip bir kişi zaten var.",
-      "attachToThat": "O kişiye ekle"
+      "discardTitle": "Bu CV silinsin mi?",
+ "discardBody": "{{name}} ve çıkarılan metni silinecek. Bu işlem geri alınamaz.",
+ "attachToThat": "O kişiye ekle"
     }
   }
 }

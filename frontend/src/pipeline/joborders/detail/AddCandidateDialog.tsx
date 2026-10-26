@@ -3,6 +3,7 @@ import { Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../../api';
+import { offLimitsRules } from '../../board/stageGuard';
 import { problemText, type Schemas } from '../../shared';
 
 export function AddCandidateDialog({ jobId, opened, onClose, onAdded }: { jobId: string; opened: boolean; onClose: () => void; onAdded: () => void }) {
@@ -23,7 +24,8 @@ export function AddCandidateDialog({ jobId, opened, onClose, onAdded }: { jobId:
   }, [opened, q, jobId]);
   const add = async (p: Schemas['PersonSummary']) => {
     const r = await api.POST('/job-orders/{id}/applications', { params: { path: { id: jobId } }, body: { personId: p.id } });
-    if (r.error) setErr(problemText(r.error, t('pipeline.addFailed')));
+    const rules = r.error ? offLimitsRules(r.error) : undefined;
+    if (r.error) setErr(rules !== undefined ? t('pipeline.guard.addOffLimits', { rules }) : problemText(r.error, t('pipeline.addFailed')));
     else {
       setErr(undefined);
       onAdded();

@@ -26,6 +26,9 @@ export const strongestReason = (m: Match): Reason | undefined => REASON_ORDER.fi
 /** Merge and the queue are for MANAGER and ADMIN only. */
 export const canMerge = (role?: string | null) => role === 'MANAGER' || role === 'ADMIN';
 
+/** The loaded survivor counts only when it is the one being merged into (a refetch keeps the old person until the new one arrives). */
+export const versionFor = (p: { id: string; version: number } | undefined, id: string): number | undefined => (p && p.id === id ? p.version : undefined);
+
 export const MERGE_FIELDS: Take = ['name', 'type', 'title', 'company', 'email', 'phone', 'city', 'linkedinUrl', 'howWeKnow', 'notes', 'ownerId', 'sourceChannel', 'noticePeriodDays', 'mobility', 'compensation'];
 
 /** The survivor's `version` is mandatory: a merge cannot be undone. Undefined means the survivor was not loaded, so no request can be built. */
