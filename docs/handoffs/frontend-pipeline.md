@@ -1,27 +1,24 @@
-# Hand-off: frontend-pipeline · Wave 2a (Network and job orders on DataGrid) · 2026-10-25
+# Hand-off: frontend-pipeline · Wave 2b (candidate pool, CV files, duplicates, guards) · 2026-10-26
 
-**Branch / commits:** `worktree-wave2a-frontend-pipeline` · see `git log --oneline`
+**Branch / commits:** `worktree-wave2b-frontend-pipeline` · 5 commits on 1a6461f
 
 **Done**
-- /network on shell/grid DataGrid: column chooser, sort (name, company, last contact), density, phone cards, saved views (ViewsMenu + localViewStore, grid id `network`), CSV of visible columns (grid button = current page; "Export all (CSV)" = up to 1000 rows, visible columns), selection with bulk bar via `bulkActions` (export selected, bulk consent for managers).
-- Smart-list presets kept (PresetsBar). Person page, relationship map and snapshot untouched.
-- Command-bar params read from the URL on mount and on every change: owner=me, stale=N, type=A,B, consent, city, company, q; plus page (1-based) and sort. State is written back with replace.
-- city/company have no API filter: they narrow the loaded page client-side and show as dimmed "(this page only)" chips with a remove button.
-- /job-orders on DataGrid: columns, sort (title, status, daysOpen), density, views (`job-orders`), CSV; reads owner (absent = me), status (list), q, page, sort from the URL.
-- `network/list/csv.ts` re-exports shell/grid/csv; PersonRows, SavedViewsBar and savedViews.ts removed.
-- Old saved views (
-etwork.savedViews.v1) are migrated into grid.network.views and the old key is removed (KVKK). The grid is keyed on filters+page, so selection resets on any filter or page change.
-- CSV now exports visible columns only (email is hidden by default, so no longer exported). city/company stay page-local until GET /people supports them.
-- i18n TR/EN added. Saved views store filters only, no people data (KVKK).
-- Tests: 87 total (was 79): URL parsing, client filter, CSV columns, job params.
+- /network pool filters: tag (TagsInput), source channel chips, CV full-text, shareable chip. URL params `tag`, `sourceChannel` (alias `channel` read), `cv`, `shareable=true`; saved via the existing local ViewStore (pool = tag + saved view). Columns tags, channel, shareable, CV match excerpt (rendered as text + mark, never HTML).
+- Person page: candidate profile block (compensation only when not `compensationRestricted`, LinkedIn plain link), CV files tab (drag/drop + button, versions, download, extraction status), exposure tab, one-click consent send in the header only for NOT_SENT/SENT; REFUSED/WITHDRAWN (do not contact) only via the privacy-tab dialog, same rule in the 409 CONSENT_REQUIRED dialog.
+- New person: /duplicates/check before create, "possible duplicate" prompt (use existing / create anyway); a failed check never blocks. /network/duplicates queue and merge dialog (MANAGER/ADMIN, sends survivor version, 409 reloads it).
+- /network/cv-intake: bulk drop zone (50 files, 10 MB), review list with attach to duplicate match, create person (prefilled suggestions), discard, 14-day expiry, polling while text extraction runs.
+- Pipeline: 409 CONSENT_REQUIRED dialog (resend consent, not overridable), 409 OFF_LIMITS dialog (rules; manager/admin reason 3-500 chars retries with offLimitsOverrideReason); exposure warnings shown in the move toast.
+- TR/EN for every label; 119 vitest tests (filters to URL, duplicate decision, 409 handling, compensation visibility, file and expiry rules).
 
 **Not done / left**
-- Old saved views in localStorage key `network.savedViews.v1` are not migrated (new key `grid.network.views`).
-- Server-backed ViewStore and bulk-actions endpoint: none exist yet; local store kept, bulk is only what existed (consent request).
-- No server-side city/company filter on /people.
+- Adding a candidate (POST /job-orders/{id}/applications): OFF_LIMITS shows the rules and says only a manager/admin can override on the board; TODO override field (offLimitsOverrideReason on ApplicationCreateRequest) and warnings toast there.
+- Saved views still localStorage (`useViewStore` not merged); no shared talent-pool view UI yet.
+- Not run against Prism or a browser; multipart bodies (FormData) untested against a real server.
+- No file delete button on the files tab.
 
 **Change requests**
-- backend/contracts: add `city` and `company` query filters to GET /people so the chips can become real filters.
+- frontend-shell · routes.tsx: I added /network/cv-intake and /network/duplicates (please keep on merge).
+- frontend-shell · nav: optional links to CV intake and duplicates; reuse `network.intake.nav` / `network.dup.nav`.
 
 **Verified with**
-- `npx tsc --noEmit` clean; `npx vitest run` 87 passed; `npx vite build` ok (in frontend/). No browser run.
+- `npx tsc --noEmit` clean; `npx vitest run` 119 passed; `npx vite build` ok (in frontend/).

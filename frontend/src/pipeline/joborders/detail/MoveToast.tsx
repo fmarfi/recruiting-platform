@@ -6,9 +6,16 @@ import type { Toast } from '../../board/useBoardMoves';
 export function MoveToast({ toast, onClose, onRefresh }: { toast: Toast; onClose: () => void; onRefresh: () => void }) {
   const { t } = useTranslation();
   return (
-    <Alert color={toast.kind === 'error' ? 'red' : 'blue'} mb="md" role={toast.kind === 'error' ? 'alert' : 'status'} withCloseButton onClose={onClose}>
+    <Alert color={toast.kind === 'error' ? 'red' : toast.warnings?.length ? 'yellow' : 'blue'} mb="md" role={toast.kind === 'error' ? 'alert' : 'status'} withCloseButton onClose={onClose}>
       <Group justify="space-between">
-        <Text size="sm">{toast.text}</Text>
+        <div>
+          <Text size="sm">{toast.text}</Text>
+          {toast.warnings?.map((w, i) => (
+            <Text key={i} size="sm" fw={600} data-testid="exposure-warning">
+              {t(`pipeline.warn.${w.code}`, { count: w.count })}
+            </Text>
+          ))}
+        </div>
         <Group gap="xs">
           {toast.undo && (
             <Button size="compact-sm" variant="light" onClick={toast.undo}>

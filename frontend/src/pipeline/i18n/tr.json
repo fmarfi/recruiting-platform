@@ -1,20 +1,124 @@
 {
-  "common": { "cancel": "Vazgeç", "confirm": "Onayla", "refresh": "Yenile", "retry": "Tekrar dene", "save": "Kaydet", "undo": "Geri al" },
+  "common": {
+    "cancel": "Vazgeç",
+    "confirm": "Onayla",
+    "refresh": "Yenile",
+    "retry": "Tekrar dene",
+    "save": "Kaydet",
+    "undo": "Geri al"
+  },
   "pipeline": {
-    "activeCandidates": "{{count}} aktif aday", "add": "Ekle", "addCandidate": "Aday ekle", "addFailed": "Eklenemedi.", "backTo": "{{stage}} aşamasına geri al",
-    "changeStatus": "Durumu değiştir", "daysOpen": "{{count}} gündür açık", "emptyBody": "Süreci başlatmak için ilk adayı ekleyin.", "emptyColumn": "Boş",
-    "emptyTitle": "Henüz aday yok", "fee": "Ücret koşulları", "hint": "Aşamayı değiştirmek için kartı sürükleyin",
-    "list": { "active": "Açık", "all": "Tümü", "clear": "Filtreleri temizle", "client": "Müşteri", "daysOpen": "Açık gün", "empty": "Eşleşen pozisyon yok.", "mine": "Benim", "searchPlaceholder": "Pozisyon ara", "status": "Durum", "title": "Pozisyonlar" },
-    "loadFailed": "Süreç yüklenemedi.", "logActivity": "Hareket ekle", "logWithPerson": "Bu kişiyle kaydet", "managerOnly": "Yalnızca yöneticiler {{action}} yapabilir",
-    "markFilled": "Dolduruldu olarak işaretle", "markFilledAsk": "Bu pozisyon dolduruldu olarak işaretlensin mi?", "move": "Taşı", "moved": "{{name}} {{stage}} aşamasına taşındı",
-    "moveFailed": "Aday taşınamadı.", "notFound": "Pozisyon bulunamadı.", "opened": "Açılış", "openProfile": "Profili aç", "owner": "Sorumlu",
-    "reason": { "label": "Neden" }, "rejectChips": ["Maaş beklentisi", "İlgilenmiyor", "Yetkinlik uyumsuz", "Müşteri reddetti", "Diğer"],
-    "rejectedLane": "Elenenler ({{count}})", "rejectTitle": "Elenme nedeni", "removeFromJob": "Pozisyondan çıkar", "reopen": "Yeniden aç", "reopenJob": "pozisyonu yeniden açma",
-    "searchPeople": "Kişi ara", "statusFailed": "Durum değiştirilemedi.", "statusReason": "Neden"
+    "activeCandidates": "{{count}} aktif aday",
+    "add": "Ekle",
+    "addCandidate": "Aday ekle",
+    "addFailed": "Eklenemedi.",
+    "backTo": "{{stage}} aşamasına geri al",
+    "changeStatus": "Durumu değiştir",
+    "daysOpen": "{{count}} gündür açık",
+    "emptyBody": "Süreci başlatmak için ilk adayı ekleyin.",
+    "emptyColumn": "Boş",
+    "emptyTitle": "Henüz aday yok",
+    "fee": "Ücret koşulları",
+    "hint": "Aşamayı değiştirmek için kartı sürükleyin",
+    "list": {
+      "active": "Açık",
+      "all": "Tümü",
+      "clear": "Filtreleri temizle",
+      "client": "Müşteri",
+      "daysOpen": "Açık gün",
+      "empty": "Eşleşen pozisyon yok.",
+      "mine": "Benim",
+      "searchPlaceholder": "Pozisyon ara",
+      "status": "Durum",
+      "title": "Pozisyonlar"
+    },
+    "loadFailed": "Süreç yüklenemedi.",
+    "logActivity": "Hareket ekle",
+    "logWithPerson": "Bu kişiyle kaydet",
+    "managerOnly": "Yalnızca yöneticiler {{action}} yapabilir",
+    "markFilled": "Dolduruldu olarak işaretle",
+    "markFilledAsk": "Bu pozisyon dolduruldu olarak işaretlensin mi?",
+    "move": "Taşı",
+    "moved": "{{name}} {{stage}} aşamasına taşındı",
+    "moveFailed": "Aday taşınamadı.",
+    "notFound": "Pozisyon bulunamadı.",
+    "opened": "Açılış",
+    "openProfile": "Profili aç",
+    "owner": "Sorumlu",
+    "reason": {
+      "label": "Neden"
+    },
+    "rejectChips": [
+      "Maaş beklentisi",
+      "İlgilenmiyor",
+      "Yetkinlik uyumsuz",
+      "Müşteri reddetti",
+      "Diğer"
+    ],
+    "rejectedLane": "Elenenler ({{count}})",
+    "rejectTitle": "Elenme nedeni",
+    "removeFromJob": "Pozisyondan çıkar",
+    "reopen": "Yeniden aç",
+    "reopenJob": "pozisyonu yeniden açma",
+    "searchPeople": "Kişi ara",
+    "statusFailed": "Durum değiştirilemedi.",
+    "statusReason": "Neden",
+    "guard": {
+      "consentTitle": "Rıza gerekli",
+      "consentBody": "{{name}}, rıza verilene kadar müşteriye sunulamaz.",
+      "notOverridable": "Bu engel aşılamaz. Rıza isteğini gönderin ve rıza verildikten sonra adayı taşıyın.",
+      "consentSent": "{{name}} kişisine rıza isteği gönderildi.",
+      "share": {
+        "CONSENT_NOT_REQUESTED": "rıza henüz istenmedi",
+        "CONSENT_PENDING": "rıza isteği bekliyor",
+        "CONSENT_REFUSED": "rıza reddedildi",
+        "CONSENT_WITHDRAWN": "rıza geri çekildi",
+        "ANONYMISED": "kişi anonimleştirildi"
+      },
+      "offTitle": "Yasaklı şirket",
+      "offBody": "{{name}}, yasaklı şirket listesindeki bir şirkette çalışıyor. Kural(lar):",
+      "offReason": {
+        "CLIENT_AGREEMENT": "müşteri sözleşmesi",
+        "GUARANTEE_PERIOD": "garanti süresi",
+        "CLIENT_REQUEST": "müşteri talebi",
+        "OTHER": "diğer"
+      },
+      "overrideLabel": "Aşma gerekçesi",
+      "overrideHint": "3 ile 500 karakter. Başvuru üzerinde saklanır ve denetlenir.",
+      "reasonInvalid": "3 ile 500 karakter girin.",
+      "moveAnyway": "Aş ve taşı",
+      "managerOnly": "Bu kuralı yalnızca yönetici veya admin aşabilir. Adayı taşıması için birinden isteyin.",
+      "noResend": "Bu kişi rızayı reddetti, geri çekti ya da anonimleştirildi: iletişime geçmeyin. Yeni bir istek yalnızca kişi sayfasındaki gizlilik sekmesinden bilinçli olarak yapılabilir.",
+      "addOffLimits": "Yasaklı şirket ({{rules}}). Aşma yetkisi yalnızca yönetici veya admindedir; adayı süreç panosunda taşırken kullanılır."
+    },
+    "warn": {
+      "PREVIOUSLY_PRESENTED_TO_ACCOUNT": "Bu müşteriye daha önce sunuldu ({{count}}).",
+      "ACTIVE_IN_OTHER_PROCESS": "Ayrıca {{count}} başka süreçte aktif."
+    }
   },
   "quickAdd": {
-    "account": "Müşteri", "actionTitle": "Aksiyon", "due": "Son tarih", "failed": "Kaydedilemedi.", "followUp": "Takip", "job": "Pozisyon", "modeAction": "Aksiyon",
-    "modeActivity": "Hareket", "needContext": "Bir müşteri veya kişi seçin.", "new": "Hızlı ekle", "note": "Not", "person": "Kişi", "save": "Kaydet", "title": "Hızlı ekle", "type": "Tür",
-    "types": { "CALL": "Arama", "VISIT": "Ziyaret", "MEETING": "Toplantı", "EMAIL": "E-posta", "NOTE": "Not" }, "when": "Ne zaman"
+    "account": "Müşteri",
+    "actionTitle": "Aksiyon",
+    "due": "Son tarih",
+    "failed": "Kaydedilemedi.",
+    "followUp": "Takip",
+    "job": "Pozisyon",
+    "modeAction": "Aksiyon",
+    "modeActivity": "Hareket",
+    "needContext": "Bir müşteri veya kişi seçin.",
+    "new": "Hızlı ekle",
+    "note": "Not",
+    "person": "Kişi",
+    "save": "Kaydet",
+    "title": "Hızlı ekle",
+    "type": "Tür",
+    "types": {
+      "CALL": "Arama",
+      "VISIT": "Ziyaret",
+      "MEETING": "Toplantı",
+      "EMAIL": "E-posta",
+      "NOTE": "Not"
+    },
+    "when": "Ne zaman"
   }
 }

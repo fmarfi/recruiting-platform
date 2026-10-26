@@ -2,15 +2,20 @@
 import { Anchor, Avatar, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { StatusBadge, useFormat, type Schemas } from '../../pipeline/shared';
+import { canResendConsent } from './profile';
 
 export function PersonHeader({
   person,
   onLog,
   onAction,
+  onResend,
+  resending = false,
 }: {
   person: Schemas['Person'];
   onLog: () => void;
   onAction: () => void;
+  onResend: () => void;
+  resending?: boolean;
 }) {
   const { t } = useTranslation();
   const fmt = useFormat();
@@ -49,6 +54,16 @@ export function PersonHeader({
               </Text>
               <Text size="sm">{t('network.privacy')}:</Text>
               <StatusBadge lifecycle="consent" value={person.consentStatus} testId="consent-badge" />
+              {person.shareable === false && person.consentStatus !== 'GIVEN' && (
+                <Text size="xs" c="dimmed">
+                  {t('network.profile.notShareable')}
+                </Text>
+              )}
+              {canResendConsent(person.consentStatus, !!person.email, person.anonymised) && (
+                <Button size="compact-sm" variant="light" loading={resending} onClick={onResend} data-testid="consent-resend">
+                  {t(person.consentStatus === 'NOT_SENT' ? 'network.profile.sendConsentNow' : 'network.profile.resendConsent')}
+                </Button>
+              )}
             </Group>
           </Stack>
         </Group>

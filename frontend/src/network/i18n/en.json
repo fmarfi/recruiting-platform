@@ -12,7 +12,7 @@
     "noOpenJobs": "No open jobs available.", "noPipelines": "Not on any job yet.", "note": "Note", "notFound": "Person not found.", "openExisting": "Open existing",
     "person": "Person", "pipelines": "Pipelines", "privacy": "Privacy", "privacyUnavailable": "Privacy details are not available.",
     "retention": "Retention ends {{date}}", "retentionWarning": "Data scheduled for deletion.", "search": "Search people", "sendConsent": "Send consent request",
-    "tabs": { "activity": "Activity", "connections": "Connections", "jobs": "Clients and jobs", "map": "Map", "overview": "Overview", "privacy": "Privacy" },
+    "tabs": { "activity": "Activity", "connections": "Connections", "jobs": "Clients and jobs", "map": "Map", "overview": "Overview", "privacy": "Privacy", "files": "CV files", "exposure": "Exposure" },
     "types": { "EXECUTIVE": "Executive", "CLIENT_CONTACT": "Client contact", "REFERRER": "Referrer", "CANDIDATE": "Candidate" },
     "views": "Lists", 
     "presets": { "needsCall": "Needs a call", "noConsent": "No consent request yet", "executives": "Executives", "referrers": "Referrers" }, 
@@ -26,6 +26,185 @@
         "doNotContact": "Do not contact for new roles.", "overdueAction": "{{count}} overdue action(s): finish them first.", "neverContacted": "Never contacted: log a first call or meeting.",
         "reconnect": "Not contacted for over 90 days: reconnect.", "planNext": "No next step planned: add an action.", "onTrack": "On track: next step is planned."
       }
+    },
+    "pool": {
+      "tags": "Tags (talent pool)",
+      "tagsHint": "Press Enter or comma to add",
+      "cv": "Search in CVs",
+      "cvHint": "Words, \"exact phrase\", or, -exclude",
+      "channels": "Source channel",
+      "shareable": "Shareable (consent given)",
+      "shareableCol": "Shareable",
+      "cvMatch": "CV match",
+      "yes": "Yes",
+      "no": "No",
+      "channel": {
+        "LINKEDIN_AD": "LinkedIn ad",
+        "LINKEDIN_DIRECT": "LinkedIn direct",
+        "WEBSITE": "Website",
+        "REFERRAL": "Referral",
+        "EXISTING_POOL": "Existing pool",
+        "EMAIL": "Email",
+        "CV_UPLOAD": "CV upload"
+      }
+    },
+    "profile": {
+      "title": "Candidate profile",
+      "source": "Source channel",
+      "notice": "Notice period",
+      "days": "{{count}} days",
+      "mobility": "Mobility",
+      "languages": "Languages",
+      "education": "Education",
+      "compensation": "Compensation",
+      "base": "Base",
+      "variable": "Variable",
+      "expected": "Expected",
+      "restricted": "Restricted: visible to managers and the owner only.",
+      "mobilities": {
+        "NONE": "Not mobile",
+        "WITHIN_COUNTRY": "Within the country",
+        "INTERNATIONAL": "International"
+      },
+      "levels": {
+        "BASIC": "Basic",
+        "INTERMEDIATE": "Intermediate",
+        "FLUENT": "Fluent",
+        "NATIVE": "Native"
+      },
+      "periods": {
+        "MONTHLY": "monthly",
+        "ANNUAL": "annual"
+      },
+      "bases": {
+        "GROSS": "gross",
+        "NET": "net"
+      },
+      "notShareable": "Cannot be shared with clients until consent is given.",
+      "sendConsentNow": "Send consent request",
+      "resendConsent": "Resend consent request",
+      "consentSent": "Consent request sent to {{email}}."
+    },
+    "files": {
+      "dropOne": "Drop a CV here",
+      "dropMany": "Drop CVs here",
+      "chooseOne": "Choose a file",
+      "chooseMany": "Choose files",
+      "limits": "PDF, DOCX, DOC, RTF, ODT or TXT, up to 10 MB each.",
+      "file": "File",
+      "version": "Version",
+      "uploaded": "Uploaded",
+      "text": "Text extraction",
+      "document": "Document",
+      "current": "Current",
+      "status": {
+        "PENDING": "Pending",
+        "DONE": "Done",
+        "NO_TEXT": "No text found",
+        "FAILED": "Failed"
+      },
+      "reject": {
+        "PAYLOAD_TOO_LARGE": "larger than 10 MB",
+        "UNSUPPORTED_MEDIA_TYPE": "unsupported file type",
+        "TOO_MANY": "too many files (50 at most)",
+        "EMPTY": "file is empty"
+      },
+      "duplicateFile": "This exact file is already uploaded for this person.",
+      "uploadFailed": "Upload failed.",
+      "loadFailed": "Could not load the files.",
+      "empty": "No CV yet. Drop one above.",
+      "anonymised": "This person is anonymised; files cannot be added.",
+      "consentNote": "Uploading a CV sends the privacy notice and consent request automatically when that is enabled and the person has an email address."
+    },
+    "exposure": {
+      "account": "Client",
+      "jobOrder": "Job order",
+      "date": "Presented",
+      "outcome": "Outcome so far",
+      "empty": "Not presented to any client yet.",
+      "removed": "Removed from the process",
+      "loadFailed": "Could not load the exposure history.",
+      "channel": {
+        "PIPELINE": "Pipeline",
+        "REPORT": "Report",
+        "SHARE_LINK": "Share link"
+      }
+    },
+    "dup": {
+      "nav": "Duplicates",
+      "title": "Possible duplicates",
+      "phone": "Phone",
+      "empty": "No open duplicates.",
+      "loadFailed": "Could not load the duplicates.",
+      "managersOnly": "Only managers and admins can review duplicates.",
+      "reason": {
+        "EMAIL": "Same email",
+        "PHONE": "Same phone",
+        "LINKEDIN_URL": "Same LinkedIn",
+        "NAME_COMPANY": "Same name and company"
+      },
+      "promptTitle": "Possible duplicate",
+      "promptBody": "{{count}} existing person(s) look like this one. Use an existing record, or create a new one anyway.",
+      "useExisting": "Use existing",
+      "createAnyway": "Create anyway",
+      "back": "Back to edit",
+      "detected": "Found {{date}}",
+      "dismiss": "Not the same person",
+      "merge": "Merge",
+      "dismissFailed": "Could not dismiss the pair.",
+      "merged": "People merged.",
+      "mergeTitle": "Merge people",
+      "survivorHelp": "Choose the person to keep. The other record is merged into it and deleted. This cannot be undone.",
+      "mergeSummary": "{{drop}} will be merged into {{keep}}.",
+      "takeTitle": "Take these fields from {{name}} even if the kept record has a value:",
+      "irreversible": "The merge is audited but cannot be reversed. Applications, activities, files, consent records and exposures move to the kept person.",
+      "mergeConfirm": "Merge people",
+      "mergeFailed": "Could not merge the people.",
+      "forbidden": "Only managers and admins can merge people.",
+      "versionConflict": "The kept person was changed by someone else. The latest version is loaded; check and confirm again.",
+      "loadSurvivorFailed": "Could not load the person to keep.",
+      "field": {
+        "name": "Name",
+        "type": "Type",
+        "title": "Title",
+        "company": "Company",
+        "email": "Email",
+        "phone": "Phone",
+        "city": "City",
+        "linkedinUrl": "LinkedIn",
+        "howWeKnow": "How we know them",
+        "notes": "Notes",
+        "ownerId": "Owner",
+        "sourceChannel": "Source channel",
+        "noticePeriodDays": "Notice period",
+        "mobility": "Mobility",
+        "compensation": "Compensation"
+      }
+    },
+    "intake": {
+      "nav": "CV intake",
+      "title": "CV intake",
+      "limits": "Up to {{max}} files at once, 10 MB each. PDF, DOCX, DOC, RTF, ODT or TXT.",
+      "noConsentYet": "No consent email goes out until a person exists: attach each CV to a person or create one.",
+      "uploaded": "{{count}} CV(s) uploaded for review.",
+      "empty": "No CVs waiting for review.",
+      "loadFailed": "Could not load the intake list.",
+      "expires": "Deleted in {{count}} day(s) ({{date}}) unless attached",
+      "detected": "Found in the CV",
+      "looksLike": "Looks like",
+      "attachTo": "Attach to {{name}}",
+      "createPerson": "Create person",
+      "discard": "Discard",
+      "createTitle": "Create person from CV",
+      "createConfirm": "Create and attach",
+      "prefillHint": "Email, phone and LinkedIn were found in the CV text and are only suggestions. Check them and type the name.",
+      "attached": "CV attached to {{name}}.",
+      "attachFailed": "Could not attach the CV.",
+      "discardFailed": "Could not discard the CV.",
+      "emailExists": "A person with this email already exists.",
+      "discardTitle": "Discard this CV?",
+ "discardBody": "{{name}} and its extracted text will be deleted. This cannot be undone.",
+ "attachToThat": "Attach to that person"
     }
   }
 }
