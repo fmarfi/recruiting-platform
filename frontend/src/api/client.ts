@@ -20,7 +20,9 @@ const csrf: Middleware = {
   },
 };
 
-export function createApiClient(baseUrl = '/api/v1') {
+export const API_BASE = '/api/v1';
+
+export function createApiClient(baseUrl = API_BASE) {
   const client = createClient<paths>({ baseUrl, credentials: 'include' });
   client.use(csrf);
   return client;

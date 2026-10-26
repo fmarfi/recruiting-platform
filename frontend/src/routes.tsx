@@ -13,6 +13,8 @@ import { ReferenceDataProvider } from './shell/refdata/ReferenceDataProvider';
 import { SearchPage } from './shell/search/SearchPage';
 import { JobOrdersList } from './pipeline/joborders/list/JobOrdersList';
 import { JobOrderPage } from './pipeline/joborders/detail/JobOrderPage';
+import { CvIntakePage } from './network/intake/CvIntakePage';
+import { DuplicatesPage } from './network/duplicates/DuplicatesPage';
 import { NetworkList } from './network/list/NetworkList';
 import { PersonPage } from './network/person/PersonPage';
 
@@ -44,6 +46,8 @@ export function AppRoutes() {
             <Route path="/job-orders" element={<JobOrdersList />} />
             <Route path="/job-orders/:id" element={<JobOrderPage />} />
             <Route path="/network" element={<NetworkList />} />
+            <Route path="/network/cv-intake" element={<CvIntakePage />} />
+            <Route path="/network/duplicates" element={<DuplicatesPage />} />
             <Route path="/people/:id" element={<PersonPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/settings" element={<Navigate to="/settings/users" replace />} />

@@ -1,20 +1,124 @@
 {
-  "common": { "cancel": "Cancel", "confirm": "Confirm", "refresh": "Refresh", "retry": "Retry", "save": "Save", "undo": "Undo" },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "save": "Save",
+    "undo": "Undo"
+  },
   "pipeline": {
-    "activeCandidates": "{{count}} active candidates", "add": "Add", "addCandidate": "Add candidate", "addFailed": "Could not add.", "backTo": "Back to {{stage}}",
-    "changeStatus": "Change status", "daysOpen": "{{count}} days open", "emptyBody": "Add the first candidate to start the pipeline.", "emptyColumn": "Empty",
-    "emptyTitle": "No candidates yet", "fee": "Fee terms", "hint": "Drag a card to change its stage",
-    "list": { "active": "Open", "all": "All", "clear": "Clear filters", "client": "Client", "daysOpen": "Days open", "empty": "No job orders match.", "mine": "Mine", "searchPlaceholder": "Search job orders", "status": "Status", "title": "Job orders" },
-    "loadFailed": "Could not load the pipeline.", "logActivity": "Log activity", "logWithPerson": "Log with this person", "managerOnly": "Only managers can {{action}}",
-    "markFilled": "Mark filled", "markFilledAsk": "Mark this job order as filled?", "move": "Move to", "moved": "{{name}} moved to {{stage}}",
-    "moveFailed": "Could not move the candidate.", "notFound": "Job order not found.", "opened": "Opened", "openProfile": "Open profile", "owner": "Owner",
-    "reason": { "label": "Reason" }, "rejectChips": ["Salary expectation", "Not interested", "Skills mismatch", "Client declined", "Other"],
-    "rejectedLane": "Rejected ({{count}})", "rejectTitle": "Reason for rejection", "removeFromJob": "Remove from job", "reopen": "Reopen", "reopenJob": "reopen a job order",
-    "searchPeople": "Search people", "statusFailed": "Could not change the status.", "statusReason": "Reason"
+    "activeCandidates": "{{count}} active candidates",
+    "add": "Add",
+    "addCandidate": "Add candidate",
+    "addFailed": "Could not add.",
+    "backTo": "Back to {{stage}}",
+    "changeStatus": "Change status",
+    "daysOpen": "{{count}} days open",
+    "emptyBody": "Add the first candidate to start the pipeline.",
+    "emptyColumn": "Empty",
+    "emptyTitle": "No candidates yet",
+    "fee": "Fee terms",
+    "hint": "Drag a card to change its stage",
+    "list": {
+      "active": "Open",
+      "all": "All",
+      "clear": "Clear filters",
+      "client": "Client",
+      "daysOpen": "Days open",
+      "empty": "No job orders match.",
+      "mine": "Mine",
+      "searchPlaceholder": "Search job orders",
+      "status": "Status",
+      "title": "Job orders"
+    },
+    "loadFailed": "Could not load the pipeline.",
+    "logActivity": "Log activity",
+    "logWithPerson": "Log with this person",
+    "managerOnly": "Only managers can {{action}}",
+    "markFilled": "Mark filled",
+    "markFilledAsk": "Mark this job order as filled?",
+    "move": "Move to",
+    "moved": "{{name}} moved to {{stage}}",
+    "moveFailed": "Could not move the candidate.",
+    "notFound": "Job order not found.",
+    "opened": "Opened",
+    "openProfile": "Open profile",
+    "owner": "Owner",
+    "reason": {
+      "label": "Reason"
+    },
+    "rejectChips": [
+      "Salary expectation",
+      "Not interested",
+      "Skills mismatch",
+      "Client declined",
+      "Other"
+    ],
+    "rejectedLane": "Rejected ({{count}})",
+    "rejectTitle": "Reason for rejection",
+    "removeFromJob": "Remove from job",
+    "reopen": "Reopen",
+    "reopenJob": "reopen a job order",
+    "searchPeople": "Search people",
+    "statusFailed": "Could not change the status.",
+    "statusReason": "Reason",
+    "guard": {
+      "consentTitle": "Consent required",
+      "consentBody": "{{name}} cannot be shown to the client until consent is given.",
+      "notOverridable": "This cannot be overridden. Send the consent request and move the candidate once consent is given.",
+      "consentSent": "Consent request sent to {{name}}.",
+      "share": {
+        "CONSENT_NOT_REQUESTED": "consent not requested yet",
+        "CONSENT_PENDING": "consent request pending",
+        "CONSENT_REFUSED": "consent refused",
+        "CONSENT_WITHDRAWN": "consent withdrawn",
+        "ANONYMISED": "person is anonymised"
+      },
+      "offTitle": "Off-limits company",
+      "offBody": "{{name}} works at a company on the off-limits list. Rule(s):",
+      "offReason": {
+        "CLIENT_AGREEMENT": "client agreement",
+        "GUARANTEE_PERIOD": "guarantee period",
+        "CLIENT_REQUEST": "client request",
+        "OTHER": "other"
+      },
+      "overrideLabel": "Reason for overriding",
+      "overrideHint": "3 to 500 characters. Stored and audited on the application.",
+      "reasonInvalid": "Enter 3 to 500 characters.",
+      "moveAnyway": "Override and move",
+      "managerOnly": "Only a manager or admin can override this rule. Ask one to move the candidate.",
+      "noResend": "This person refused or withdrew consent, or is anonymised: do not contact. Any new request must be made deliberately from the privacy tab on the person page.",
+      "addOffLimits": "Off-limits company ({{rules}}). Only a manager or admin can override this when moving the candidate on the pipeline board."
+    },
+    "warn": {
+      "PREVIOUSLY_PRESENTED_TO_ACCOUNT": "Already presented to this client before ({{count}}).",
+      "ACTIVE_IN_OTHER_PROCESS": "Also active in {{count}} other process(es)."
+    }
   },
   "quickAdd": {
-    "account": "Account", "actionTitle": "Action", "due": "Due date", "failed": "Could not save.", "followUp": "Follow-up", "job": "Job", "modeAction": "Action",
-    "modeActivity": "Activity", "needContext": "Pick an account or a person.", "new": "Quick add", "note": "Note", "person": "Person", "save": "Save", "title": "Quick add", "type": "Type",
-    "types": { "CALL": "Call", "VISIT": "Visit", "MEETING": "Meeting", "EMAIL": "Email", "NOTE": "Note" }, "when": "When"
+    "account": "Account",
+    "actionTitle": "Action",
+    "due": "Due date",
+    "failed": "Could not save.",
+    "followUp": "Follow-up",
+    "job": "Job",
+    "modeAction": "Action",
+    "modeActivity": "Activity",
+    "needContext": "Pick an account or a person.",
+    "new": "Quick add",
+    "note": "Note",
+    "person": "Person",
+    "save": "Save",
+    "title": "Quick add",
+    "type": "Type",
+    "types": {
+      "CALL": "Call",
+      "VISIT": "Visit",
+      "MEETING": "Meeting",
+      "EMAIL": "Email",
+      "NOTE": "Note"
+    },
+    "when": "When"
   }
 }
