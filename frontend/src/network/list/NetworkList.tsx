@@ -91,6 +91,9 @@ export function NetworkList() {
           <Button variant="default" loading={busy} disabled={!res.data?.page.totalElements} onClick={() => void exportCsv()}>
             {t('network.exportAll')}
           </Button>
+          <Button variant="default" component={Link} to="/network/cv-intake">
+            {t('network.intake.nav')}
+          </Button>
           {isManager && (
             <Button variant="default" component={Link} to="/network/duplicates">
               {t('network.dup.nav')}

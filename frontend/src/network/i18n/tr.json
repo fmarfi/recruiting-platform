@@ -180,6 +180,29 @@
         "mobility": "Hareketlilik",
         "compensation": "Ücret"
       }
+    },
+    "intake": {
+      "nav": "CV havuzuna alım",
+      "title": "CV alımı",
+      "limits": "Tek seferde en fazla {{max}} dosya, her biri 10 MB. PDF, DOCX, DOC, RTF, ODT veya TXT.",
+      "noConsentYet": "Kişi oluşturulana kadar rıza e-postası gönderilmez: her CV'yi bir kişiye ekleyin ya da yeni kişi oluşturun.",
+      "uploaded": "{{count}} CV incelemeye alındı.",
+      "empty": "İnceleme bekleyen CV yok.",
+      "loadFailed": "CV alım listesi yüklenemedi.",
+      "expires": "Eklenmezse {{count}} gün sonra silinir ({{date}})",
+      "detected": "CV'de bulunan",
+      "looksLike": "Şuna benziyor:",
+      "attachTo": "{{name}} kişisine ekle",
+      "createPerson": "Kişi oluştur",
+      "discard": "Sil",
+      "createTitle": "CV'den kişi oluştur",
+      "createConfirm": "Oluştur ve ekle",
+      "prefillHint": "E-posta, telefon ve LinkedIn CV metninden bulundu ve yalnızca öneridir. Kontrol edin ve adı yazın.",
+      "attached": "CV, {{name}} kişisine eklendi.",
+      "attachFailed": "CV eklenemedi.",
+      "discardFailed": "CV silinemedi.",
+      "emailExists": "Bu e-postaya sahip bir kişi zaten var.",
+      "attachToThat": "O kişiye ekle"
     }
   }
 }
