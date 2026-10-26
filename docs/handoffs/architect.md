@@ -117,3 +117,40 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 - `npm run typecheck`, `npm test` (frontend) → green (24 tests)
 - Prism smoke on :4017: views GET/POST/PATCH/DELETE 200/201/200/204, bulk 200. Params that do not match the action, and a bad entity, give 400.
 - `mvn -q -B verify` → exit 0 (without -Pintegration); `javac -Xlint:all -Werror --release 21` on contracts → exit 0
+
+## Wave 2b · contracts 1.1.1 + 1.2.0 (candidate pool, files, consent engine) · 2026-10-25
+
+**Branch / commits:** `worktree-wave2b-architect` · 3 commits (1.1.1, 1.2.0, this note)
+
+**Done**
+- 1.1.1: `city`/`company` on `GET /people`; bulk audit free of personal data (`BulkResultCode.message()` fixed texts, `bulk_action_item.message` dropped, no `title`/`reason` in `bulk_action.params` + CHECK); tags cleared in `person_aud` (ADR 0009, 0010 amendment 1).
+- 1.2.0 (116 ops / 78 paths, additive, new response fields optional): profile fields on `Person`, `/people/{id}/files`, `/cv-intake`, `/duplicates/check`, `/duplicates`, `/people/{id}/merge`, `/people/{id}/exposure`, `/off-limits`, `/consent/share-check`; guards `CONSENT_REQUIRED` (on PRESENTED) and `OFF_LIMITS` (on add); consent renewal + reminders; `FROM_LAST_CONSENT`; `tag`/`sourceChannel`/`cv`/`shareable` filters. 15 enums, 3 events, `contracts/spi/FileStore.java`. ADR 0011, ADR 0008 amended, schema.md, events.md, README changelog.
+
+**Assumptions (ADR 0011):** retention from last consent (default, configurable); consent on every candidate; no website form; PDF + share link, no portal (2d); intake items expire after 14 days; merge and off-limits writes MANAGER/ADMIN; staffing, LinkedIn integration, AI parsing, OCR out of scope.
+
+**Change requests**
+- db-engineer · drop `bulk_action_item.message`, CHECK on `bulk_action.params`, `person.city` index (1.1.1); 1.2.0: person columns (`source_channel, notice_period_days, mobility, compensation_enc, languages, phone_normalized, linkedin_url_normalized`), tables `person_education`, `person_file` (+`text_tsv`, GIN), `cv_intake_item`, `duplicate_candidate`, `person_merge`, `off_limits_rule`, `candidate_exposure` (+backfill), `application.off_limits_override_reason`, `consent_request` (`purpose, opened_at, reminder_days_before, reminder_for_retain_until` + partial unique), `person_privacy.last_consent_at`, `retention_settings` (`auto_send_on_cv_upload, renewal_reminder_days`, basis CHECK + default `FROM_LAST_CONSENT` + row update), text search config `tr_unaccent`, `_aud` tables; all person FKs cascade (PersonDeleteIT).
+- backend-accounts · `/people` filters + profile, `FieldCipher` converter, files + Tika worker, intake, duplicates, off-limits CRUD + `OffLimitsApi`, merge steps (`PersonMergeApi`), anonymise additions (schema.md step 2); Tika deps in crm-accounts pom.
+- backend-pipeline · bulk: strip free text, message from code; `ShareGuard` SPI + PRESENTED guard, `candidate_exposure`, `/people/{id}/exposure`, warnings, `OFF_LIMITS` guard + manager override, merge step (`PipelinePersonApi`), `RetentionRenewed` listener, scrub `off_limits_override_reason`.
+- security-privacy · `FieldCipher` (security), `ShareGuard` impl + `/consent/share-check`, `PersonFileUploaded` listener, RENEWAL/reminders/`openedAt`, `FROM_LAST_CONSENT`, `RetentionRenewed`, merge orchestration + `PersonMerged`, purge additions (merged ids, `person_education_aud`, `person_file_aud`, tags), file bytes on erasure; export adds files/exposure.
+- devops · `FileStore` impls (`local` volume, `s3` later) in platform-app, `app.files.*` config, env `FIELD_ENCRYPTION_KEY_V<k>`/`_VERSION`, volume backup.
+- frontend-shell / frontend-pipeline · `npm run gen:api`; pool filters + saved searches, CV drop zone + intake review, duplicate prompt + queue, consent badge/resend on 409, exposure tab, off-limits admin, warnings toast.
+- QA / seed · people moved to PRESENTED need consent GIVEN in seed and tests.
+
+**Verified with**
+- `npx -y @redocly/cli@1 lint contracts/openapi.yaml` → valid, 0 warnings; `javac -Xlint:all -Werror --release 21` on contracts → exit 0
+- `mvn -q -B verify` → exit 0; frontend `npm install; npm run gen:api; npx tsc --noEmit` → exit 0; `npx vitest run` → 90 passed
+- Prism on :4019: all 21 new/changed operations 200/201/202/204, bad body 400, `Prefer: example=consentRequired` 409; bulk intake 1 and 2 files 201 (Prism multipart quirk fixed with `oneOf`)
+
+### Review fixes (bde4cee review) · 2026-10-26
+- Blocker 1: sharing guard (`CONSENT_REQUIRED`) on **every** move into a client-facing stage (PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED; new `PipelineStage.sharedWithClient()`). Exposure is written and off-limits is re-checked on the first such move. `PATCH /applications/{id}/stage` is the only stage changer (bulk excludes applications).
+- Blocker 2: purge step 0 collects merged ids and file keys before any delete; `person_merge` cascade kept (FK rule).
+- Compensation: MANAGER/ADMIN or owner only (`compensationRestricted`, 403 on write); `PersonMergeRequest.version` required; `openedAt` not a consent signal; DSRs reach pending intake by `detected.emails`; person_aud scrub columns listed; `/duplicates/check` text fixed.
+- `/views`: 50-cap → 400 `LIMIT`, empty PATCH → 400; `q` stripped from SHARED views (ADR 0010 amendment 2).
+- Added change requests: db-engineer · basis-switch migration + `RetentionBasisMigrationIT`, GIN on `cv_intake_item.detected`. backend-accounts · `CvIntakeApi.findPendingByEmail`, compensation access rule, view cap/`q` strip. backend-pipeline · guards on `sharedWithClient()`. security-privacy · step 0, intake in DSR export/deletion, one-off `RetentionRenewed` job after the basis switch.
+- Verified: Redocly valid (0 warnings), javac -Werror 0, `mvn -q -B verify` 0, gen:api + tsc 0, Prism: merge without version 400, stage CLIENT_INTERVIEW 200, OFF_LIMITS 409 example, intake 201.
+
+### Re-review fixes (87925bc) · 2026-10-26
+- ADR 0009 consequences now give the order with step 0 (collect merged ids and file keys first) and point to schema.md as authoritative; ADR 0011 and schema.md agree.
+- `StageChangeRequest.offLimitsOverrideReason` (MANAGER/ADMIN, Reason 3..500, stored and audited on the application); 403 added to `PATCH /applications/{id}/stage`; `CONSENT_REQUIRED` stays non-overridable. backend-pipeline: accept the override on the first client-facing move.
+- Verified: Redocly valid, javac -Werror 0, `mvn -q -B verify` 0, gen:api + tsc 0.

@@ -41,6 +41,19 @@ public enum PipelineStage implements Lifecycle<PipelineStage> {
         this.tone = tone;
     }
 
+    /**
+     * Whether a candidate in this stage has been shown to the client (PRESENTED, CLIENT_INTERVIEW,
+     * OFFER, PLACED). Since contract 1.2.0 (ADR 0011) every move <em>into</em> such a stage runs the
+     * sharing guard (409 {@code CONSENT_REQUIRED}), and the first one also runs the off-limits guard
+     * and writes the exposure. Forward moves may skip PRESENTED, so callers must use this method,
+     * never {@code == PRESENTED}.
+     *
+     * @return {@code true} for the client-facing stages
+     */
+    public boolean sharedWithClient() {
+        return this == PRESENTED || this == CLIENT_INTERVIEW || this == OFFER || this == PLACED;
+    }
+
     @Override
     public Set<PipelineStage> next() {
         if (this == PLACED) {
