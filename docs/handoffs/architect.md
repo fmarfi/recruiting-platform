@@ -141,3 +141,11 @@ Vocabularies I decided (the analyst proposed these be my call): `ConsentStatus` 
 - `npx -y @redocly/cli@1 lint contracts/openapi.yaml` → valid, 0 warnings; `javac -Xlint:all -Werror --release 21` on contracts → exit 0
 - `mvn -q -B verify` → exit 0; frontend `npm install; npm run gen:api; npx tsc --noEmit` → exit 0; `npx vitest run` → 90 passed
 - Prism on :4019: all 21 new/changed operations 200/201/202/204, bad body 400, `Prefer: example=consentRequired` 409; bulk intake 1 and 2 files 201 (Prism multipart quirk fixed with `oneOf`)
+
+### Review fixes (bde4cee review) · 2026-10-26
+- Blocker 1: sharing guard (`CONSENT_REQUIRED`) on **every** move into a client-facing stage (PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED; new `PipelineStage.sharedWithClient()`). Exposure is written and off-limits is re-checked on the first such move. `PATCH /applications/{id}/stage` is the only stage changer (bulk excludes applications).
+- Blocker 2: purge step 0 collects merged ids and file keys before any delete; `person_merge` cascade kept (FK rule).
+- Compensation: MANAGER/ADMIN or owner only (`compensationRestricted`, 403 on write); `PersonMergeRequest.version` required; `openedAt` not a consent signal; DSRs reach pending intake by `detected.emails`; person_aud scrub columns listed; `/duplicates/check` text fixed.
+- `/views`: 50-cap → 400 `LIMIT`, empty PATCH → 400; `q` stripped from SHARED views (ADR 0010 amendment 2).
+- Added change requests: db-engineer · basis-switch migration + `RetentionBasisMigrationIT`, GIN on `cv_intake_item.detected`. backend-accounts · `CvIntakeApi.findPendingByEmail`, compensation access rule, view cap/`q` strip. backend-pipeline · guards on `sharedWithClient()`. security-privacy · step 0, intake in DSR export/deletion, one-off `RetentionRenewed` job after the basis switch.
+- Verified: Redocly valid (0 warnings), javac -Werror 0, `mvn -q -B verify` 0, gen:api + tsc 0, Prism: merge without version 400, stage CLIENT_INTERVIEW 200, OFF_LIMITS 409 example, intake 201.

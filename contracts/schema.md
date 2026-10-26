@@ -129,7 +129,7 @@ Since 1.2.0 (ADR 0011) the non-AI candidate profile lives **on `person` in `acco
 | source_channel | varchar(40) | null; `SourceChannel`; index (1.2.0). Not personal data: kept on anonymisation |
 | notice_period_days | smallint | null; `CHECK (notice_period_days BETWEEN 0 AND 365)` (1.2.0) |
 | mobility | varchar(40) | null; `Mobility` (1.2.0) |
-| compensation_enc | bytea | null; the `Compensation` JSON encrypted with AES-256-GCM by the JPA converter `security.FieldCipher` (format: 1 byte key version, 12 byte IV, ciphertext + tag). Key from env `FIELD_ENCRYPTION_KEY_V<k>`, current version `FIELD_ENCRYPTION_KEY_VERSION`. Audited as ciphertext. Never indexed (1.2.0) |
+| compensation_enc | bytea | null; the `Compensation` JSON encrypted with AES-256-GCM by the JPA converter `security.FieldCipher` (format: 1 byte key version, 12 byte IV, ciphertext + tag). Key from env `FIELD_ENCRYPTION_KEY_V<k>`, current version `FIELD_ENCRYPTION_KEY_VERSION`. Audited as ciphertext. Never indexed. Readable and writable only by MANAGER/ADMIN and the relationship owner (`owner_id`); reads ride on the VIEW access-log row of `GET /people/{id}` (1.2.0) |
 | languages | jsonb | not null default `'[]'`; `[{language, level}]`, at most 20, validated by the service (1.2.0) |
 | phone_normalized | varchar(20) | null; digits with country code (`+90` default), written by the service on every phone change; index (duplicate check, 1.2.0) |
 | linkedin_url_normalized | varchar(300) | null; lower case, `https://www.linkedin.com/in/<slug>` form, no query, no trailing slash; index (1.2.0) |
@@ -179,6 +179,8 @@ Full-text support (1.2.0): a text search configuration `tr_unaccent` (`COPY = pg
 | uploaded_at | timestamptz | not null |
 | expires_at | timestamptz | not null; `uploaded_at + 14 days`. A nightly job in `accounts` deletes expired PENDING rows and their bytes, and deletes ATTACHED/DISCARDED rows older than 30 days |
 
+**Pending intake items and DSRs (1.2.0):** a PENDING item holds personal data of someone who may not be a `person` yet. `accounts` exposes `CvIntakeApi.findPendingByEmail(email)` (match on `detected->'emails'`, case-insensitive; GIN index on `detected`). A data-subject request runs it with the requester's e-mail: the ACCESS export lists the matching items (file name, upload date, detected values), and a DELETION request discards them (bytes, text and detected values removed) before the person steps below. If the e-mail is not in the CV text the item is not found, which is why pending items expire after 14 days.
+
 **duplicate_candidate** — not audited (1.2.0)
 
 | Column | Type | Notes |
@@ -193,7 +195,7 @@ Full-text support (1.2.0): a text search configuration `tr_unaccent` (`COPY = pg
 
 Written on person create/update, CV attach and by a nightly scan in `accounts`. A DISMISSED pair is never re-opened.
 
-**person_merge** — append-only, not audited (1.2.0): `id uuid PK`, `survivor_id uuid FK person on delete cascade` (index), `merged_id uuid not null` (no FK: that row was deleted; unique), `fields_taken varchar(40)[] not null`, `merged_at timestamptz not null`, `merged_by uuid FK app_user not null`. Holds ids only. The `_aud` purge uses it to reach the merged person's history (step 4).
+**person_merge** — append-only, not audited (1.2.0): `id uuid PK`, `survivor_id uuid FK person on delete cascade` (index), `merged_id uuid not null` (no FK: that row was deleted; unique), `fields_taken varchar(40)[] not null`, `merged_at timestamptz not null`, `merged_by uuid FK app_user not null`. Holds ids only. The `_aud` purge uses it to reach the merged person's history: `privacy` reads the merged ids **before** step 2 (step 0 of the order below), because on DELETE the cascade removes these rows. The cascade stays (the FK rule, `PersonDeleteIT`).
 
 **off_limits_rule** — audited (1.2.0)
 
@@ -264,7 +266,7 @@ Written on person create/update, CV attach and by a nightly scan in `accounts`. 
 | definition | jsonb | not null; `{filters, columns, sort, groupBy}` as `ViewDefinition` in openapi.yaml, validated by the service per entity |
 | audit columns | | `version` gives the optimistic lock of `PATCH /views/{id}` |
 
-Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold ids and enum names, not personal data.
+Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold ids, enum names and short search terms. SHARED views never hold `q` (free text that may name a person; removed by the service, ADR 0010 amendment 2); a PRIVATE view's `q` is the owner's own setting and is not anonymised (it is not a record about the person). Max 50 PRIVATE views per owner and entity (400 `VALIDATION_FAILED`, code `LIMIT`).
 ### pipeline
 
 **job_order** — audited (except cached counters)
@@ -314,9 +316,9 @@ Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold id
 | channel | varchar(40) | `ExposureChannel` |
 | presented_at | timestamptz | not null |
 | presented_by | uuid FK app_user | null for system |
-| | | unique `(application_id, channel) where channel = 'PIPELINE'` (first move to PRESENTED only; idempotent) |
+| | | unique `(application_id, channel) where channel = 'PIPELINE'` (first move into a client-facing stage only; idempotent) |
 
-Written by `pipeline` in the transaction of the first move to PRESENTED. Holds ids and dates only, so it is kept on anonymisation and cascades on delete. Backfill migration: one PIPELINE row per application whose current stage is PRESENTED, CLIENT_INTERVIEW, OFFER or PLACED, or that reached PRESENTED in `application_aud` (`presented_at` = the earliest such revision time, else `stage_changed_at`).
+Written by `pipeline` in the transaction of the first move into a client-facing stage (PRESENTED, CLIENT_INTERVIEW, OFFER or PLACED, `PipelineStage.sharedWithClient()`; forward moves may skip PRESENTED). Holds ids and dates only, so it is kept on anonymisation and cascades on delete. Backfill migration: one PIPELINE row per application whose current stage is PRESENTED, CLIENT_INTERVIEW, OFFER or PLACED, or that reached PRESENTED in `application_aud` (`presented_at` = the earliest such revision time, else `stage_changed_at`).
 
 **proposal** — audited
 
@@ -476,6 +478,8 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 
 **retention_settings** — single row (`id smallint PK CHECK (id = 1)`), audited: `retention_months int default 24`, `basis varchar(40) default 'FROM_LAST_CONSENT'` (1.2.0; was `FROM_CREATED`; ASSUMPTION until the client answers; the migration updates the existing row), `action varchar(40) default 'ANONYMISE'`, `warning_days int default 30`, `auto_send_notice boolean default true`, `auto_send_person_types varchar(200) default 'CANDIDATE,EXECUTIVE'`, `renew_on_consent boolean default true`, `auto_send_on_cv_upload boolean not null default true` (1.2.0), `renewal_reminder_days smallint[] not null default '{60,14}'` (1.2.0; each 1..365, at most 5), `version`.
 
+**Basis switch migration (1.2.0, db-engineer + security-privacy):** switching the default to `FROM_LAST_CONSENT` changes `basis_date` and `retain_until` of existing people. The migration (after `last_consent_at` is added) 1) backfills `person_privacy.last_consent_at` from the latest `consent_record` with decision GIVEN, 2) sets `retention_settings.basis = 'FROM_LAST_CONSENT'` only when the row still has the old default `FROM_CREATED`, 3) recomputes for every row not ANONYMISED: `basis_date = coalesce(last_consent_at::date, person.created_at::date)`, `retain_until = basis_date + retention_months`, and sets FLAGGED rows whose new `retain_until - warning_days > today` back to ACTIVE (the person copy follows through `RetentionRenewed`, published by a one-off privacy job, not by SQL). It never anonymises: the next nightly run does that with the normal rules. Test (`RetentionBasisMigrationIT`): people with no consent, an old GIVEN, a recent GIVEN, and a FLAGGED one get the expected `retain_until` and status; a custom basis set by an admin is kept.
+
 **retention_run** — `id uuid PK`, `started_at`, `finished_at`, `triggered_by uuid FK app_user null`, `dry_run boolean`, `flagged_count`, `anonymised_count`, `deleted_count int`, `failure_reason text`.
 
 **data_subject_request** — audited
@@ -502,6 +506,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 
 **Order (one retention or DSR action, run by `privacy`):**
 
+0. **Collect the person-id set `:p`** (1.2.0): the person id plus every `person_merge.merged_id` with `survivor_id` = the person, and the `storage_key`s of the person's files. This happens before anything is deleted, because on DELETE the cascade removes `person_merge` and `person_file` rows. Steps 2 to 4 use this set.
 1. **Minimise DSRs** (via JPA, so Envers records it) for every `data_subject_request` with that `person_id`: `requester_name = 'Anonymised person'`, `requester_email = 'hmac:v<k>:' || hex(HMAC-SHA256(PRIVACY_HMAC_KEY, lower(trim(email))))`. The key comes from an env var outside the database; `<k>` is `PRIVACY_HMAC_KEY_VERSION`. Old keys are kept read-only for matching and values are never re-hashed (ADR 0009)., `description = '[removed]'`. Keep the rest as evidence; `resolution` must not hold personal data. DSRs are never purged in Phase 1.
 2. **ANONYMISE:** `PersonDataApi.anonymise(personId)` in `accounts` sets `person.name = 'Anonymised person'`, nulls `email, phone, linkedin_url, how_we_know, notes, title, city, company`, sets `tags = '{}'`, deletes `person_employment` and `network_link` rows, sets `anonymised_at` and `retention_status = ANONYMISED`, then publishes `PersonAnonymised(deleted=false)`.
    Since 1.2.0 it also nulls `notice_period_days, mobility, compensation_enc, phone_normalized, linkedin_url_normalized`, sets `languages = '[]'`, deletes `person_education`, `person_file` (the bytes are deleted from the `FileStore` after the commit), `duplicate_candidate` rows of the person, and minimises `cv_intake_item` rows attached to the person (`file_name, extracted_text, storage_key` null). `source_channel` stays (not personal data). `person_merge` rows stay (ids only).
@@ -509,7 +514,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 3. **Listeners on `PersonAnonymised`:**
    - `pipeline` sets `timeline_entry.reason` and `summary` to `[removed]` for every entry with that `person_id`. Timeline text is free text written at event time, so it is scrubbed, not re-rendered; the entries and their ids stay. When `deleted=false`, it also replaces `activity.note`, `application.rejection_reason`, `application.off_limits_override_reason` (1.2.0) and `next_action.title` for the person with `[removed]`. `candidate_exposure` rows stay (ids and dates only).
    - `privacy` keeps `consent_record` rows (legal evidence; they cascade away on DELETE), nulls `ip_address` and `evidence`, and marks `person_privacy` ANONYMISED.
-4. **Envers `_aud` purge**, by `privacy`, after step 3. It is idempotent and runs in its own transaction. It covers these tables and match conditions (`:p` is the set of the person id **plus every `person_merge.merged_id` with `survivor_id` = the person**, since 1.2.0: a merged record's history belongs to the survivor):
+4. **Envers `_aud` purge**, by `privacy`, after step 3. It is idempotent and runs in its own transaction. It covers these tables and match conditions (`:p` is the set collected in step 0: the person id **plus every merged id**, since 1.2.0: a merged record's history belongs to the survivor; never re-read `person_merge` here, it may already be gone):
 
 | `_aud` table | Match |
 | --- | --- |
@@ -520,7 +525,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 
    For a merged id, every matching row is deleted (that person no longer exists), except its `person_aud` row with `revtype = 2`. `person_file_aud` holds `file_name` (personal), so it follows the same rules; `off_limits_rule_aud` holds no person data.
 
-   - ANONYMISE: `DELETE` the matching rows `WHERE revend IS NOT NULL`. In the matching rows `WHERE revend IS NULL`, set the personal columns to the same placeholders as the live row (`[removed]` or null; DSR values from step 1). In `person_aud` this includes `tags = '{}'` (AuditPurger), matching step 2 (`PersonDataService.anonymise`). The current revision must stay, because `ValidityAuditStrategy` updates its `revend` on the next change.
+   - ANONYMISE: `DELETE` the matching rows `WHERE revend IS NOT NULL`. In the matching rows `WHERE revend IS NULL`, set the personal columns to the same placeholders as the live row (`[removed]` or null; DSR values from step 1). In `person_aud` this includes `tags = '{}'` (AuditPurger), matching step 2 (`PersonDataService.anonymise`), and since 1.2.0 explicitly `compensation_enc = null, notice_period_days = null, mobility = null, languages = '[]', phone_normalized = null, linkedin_url_normalized = null` (`source_channel` stays). Any later personal column on `person` must be added to this list. The current revision must stay, because `ValidityAuditStrategy` updates its `revend` on the next change.
    - DELETE: `DELETE` all matching rows except two. Keep the `person_aud` row with `revtype = 2` (id only; the NFR-03 deletion record). Keep the current `data_subject_request_aud` row (`revend IS NULL`, already minimised), and set its `person_id` to null, because the database's SET NULL is not audited.
    - Imports: set `import_job.file_content` and `errors` to null for every import that has ended (`status IN ('COMPLETED','FAILED','DISCARDED')`). A committed CSV would otherwise still hold the person's data.
    - `account_aud`, `job_order_aud`, `proposal_aud`, `app_user_aud` and `retention_settings_aud` hold no person data. Any new audited table that holds person data must be added to this table. Otherwise the history keeps the personal data.

@@ -95,9 +95,11 @@ POST /cv-intake (files)            → accounts: cv_intake_item PENDING; Tika te
 POST /cv-intake/{id}/attach        → accounts: person (new or existing) + person_file CV v(n); publish PersonCreated?, PersonFileUploaded
   └─ privacy (PersonFileUploaded, CV): queue consent_request INITIAL → e-mail → ConsentStatusChanged NOT_SENT→SENT
 person opens link (openedAt) and gives consent → consent_record GIVEN; last_consent_at; retain_until = +24 months
-PATCH /applications/{id}/stage {PRESENTED}
-  └─ pipeline: ShareGuard.check(personId) (privacy SPI impl) → not GIVEN → 409 CONSENT_REQUIRED (UI: one-click resend)
-       → GIVEN → save; candidate_exposure(PIPELINE); warnings; publish ApplicationStageChanged
+PATCH /applications/{id}/stage {PRESENTED or later}
+  └─ pipeline: target.sharedWithClient() (PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED; any forward jump)
+       → ShareGuard.check(personId) (privacy SPI impl) → not GIVEN → 409 CONSENT_REQUIRED (UI: one-click resend)
+       → first client-facing move: OffLimitsApi.match → 409 OFF_LIMITS unless overridden
+       → ok → save; first client-facing move writes candidate_exposure(PIPELINE); warnings; publish ApplicationStageChanged
 ```
 
 **Renewal (S-03, 1.2.0)**

@@ -730,7 +730,7 @@ paths:
       description: |
         Consent status starts at NOT_SENT. The privacy module may queue the KVKK notice e-mail (S-01) per retention settings. A second person with the same e-mail gives 409 `DUPLICATE` with `existingId`.
 
-        Since 1.2.0: call `POST /people/duplicate-check` first (the UI shows the matches before saving). Matches on phone, LinkedIn URL or name + company never block; after the create they are queued in `GET /duplicates`. `sourceChannel` defaults to null (unknown). `compensation` is stored encrypted (field-level, ADR 0011).
+        Since 1.2.0: call `POST /duplicates/check` first (the UI shows the matches before saving). Matches on phone, LinkedIn URL or name + company never block; after the create they are queued in `GET /duplicates`. `sourceChannel` defaults to null (unknown). `compensation` is stored encrypted (field-level, ADR 0011).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
       requestBody:
@@ -771,7 +771,7 @@ paths:
       tags: [People]
       operationId: updatePerson
       summary: Change person details
-      description: '`employments`, when sent, replaces the whole company history. Anonymised people cannot be edited (409 `STATE_CONFLICT`).'
+      description: '`employments`, when sent, replaces the whole company history. Anonymised people cannot be edited (409 `STATE_CONFLICT`). Since 1.2.0, `compensation` may be written only by MANAGER/ADMIN or the relationship owner (else 403 `FORBIDDEN`, ADR 0011).'
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
       requestBody:
@@ -787,6 +787,7 @@ paths:
               schema: { $ref: '#/components/schemas/Person' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
   /people/{id}/contact-roles:
@@ -1247,7 +1248,8 @@ paths:
           `offLimitsOverrideReason` (kept on the application, audited); a consultant sending it gets 403.
         - **Warnings.** 201 may carry `warnings`: `PREVIOUSLY_PRESENTED_TO_ACCOUNT` (with the exposures)
           and `ACTIVE_IN_OTHER_PROCESS`. They never block.
-        - Consent is not needed to add a person (research is allowed); it is needed to present them.
+        - Consent is not needed to add a person (research is allowed); it is needed to move them into a
+          client-facing stage (see `PATCH /applications/{id}/stage`), where off-limits is checked again.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1328,12 +1330,21 @@ paths:
         Reason required for REJECTED. PLACED only from OFFER. PLACED is final. A job order that is FILLED or CANCELLED accepts no stage moves (409 `TRANSITION_GUARD_FAILED`).
 
         Since 1.2.0 (ADR 0011):
-        - **Sharing guard.** Moving to PRESENTED shares the person with the client, so it needs valid
-          consent (GIVEN, not anonymised; checked through the `ShareGuard` SPI that privacy implements).
-          Otherwise 409 `CONSENT_REQUIRED` with one `blockingItems` entry (type PERSON, `reasonCode` a
+        - **Client-facing stages** are PRESENTED, CLIENT_INTERVIEW, OFFER and PLACED
+          (`PipelineStage.sharedWithClient()`). Forward moves may skip PRESENTED (e.g. SOURCED to
+          CLIENT_INTERVIEW), so the rules below apply to a move into **any** of them, never only to
+          PRESENTED.
+        - **Sharing guard.** Every move into a client-facing stage needs valid consent (GIVEN, not
+          anonymised; checked through the `ShareGuard` SPI that privacy implements). Otherwise 409
+          `CONSENT_REQUIRED` with one `blockingItems` entry (type PERSON, `reasonCode` a
           `ShareBlockReason`); the UI offers the one-click (re)send `POST /people/{id}/consent/requests`.
-        - **Exposure.** The first move to PRESENTED writes a `candidate_exposure` row (channel PIPELINE)
-          for the job order's account; see `GET /people/{id}/exposure`.
+        - **Off-limits guard.** The first move into a client-facing stage re-runs the off-limits check of
+          `POST /job-orders/{id}/applications` (a rule created later, or a company change, is caught):
+          409 `OFF_LIMITS` unless the application already has `offLimitsOverrideReason`.
+        - **Exposure.** The first move into a client-facing stage writes a `candidate_exposure` row
+          (channel PIPELINE) for the job order's account; see `GET /people/{id}/exposure`.
+        - This is the only operation that changes an application's stage: bulk `CHANGE_STATUS` does not
+          cover applications, and any later bulk stage move must apply the same guards per record.
         - **Warnings.** The response may carry `warnings` (non-blocking), e.g. the person was already
           presented to this account for another job order.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
@@ -1888,7 +1899,7 @@ paths:
       tags: [Public consent]
       operationId: getPublicConsent
       summary: Show the information notice and consent text to the person
-      description: The first successful call sets `ConsentRequest.openedAt` (tracked link, since 1.2.0). No other tracking (no pixel, no IP stored on open).
+      description: The first successful call sets `ConsentRequest.openedAt` (tracked link, since 1.2.0). No other tracking (no pixel, no IP stored on open). `openedAt` is unreliable (mail link scanners open links) and is never a consent signal; only a submitted decision is.
       security: []
       x-roles: [PUBLIC]
       x-owner: privacy / security-privacy
@@ -2320,7 +2331,11 @@ paths:
         `ViewDefinition`); an unknown key or a bad value gives 400 `VALIDATION_FAILED` with
         `field = definition.filters.<key>`. **ASSUMPTION (open question for the client):** only MANAGER and
         ADMIN may create or switch a view to SHARED; a consultant gets 403 `FORBIDDEN`. Same name for the
-        same owner and entity gives 409 `DUPLICATE`.
+        same owner and entity gives 409 `DUPLICATE`. A 51st private view of the same entity gives 400
+        `VALIDATION_FAILED` with `errors[0] = {field: entity, code: LIMIT}` (cap 50, ADR 0010).
+        **SHARED views never store `q`** (free text can hold a person's name; ADR 0010 amendment 2):
+        the server removes `definition.filters.q` when a view is created or switched as SHARED, and the
+        UI warns before sharing a view that has one.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
       requestBody:
@@ -2353,7 +2368,8 @@ paths:
         revealed); a consultant changing someone else's SHARED view, or switching a view to SHARED, gets
         403 `FORBIDDEN` (views are personal settings, not business records, so the pilot rule "any
         consultant may change any record" does not apply; ADR 0010). Send `version` for optimistic locking
-        (409 `VERSION_CONFLICT`).
+        (409 `VERSION_CONFLICT`). An empty body (`{}`, or only `version`) gives 400 `VALIDATION_FAILED`.
+        Switching to SHARED, or saving a SHARED view, removes `filters.q` (ADR 0010 amendment 2).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
       requestBody:
@@ -3618,6 +3634,9 @@ components:
             currentCv:
               oneOf: [{ $ref: '#/components/schemas/PersonFile' }, { type: 'null' }]
               description: Since 1.2.0. The current CV, if any; all files via `GET /people/{id}/files`.
+            compensationRestricted:
+              type: boolean
+              description: Since 1.2.0. True when `compensation` is hidden from the current user (not MANAGER/ADMIN and not the owner).
             offLimits:
               type: array
               description: Since 1.2.0. Active off-limits rules that match the person's current company (the pipeline guard uses the same match).
@@ -4831,6 +4850,10 @@ components:
       description: |
         Stored encrypted as one value (field-level encryption, AES-256-GCM, key outside the database;
         ADR 0011), so it cannot be filtered or sorted. Amounts are in `currency` per `period`.
+        **Who may read it:** only MANAGER/ADMIN and the person's relationship owner. For other users
+        `GET /people/{id}` returns `compensation: null` and `compensationRestricted: true`, and they
+        cannot write it (403 if sent). It is never in lists, search, exports to clients or events. Every
+        read goes with the VIEW access-log entry of `GET /people/{id}`; the DSR export includes it.
       required: [currency, period, basis]
       properties:
         currentBase: { type: [number, 'null'], minimum: 0, examples: [250000] }
@@ -5010,7 +5033,7 @@ components:
         page: { $ref: '#/components/schemas/PageMeta' }
     PersonMergeRequest:
       type: object
-      required: [mergedPersonId]
+      required: [mergedPersonId, version]
       properties:
         mergedPersonId:
           $ref: '#/components/schemas/Id'
@@ -5024,7 +5047,7 @@ components:
             enum: [name, type, title, company, email, phone, city, linkedinUrl, howWeKnow, notes, ownerId, sourceChannel, noticePeriodDays, mobility, compensation]
         version:
           $ref: '#/components/schemas/Version'
-          description: Survivor's version (optimistic lock).
+          description: Survivor's version (optimistic lock, required because a merge cannot be undone).
     ExposureEntry:
       type: object
       required: [id, account, jobOrder, applicationId, channel, presentedAt, presentedBy, stage]
