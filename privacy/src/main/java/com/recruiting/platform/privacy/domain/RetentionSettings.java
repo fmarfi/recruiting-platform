@@ -3,7 +3,11 @@ package com.recruiting.platform.privacy.domain;
 import jakarta.persistence.*;
 import com.recruiting.platform.contracts.RetentionAction;
 import com.recruiting.platform.contracts.RetentionBasis;
+import java.util.ArrayList;
+import java.util.List;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.envers.Audited;
+import org.hibernate.type.SqlTypes;
 
 /** Maps table {@code retention_settings}. Other modules reference it by id only (ADR 0001). */
 @Entity
@@ -19,7 +23,7 @@ public class RetentionSettings extends AuditableEntity {
 
     @Column(name = "basis")
     @Enumerated(EnumType.STRING)
-    private RetentionBasis basis = RetentionBasis.FROM_CREATED;
+    private RetentionBasis basis = RetentionBasis.FROM_LAST_CONSENT;
 
     @Column(name = "action")
     @Enumerated(EnumType.STRING)
@@ -36,6 +40,14 @@ public class RetentionSettings extends AuditableEntity {
 
     @Column(name = "renew_on_consent")
     private boolean renewOnConsent = true;
+
+    @Column(name = "auto_send_on_cv_upload")
+    private boolean autoSendOnCvUpload = true;
+
+    /** Days before retain_until at which a renewal reminder is sent; each 1..365, at most 5 (1.2.0). */
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "renewal_reminder_days")
+    private List<Short> renewalReminderDays = new ArrayList<>(List.of((short) 60, (short) 14));
 
     public RetentionSettings() {
         // for JPA
@@ -103,6 +115,22 @@ public class RetentionSettings extends AuditableEntity {
 
     public void setRenewOnConsent(boolean renewOnConsent) {
         this.renewOnConsent = renewOnConsent;
+    }
+
+    public boolean isAutoSendOnCvUpload() {
+        return autoSendOnCvUpload;
+    }
+
+    public void setAutoSendOnCvUpload(boolean autoSendOnCvUpload) {
+        this.autoSendOnCvUpload = autoSendOnCvUpload;
+    }
+
+    public List<Short> getRenewalReminderDays() {
+        return renewalReminderDays;
+    }
+
+    public void setRenewalReminderDays(List<Short> renewalReminderDays) {
+        this.renewalReminderDays = renewalReminderDays == null ? new ArrayList<>() : new ArrayList<>(renewalReminderDays);
     }
 
 }

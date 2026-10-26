@@ -23,10 +23,12 @@ SET basis_date       = nb.basis_date,
                                      - s.warning_days > current_date
                             THEN NULL ELSE pp.flagged_at END
 FROM retention_settings s,
-     LATERAL (SELECT coalesce((pp.last_consent_at AT TIME ZONE 'Europe/Istanbul')::date,
-                              (p.created_at AT TIME ZONE 'Europe/Istanbul')::date) AS basis_date
-              FROM person p WHERE p.id = pp.person_id) nb
-WHERE s.id = 1
+     (SELECT q.person_id,
+             coalesce((q.last_consent_at AT TIME ZONE 'Europe/Istanbul')::date,
+                      (p.created_at AT TIME ZONE 'Europe/Istanbul')::date) AS basis_date
+      FROM person_privacy q JOIN person p ON p.id = q.person_id) nb
+WHERE nb.person_id = pp.person_id
+  AND s.id = 1
   AND s.basis = 'FROM_CREATED'
   AND pp.retention_status <> 'ANONYMISED';
 
