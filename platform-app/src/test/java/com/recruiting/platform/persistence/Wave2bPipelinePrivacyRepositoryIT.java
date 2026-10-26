@@ -124,6 +124,7 @@ class Wave2bPipelinePrivacyRepositoryIT extends Wave2bSupport {
         UUID viaStage = application(job, person(owner), "OFFER");
         UUID viaHistory = application(job, person(owner), "REJECTED");
         UUID viaHistoryOnlyLater = application(job, person(owner), "REJECTED");
+        UUID viaOfferThenRejected = application(job, person(owner), "REJECTED");
         UUID never = application(job, person(owner), "SCREENED");
         UUID sourced = application(job, person(owner), "SOURCED");
 
@@ -135,6 +136,7 @@ class Wave2bPipelinePrivacyRepositoryIT extends Wave2bSupport {
         auditRow(viaHistory, "PRESENTED", late);
         auditRow(viaHistoryOnlyLater, "PRESENTED", early);
         auditRow(never, "SCREENED", early);
+        auditRow(viaOfferThenRejected, "OFFER", late);
 
         String sql = new String(new ClassPathResource("db/migration/V202610260008__pipeline_candidate_exposure_backfill.sql")
                 .getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -145,6 +147,7 @@ class Wave2bPipelinePrivacyRepositoryIT extends Wave2bSupport {
                 viaStage)).isOne();
         assertThat(count("SELECT count(*) FROM candidate_exposure WHERE application_id = ?", viaHistory)).isOne();
         assertThat(count("SELECT count(*) FROM candidate_exposure WHERE application_id = ?", viaHistoryOnlyLater)).isOne();
+        assertThat(count("SELECT count(*) FROM candidate_exposure WHERE application_id = ?", viaOfferThenRejected)).isOne();
         assertThat(count("SELECT count(*) FROM candidate_exposure WHERE application_id IN (?, ?)", never, sourced))
                 .isZero();
         // presented_at is the earliest client-facing revision

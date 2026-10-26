@@ -35,7 +35,7 @@ public class OffLimitsRule extends AuditableEntity {
     private String note;
 
     @Column(name = "starts_on")
-    private LocalDate startsOn = LocalDate.now();
+    private LocalDate startsOn = LocalDate.now(java.time.ZoneId.of("Europe/Istanbul"));
 
     @Column(name = "ends_on")
     private LocalDate endsOn;

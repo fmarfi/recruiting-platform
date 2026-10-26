@@ -235,10 +235,12 @@ class Wave2bAccountsRepositoryIT extends Wave2bSupport {
         UUID owner = newUser().getId();
         String token = "zxq" + Long.toString(System.nanoTime(), 36);
         UUID current = person(owner);
+        UUID other = person(owner);
         UUID old = person(owner);
         UUID doc = person(owner);
         file(current, owner, PersonFileKind.CV, 1, true, 'a',
                 "Şişli'de çalışan kıdemli MÜHENDİSLER ve Öğretmen " + token);
+        file(other, owner, PersonFileKind.CV, 1, true, 'g', "İstanbul'da " + token);
         file(old, owner, PersonFileKind.CV, 1, false, 'b', "Çalışkan " + token);
         file(doc, owner, PersonFileKind.DOCUMENT, 1, true, 'c', "Çalışkan " + token);
 
@@ -246,10 +248,15 @@ class Wave2bAccountsRepositoryIT extends Wave2bSupport {
         assertThat(files.findPersonIdsByCvText("sisli " + token)).containsExactly(current);
         assertThat(files.findPersonIdsByCvText("ŞİŞLİ")).contains(current);
         assertThat(files.findPersonIdsByCvText("ogretmen")).contains(current);
+        // Turkish dotless i and dotted I, both directions
+        assertThat(files.findPersonIdsByCvText("kidemli " + token)).containsExactly(current);
+        assertThat(files.findPersonIdsByCvText("KIDEMLI " + token)).containsExactly(current);
+        assertThat(files.findPersonIdsByCvText("kıdemli " + token)).containsExactly(current);
+        assertThat(files.findPersonIdsByCvText("İSTANBUL " + token)).containsExactly(other);
         // Turkish stemming: a plural matches the singular
         assertThat(files.findPersonIdsByCvText("mühendis " + token)).containsExactly(current);
         // old CV versions and non-CV documents are not searched
-        assertThat(files.findPersonIdsByCvText(token)).containsExactly(current);
+        assertThat(files.findPersonIdsByCvText(token)).containsExactlyInAnyOrder(current, other);
         assertThat(jdbc.queryForObject(
                 "SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_person_file_tsv'", String.class))
                 .contains("USING gin").contains("text_tsv");

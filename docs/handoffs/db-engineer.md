@@ -76,3 +76,9 @@
 
 **Verified with**
 - `mvn -q -B verify` exit 0; `mvn -B verify -Pintegration`: 98 ITs, 0 failures, BUILD SUCCESS (new: Wave2bAccountsRepositoryIT 14, Wave2bPipelinePrivacyRepositoryIT 8, RetentionBasisMigrationIT 2, MigrationIT 8).
+
+## Review fixes (2c656e9)
+- Backfill now also covers applications that reached CLIENT_INTERVIEW/OFFER/PLACED in `application_aud` (e.g. now REJECTED); test added.
+- Tests cover dotless ı / dotted İ in CV search.
+- `OffLimitsRule.startsOn` default uses Europe/Istanbul.
+- **security-privacy requirement:** the basis-switch SQL updates `person_privacy` without Envers, so the latest `person_privacy_aud` row is stale. The one-off `RetentionRenewed` job must re-save the changed rows through JPA to write a fresh revision.
