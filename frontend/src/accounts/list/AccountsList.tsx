@@ -1,15 +1,15 @@
-import { Button, Container, Group, Pagination, Stack, Text, Title } from '@mantine/core';
+import { Button, Container, Group, Pagination, Stack, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
-import { DataGrid, ViewsMenu, formatSort, localViewStore, parseSort, useGridColumns } from '../../shell/grid';
+import { DataGrid, ViewsMenu, formatSort, parseSort, useGridColumns, useViewStore } from '../../shell/grid';
 import { tokens } from '../../theme/tokens';
 import { NewAccountDialog } from '../components/NewAccountDialog';
 import { AccountCard, useAccountColumns, type Account } from './accountColumns';
-import { applyView, DEFAULT_SORT, filtersFromParams, paramsFromFilters, toView, type AccountView } from './accountFilters';
+import { applyView, DEFAULT_SORT, filtersFromParams, paramsFromFilters, toView, VIEW_OPTIONS, type AccountView } from './accountFilters';
 import { AccountFilterBar } from './AccountFilterBar';
 import { useAccounts, type AccountFilters } from './useAccounts';
 
@@ -27,11 +27,10 @@ export function AccountsList() {
   const filters = useMemo(() => filtersFromParams(params, meId), [params, meId]);
   const setFilters = (fn: (f: AccountFilters) => AccountFilters) => setParams(paramsFromFilters(fn(filters)), { replace: true });
   const [creating, setCreating] = useState(false);
-  const [viewWarn, setViewWarn] = useState(false);
   const res = useAccounts(filters);
   const defs = useAccountColumns();
   const columns = useGridColumns<Account>(GRID_ID, defs);
-  const views = useMemo(() => localViewStore<AccountView>(GRID_ID, () => setViewWarn(true)), []);
+  const { store: views, notice } = useViewStore<AccountView>(VIEW_OPTIONS);
 
   const change = (patch: Partial<AccountFilters>) => setFilters((f) => ({ ...f, page: 0, ...patch }));
   const clear = () => setFilters((f) => ({ ...f, q: '', status: '', ownerId: '', page: 0 }));
@@ -75,17 +74,13 @@ export function AccountsList() {
             <>
               <ViewsMenu<AccountView>
                 store={views}
+                notice={notice}
                 current={{ filters: toView(filters), columns: columns.state, sort }}
                 onApply={(v) => {
                   setFilters((f) => applyView(f, v, meId));
                   if (v.columns) columns.set(v.columns);
                 }}
               />
-              {viewWarn && (
-                <Text size="xs" c="red" role="status">
-                  {t('grid.viewsNotPersisted')}
-                </Text>
-              )}
             </>
           }
           empty={
