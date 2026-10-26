@@ -7,6 +7,16 @@ import com.recruiting.platform.contracts.AccountStatus;
 import com.recruiting.platform.contracts.ActivityType;
 import com.recruiting.platform.contracts.ConsentChannel;
 import com.recruiting.platform.contracts.ConsentDecision;
+import com.recruiting.platform.contracts.ConsentRequestPurpose;
+import com.recruiting.platform.contracts.CvIntakeStatus;
+import com.recruiting.platform.contracts.DuplicateMatchReason;
+import com.recruiting.platform.contracts.DuplicateStatus;
+import com.recruiting.platform.contracts.ExposureChannel;
+import com.recruiting.platform.contracts.Mobility;
+import com.recruiting.platform.contracts.OffLimitsReason;
+import com.recruiting.platform.contracts.PersonFileKind;
+import com.recruiting.platform.contracts.SourceChannel;
+import com.recruiting.platform.contracts.TextExtractionStatus;
 import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.DataSubjectRequestStatus;
 import com.recruiting.platform.contracts.DataSubjectRequestType;
@@ -77,7 +87,19 @@ class MigrationIT extends AbstractPersistenceIT {
             new EnumColumn("retention_settings", "basis", RetentionBasis.class),
             new EnumColumn("retention_settings", "action", RetentionAction.class),
             new EnumColumn("data_subject_request", "type", DataSubjectRequestType.class),
-            new EnumColumn("data_subject_request", "status", DataSubjectRequestStatus.class));
+            new EnumColumn("data_subject_request", "status", DataSubjectRequestStatus.class),
+            // 1.2.0
+            new EnumColumn("person", "source_channel", SourceChannel.class),
+            new EnumColumn("person", "mobility", Mobility.class),
+            new EnumColumn("person_file", "kind", PersonFileKind.class),
+            new EnumColumn("person_file", "text_status", TextExtractionStatus.class),
+            new EnumColumn("cv_intake_item", "status", CvIntakeStatus.class),
+            new EnumColumn("cv_intake_item", "text_status", TextExtractionStatus.class),
+            new EnumColumn("cv_intake_item", "source_channel", SourceChannel.class),
+            new EnumColumn("duplicate_candidate", "status", DuplicateStatus.class),
+            new EnumColumn("off_limits_rule", "reason", OffLimitsReason.class),
+            new EnumColumn("candidate_exposure", "channel", ExposureChannel.class),
+            new EnumColumn("consent_request", "purpose", ConsentRequestPurpose.class));
 
     @Test
     void extensionsAndSearchHelperExist() {
@@ -92,6 +114,7 @@ class MigrationIT extends AbstractPersistenceIT {
 
     @Test
     void checkConstraintsMatchTheContractEnums() {
+        org.assertj.core.api.SoftAssertions soft = new org.assertj.core.api.SoftAssertions();
         for (EnumColumn ec : ENUM_COLUMNS) {
             List<String> defs = jdbc.queryForList(
                     "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE contype = 'c' AND conrelid = ?::regclass",
@@ -107,15 +130,16 @@ class MigrationIT extends AbstractPersistenceIT {
             }
             Set<String> expected = new TreeSet<>();
             Arrays.stream(ec.type().getEnumConstants()).forEach(e -> expected.add(e.name()));
-            assertThat(actual).as("%s.%s", ec.table(), ec.column()).isEqualTo(expected);
+            soft.assertThat(actual).as("%s.%s", ec.table(), ec.column()).isEqualTo(expected);
         }
+        soft.assertAll();
     }
 
     @Test
     void everyAuditedTableHasAnAuditTable() {
         List<String> audited = List.of("app_user", "account", "person", "person_employment", "contact", "network_link",
                 "job_order", "application", "proposal", "activity", "next_action", "person_privacy",
-                "retention_settings", "data_subject_request");
+                "retention_settings", "data_subject_request", "person_education", "person_file", "off_limits_rule");
         for (String table : audited) {
             Integer n = jdbc.queryForObject(
                     "SELECT count(*) FROM information_schema.tables WHERE table_name = ?", Integer.class, table + "_aud");
@@ -128,5 +152,60 @@ class MigrationIT extends AbstractPersistenceIT {
         assertThat(jdbc.queryForObject("SELECT retention_months FROM retention_settings WHERE id = 1", Integer.class))
                 .isEqualTo(24);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM event_publication", Integer.class)).isZero();
+    }
+
+    @Test
+    void arrayCheckConstraintsMatchTheContractEnums() {
+        assertThat(arrayCheckLiterals("duplicate_candidate", "ck_duplicate_reasons"))
+                .isEqualTo(names(DuplicateMatchReason.class));
+    }
+
+    @Test
+    void retentionBasisDefaultIsFromLastConsent() {
+        String def = jdbc.queryForObject("""
+                SELECT column_default FROM information_schema.columns
+                WHERE table_name = 'retention_settings' AND column_name = 'basis'""", String.class);
+        assertThat(def).contains("FROM_LAST_CONSENT");
+        assertThat(jdbc.queryForObject("SELECT renewal_reminder_days::text FROM retention_settings WHERE id = 1",
+                String.class)).isEqualTo("{60,14}");
+    }
+
+    @Test
+    void turkishTextSearchConfigurationFoldsAccentsAndStems() {
+        assertThat(jdbc.queryForObject(
+                "SELECT to_tsvector('tr_unaccent', 'Mühendis İstanbul')::text", String.class))
+                .doesNotContain("ü");
+        assertThat(jdbc.queryForObject(
+                "SELECT to_tsvector('tr_unaccent', 'Şişli müdürü') @@ plainto_tsquery('tr_unaccent', 'sisli')",
+                Boolean.class)).isTrue();
+    }
+
+    @Test
+    void everyPersonForeignKeyCascadesInclusiveOfNewTables() {
+        List<String> fks = jdbc.queryForList("""
+                SELECT c.conrelid::regclass::text || '.' || a.attname
+                FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+                WHERE c.contype = 'f' AND c.confrelid = 'person'::regclass AND c.confdeltype = 'c'""", String.class);
+        assertThat(fks).contains("person_education.person_id", "person_file.person_id",
+                "cv_intake_item.attached_person_id", "duplicate_candidate.person_a_id",
+                "duplicate_candidate.person_b_id", "person_merge.survivor_id", "candidate_exposure.person_id");
+    }
+
+    private static Set<String> names(Class<? extends Enum<?>> type) {
+        Set<String> s = new TreeSet<>();
+        Arrays.stream(type.getEnumConstants()).forEach(e -> s.add(e.name()));
+        return s;
+    }
+
+    private Set<String> arrayCheckLiterals(String table, String constraint) {
+        String def = jdbc.queryForObject(
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = ?::regclass AND conname = ?",
+                String.class, table, constraint);
+        Set<String> actual = new TreeSet<>();
+        Matcher m = LITERAL.matcher(def);
+        while (m.find()) {
+            actual.add(m.group(1));
+        }
+        return actual;
     }
 }

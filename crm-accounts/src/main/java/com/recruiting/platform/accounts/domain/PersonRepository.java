@@ -42,4 +42,21 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, JpaSpecif
     @Modifying
     @Query("UPDATE Person p SET p.retentionStatus = :status WHERE p.id = :id AND p.retentionStatus <> com.recruiting.platform.contracts.RetentionStatus.ANONYMISED")
     int updateRetentionStatus(@Param("id") UUID id, @Param("status") com.recruiting.platform.contracts.RetentionStatus status);
+
+    /** Duplicate check (B-04): same normalised phone (1.2.0), served by idx_person_phone_normalized. */
+    List<Person> findByPhoneNormalized(String phoneNormalized);
+
+    /** Duplicate check (B-04): same normalised LinkedIn URL (1.2.0), served by idx_person_linkedin_normalized. */
+    List<Person> findByLinkedinUrlNormalized(String linkedinUrlNormalized);
+
+    /** Duplicate check (B-04): same name and company, accent- and case-insensitive (idx_person_name_company_norm). */
+    @Query(value = "SELECT * FROM person WHERE immutable_unaccent(lower(trim(name))) = immutable_unaccent(lower(trim(:name))) "
+            + "AND immutable_unaccent(lower(trim(company))) = immutable_unaccent(lower(trim(:company)))",
+            nativeQuery = true)
+    List<Person> findByNameAndCompanyNormalized(@Param("name") String name, @Param("company") String company);
+
+    /** The {@code city} filter (1.1.1), served by idx_person_city. */
+    @Query(value = "SELECT * FROM person WHERE immutable_unaccent(lower(trim(city))) = immutable_unaccent(lower(trim(:city)))",
+            nativeQuery = true)
+    List<Person> findByCityNormalized(@Param("city") String city);
 }

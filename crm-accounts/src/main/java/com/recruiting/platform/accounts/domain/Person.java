@@ -4,6 +4,9 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import com.recruiting.platform.contracts.Mobility;
+import com.recruiting.platform.contracts.SourceChannel;
 import jakarta.persistence.*;
 import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.PersonType;
@@ -80,6 +83,37 @@ public class Person extends AuditableEntity {
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "tags", length = 50)
     private List<String> tags = new ArrayList<>();
+
+    /** Not personal data: kept on anonymisation (1.2.0). */
+    @Column(name = "source_channel")
+    @Enumerated(EnumType.STRING)
+    private SourceChannel sourceChannel;
+
+    @Column(name = "notice_period_days")
+    private Short noticePeriodDays;
+
+    @Column(name = "mobility")
+    @Enumerated(EnumType.STRING)
+    private Mobility mobility;
+
+    /**
+     * Ciphertext of the Compensation JSON (1 byte key version, 12 byte IV, ciphertext + tag). security.FieldCipher
+     * (built by security-privacy) will replace this raw mapping with an AttributeConverter; until then callers must
+     * not write plain text here.
+     */
+    @Column(name = "compensation_enc")
+    private byte[] compensationEnc;
+
+    /** [{language, level}], at most 20, validated by the service. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "languages")
+    private List<Map<String, Object>> languages = new ArrayList<>();
+
+    @Column(name = "phone_normalized", length = 20)
+    private String phoneNormalized;
+
+    @Column(name = "linkedin_url_normalized", length = 300)
+    private String linkedinUrlNormalized;
 
     public Person() {
         // for JPA
@@ -217,4 +251,60 @@ public class Person extends AuditableEntity {
     public void setTags(List<String> tags) {
         this.tags = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
     }
+    public SourceChannel getSourceChannel() {
+        return sourceChannel;
+    }
+
+    public void setSourceChannel(SourceChannel sourceChannel) {
+        this.sourceChannel = sourceChannel;
+    }
+
+    public Short getNoticePeriodDays() {
+        return noticePeriodDays;
+    }
+
+    public void setNoticePeriodDays(Short noticePeriodDays) {
+        this.noticePeriodDays = noticePeriodDays;
+    }
+
+    public Mobility getMobility() {
+        return mobility;
+    }
+
+    public void setMobility(Mobility mobility) {
+        this.mobility = mobility;
+    }
+
+    public byte[] getCompensationEnc() {
+        return compensationEnc;
+    }
+
+    public void setCompensationEnc(byte[] compensationEnc) {
+        this.compensationEnc = compensationEnc;
+    }
+
+    public List<Map<String, Object>> getLanguages() {
+        return languages;
+    }
+
+    public void setLanguages(List<Map<String, Object>> languages) {
+        this.languages = languages == null ? new ArrayList<>() : new ArrayList<>(languages);
+    }
+
+    public String getPhoneNormalized() {
+        return phoneNormalized;
+    }
+
+    public void setPhoneNormalized(String phoneNormalized) {
+        this.phoneNormalized = phoneNormalized;
+    }
+
+    public String getLinkedinUrlNormalized() {
+        return linkedinUrlNormalized;
+    }
+
+    public void setLinkedinUrlNormalized(String linkedinUrlNormalized) {
+        this.linkedinUrlNormalized = linkedinUrlNormalized;
+    }
+
 }
