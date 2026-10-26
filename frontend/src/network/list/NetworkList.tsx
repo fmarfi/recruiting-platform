@@ -3,7 +3,7 @@ import { Alert, Badge, Button, Chip, CloseButton, Container, Group, Pagination, 
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
 import { useCurrentUser, useLabel, type Schemas } from '../../pipeline/shared';
 import { useAuth } from '../../shell/auth/useAuth';
@@ -91,6 +91,11 @@ export function NetworkList() {
           <Button variant="default" loading={busy} disabled={!res.data?.page.totalElements} onClick={() => void exportCsv()}>
             {t('network.exportAll')}
           </Button>
+          {isManager && (
+            <Button variant="default" component={Link} to="/network/duplicates">
+              {t('network.dup.nav')}
+            </Button>
+          )}
           <Button onClick={() => setNewOpen(true)}>+ {t('network.newPerson')}</Button>
         </Group>
       </Group>
