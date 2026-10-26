@@ -26,6 +26,27 @@
         "doNotContact": "Do not contact for new roles.", "overdueAction": "{{count}} overdue action(s): finish them first.", "neverContacted": "Never contacted: log a first call or meeting.",
         "reconnect": "Not contacted for over 90 days: reconnect.", "planNext": "No next step planned: add an action.", "onTrack": "On track: next step is planned."
       }
+    },
+    "pool": {
+      "tags": "Tags (talent pool)",
+      "tagsHint": "Press Enter or comma to add",
+      "cv": "Search in CVs",
+      "cvHint": "Words, \"exact phrase\", or, -exclude",
+      "channels": "Source channel",
+      "shareable": "Shareable (consent given)",
+      "shareableCol": "Shareable",
+      "cvMatch": "CV match",
+      "yes": "Yes",
+      "no": "No",
+      "channel": {
+        "LINKEDIN_AD": "LinkedIn ad",
+        "LINKEDIN_DIRECT": "LinkedIn direct",
+        "WEBSITE": "Website",
+        "REFERRAL": "Referral",
+        "EXISTING_POOL": "Existing pool",
+        "EMAIL": "Email",
+        "CV_UPLOAD": "CV upload"
+      }
     }
   }
 }

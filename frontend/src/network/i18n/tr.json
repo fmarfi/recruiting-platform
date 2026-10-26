@@ -26,6 +26,27 @@
         "doNotContact": "Yeni pozisyonlar için iletişime geçmeyin.", "overdueAction": "{{count}} gecikmiş aksiyon: önce onları tamamlayın.", "neverContacted": "Hiç görüşülmedi: ilk aramayı veya toplantıyı kaydedin.",
         "reconnect": "90 günden uzun süredir görüşülmedi: yeniden iletişime geçin.", "planNext": "Planlı bir sonraki adım yok: aksiyon ekleyin.", "onTrack": "Yolunda: sonraki adım planlandı."
       }
+    },
+    "pool": {
+      "tags": "Etiketler (yetenek havuzu)",
+      "tagsHint": "Eklemek için Enter veya virgül",
+      "cv": "CV'lerde ara",
+      "cvHint": "Kelimeler, \"tam ifade\", or, -hariç",
+      "channels": "Kaynak kanal",
+      "shareable": "Paylaşılabilir (rıza verilmiş)",
+      "shareableCol": "Paylaşılabilir",
+      "cvMatch": "CV eşleşmesi",
+      "yes": "Evet",
+      "no": "Hayır",
+      "channel": {
+        "LINKEDIN_AD": "LinkedIn ilanı",
+        "LINKEDIN_DIRECT": "LinkedIn doğrudan",
+        "WEBSITE": "Web sitesi",
+        "REFERRAL": "Tavsiye",
+        "EXISTING_POOL": "Mevcut havuz",
+        "EMAIL": "E-posta",
+        "CV_UPLOAD": "CV yükleme"
+      }
     }
   }
 }
