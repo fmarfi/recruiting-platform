@@ -47,3 +47,16 @@ export const toView = (f: AccountFilters): AccountView => ({ q: f.q, status: f.s
 export function applyView(f: AccountFilters, v: { filters: AccountView; sort?: SortState | null }, meId: string): AccountFilters {
   return { ...f, q: v.filters.q ?? '', status: v.filters.status ?? '', ownerId: v.filters.owner === 'all' ? '' : meId, page: 0, sort: v.sort ? formatSort(v.sort) : f.sort };
 }
+
+/** Server-backed saved views (/views, entity ACCOUNTS): q, status and ownerId ("me") are the allowed filter keys. */
+export const VIEW_OPTIONS = {
+  gridId: 'accounts',
+  entity: 'ACCOUNTS',
+  toFilters: (v: AccountView) => ({ ...(v.q ? { q: v.q } : {}), ...(v.status ? { status: v.status } : {}), ...(v.owner === 'all' ? {} : { ownerId: 'me' }) }),
+  fromFilters: (r: Record<string, unknown>): AccountView => ({
+    q: typeof r.q === 'string' ? r.q : '',
+    status: Array.isArray(r.status) ? String(r.status[0] ?? '') : typeof r.status === 'string' ? r.status : '',
+    owner: r.ownerId === undefined ? 'all' : 'me',
+  }),
+  hasFreeText: (v: AccountView) => !!v.q,
+} as const;
