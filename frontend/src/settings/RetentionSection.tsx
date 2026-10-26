@@ -1,4 +1,4 @@
-import { Alert, Button, Group, NumberInput, Stack, Switch, Table, Text } from '@mantine/core';
+import { Alert, Button, Group, NumberInput, Select, Stack, Switch, Table, TagsInput, Text } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../api';
@@ -8,6 +8,7 @@ import { SkeletonRows } from '../shell/components/SkeletonRows';
 import { useAsync } from '../shell/hooks/useAsync';
 import { fmtDate } from '../shell/lib/format';
 import { problemText } from '../shell/lib/problem';
+import { parseReminderDays, RETENTION_BASES } from './retentionForm';
 
 type Settings = components['schemas']['RetentionSettings'];
 
@@ -22,8 +23,9 @@ export function RetentionSection() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   useEffect(() => setForm(settings.data), [settings.data]);
 
+  const [reminderErr, setReminderErr] = useState(false);
   const save = async () => {
-    if (!form) return;
+    if (!form || reminderErr) return;
     const r = await api.PUT('/retention/settings', { body: form });
     if (r.error) setMsg({ ok: false, text: problemText(r.error, t('shell.saveError')) });
     else {
@@ -48,7 +50,31 @@ export function RetentionSection() {
         <NumberInput label={t('settings.retention.warning')} min={0} max={365} disabled={!isAdmin} value={form.warningDays} onChange={(v) => setForm({ ...form, warningDays: Number(v) || 0 })} />
       </Group>
       <Switch label={t('settings.retention.autoNotice')} disabled={!isAdmin} checked={form.autoSendNotice} onChange={(e) => setForm({ ...form, autoSendNotice: e.currentTarget.checked })} />
+      <Select
+        label={t('settings.retention.basis')}
+        description={t('settings.retention.basisHint')}
+        allowDeselect={false}
+        disabled={!isAdmin}
+        value={form.basis}
+        onChange={(v) => v && setForm({ ...form, basis: v as Settings['basis'] })}
+        data={RETENTION_BASES.map((b) => ({ value: b, label: t(`settings.retention.bases.${b}`) }))}
+        maw={420}
+      />
       <Switch label={t('settings.retention.renew')} disabled={!isAdmin} checked={form.renewOnConsent ?? true} onChange={(e) => setForm({ ...form, renewOnConsent: e.currentTarget.checked })} />
+      <Switch label={t('settings.retention.autoCv')} description={t('settings.retention.autoCvHint')} disabled={!isAdmin} checked={form.autoSendOnCvUpload ?? true} onChange={(e) => setForm({ ...form, autoSendOnCvUpload: e.currentTarget.checked })} />
+      <TagsInput
+        label={t('settings.retention.reminders')}
+        description={t('settings.retention.remindersHint')}
+        error={reminderErr ? t('settings.retention.remindersError') : undefined}
+        disabled={!isAdmin}
+        maw={420}
+        value={(form.renewalReminderDays ?? [60, 14]).map(String)}
+        onChange={(vals) => {
+          const days = parseReminderDays(vals);
+          setReminderErr(days === null);
+          if (days) setForm({ ...form, renewalReminderDays: days });
+        }}
+      />
       {msg && <Alert color={msg.ok ? 'green' : 'red'} role={msg.ok ? 'status' : 'alert'}>{msg.text}</Alert>}
       {isAdmin && (
         <Group>
