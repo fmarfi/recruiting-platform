@@ -130,9 +130,9 @@ class Wave2aRepositoryIT extends AbstractPersistenceIT {
         UUID skipped = UUID.randomUUID();
         UUID failed = UUID.randomUUID();
         tx.executeWithoutResult(s -> bulkItems.saveAll(List.of(
-                new BulkActionItem(b.getId(), ok, BulkOutcome.OK, null, null),
-                new BulkActionItem(b.getId(), skipped, BulkOutcome.SKIPPED, BulkResultCode.NO_CHANGE, "already tagged"),
-                new BulkActionItem(b.getId(), failed, BulkOutcome.FAILED, BulkResultCode.INTERNAL_ERROR, null))));
+                new BulkActionItem(b.getId(), ok, BulkOutcome.OK, null),
+                new BulkActionItem(b.getId(), skipped, BulkOutcome.SKIPPED, BulkResultCode.NO_CHANGE),
+                new BulkActionItem(b.getId(), failed, BulkOutcome.FAILED, BulkResultCode.INTERNAL_ERROR))));
 
         assertThat(bulkItems.findByBulkActionId(b.getId())).hasSize(3);
         assertThat(bulkItems.findByEntityId(skipped)).singleElement()
@@ -148,16 +148,16 @@ class Wave2aRepositoryIT extends AbstractPersistenceIT {
         BulkAction b = bulk(newUser().getId());
         // OK must not carry a code; SKIPPED/FAILED must
         assertThatThrownBy(() -> tx.executeWithoutResult(s -> bulkItems.saveAndFlush(
-                new BulkActionItem(b.getId(), UUID.randomUUID(), BulkOutcome.OK, BulkResultCode.NO_CHANGE, null))))
+                new BulkActionItem(b.getId(), UUID.randomUUID(), BulkOutcome.OK, BulkResultCode.NO_CHANGE))))
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> tx.executeWithoutResult(s -> bulkItems.saveAndFlush(
-                new BulkActionItem(b.getId(), UUID.randomUUID(), BulkOutcome.FAILED, null, null))))
+                new BulkActionItem(b.getId(), UUID.randomUUID(), BulkOutcome.FAILED, null))))
                 .isInstanceOf(DataIntegrityViolationException.class);
         UUID dup = UUID.randomUUID();
         tx.executeWithoutResult(s -> bulkItems.saveAndFlush(
-                new BulkActionItem(b.getId(), dup, BulkOutcome.OK, null, null)));
+                new BulkActionItem(b.getId(), dup, BulkOutcome.OK, null)));
         assertThatThrownBy(() -> tx.executeWithoutResult(s -> bulkItems.saveAndFlush(
-                new BulkActionItem(b.getId(), dup, BulkOutcome.OK, null, null))))
+                new BulkActionItem(b.getId(), dup, BulkOutcome.OK, null))))
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> jdbc.update(
                 "insert into bulk_action_item (bulk_action_id, entity_id, outcome, code) values (?, ?, 'SKIPPED', 'BOGUS')",

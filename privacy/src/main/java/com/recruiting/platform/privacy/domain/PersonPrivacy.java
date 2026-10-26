@@ -44,6 +44,10 @@ public class PersonPrivacy {
     @Version
     private Long version;
 
+    /** recorded_at of the latest GIVEN consent record (1.2.0); the basis with FROM_LAST_CONSENT. */
+    @Column(name = "last_consent_at")
+    private Instant lastConsentAt;
+
     public PersonPrivacy() {
         // for JPA
     }
@@ -118,6 +122,14 @@ public class PersonPrivacy {
 
     public Long getVersion() {
         return version;
+    }
+
+    public Instant getLastConsentAt() {
+        return lastConsentAt;
+    }
+
+    public void setLastConsentAt(Instant lastConsentAt) {
+        this.lastConsentAt = lastConsentAt;
     }
 
 }

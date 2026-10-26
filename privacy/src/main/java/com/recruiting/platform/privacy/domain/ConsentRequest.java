@@ -2,9 +2,11 @@ package com.recruiting.platform.privacy.domain;
 
 import jakarta.persistence.*;
 import com.recruiting.platform.contracts.ConsentDecision;
+import com.recruiting.platform.contracts.ConsentRequestPurpose;
 import com.recruiting.platform.contracts.EmailDeliveryStatus;
 import com.recruiting.platform.contracts.Language;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
