@@ -40,9 +40,20 @@ export interface SavedView<F = unknown> {
   filters: F;
   columns?: ColumnState;
   sort?: SortState | null;
+  /** Server-backed stores only. Local views are always private to this browser. */
+  visibility?: ViewVisibility;
+  /** Whether the current user may change or delete it (server `editable`); absent means yes. */
+  editable?: boolean;
+  /** Owned by the current user (when known). */
+  mine?: boolean;
+  ownerName?: string;
+  /** Optimistic-lock version; the store keeps it, screens do not need it. */
+  version?: number;
 }
 
-export type NewView<F = unknown> = Omit<SavedView<F>, 'id'> & { id?: string };
+export type ViewVisibility = 'PRIVATE' | 'SHARED';
+
+export type NewView<F = unknown> = Omit<SavedView<F>, 'id' | 'editable' | 'mine' | 'ownerName' | 'version'> & { id?: string };
 
 /**
  * Where saved views live. Methods are async so a server-backed store (the /views endpoints) can replace
@@ -53,6 +64,12 @@ export interface ViewStore<F = unknown> {
   /** Creates a view, or replaces the one with the same id. */
   save(view: NewView<F>): Promise<SavedView<F>>;
   delete(id: string): Promise<void>;
+  /** Rename only; absent on stores that cannot (callers fall back to save). */
+  rename?(id: string, name: string): Promise<SavedView<F>>;
+  /** SHARED views offered (MANAGER/ADMIN with a server-backed store). */
+  readonly canShare?: boolean;
+  /** True when sharing these filters would drop something (free text q is never stored in SHARED views). */
+  warnsOnShare?(filters: F): boolean;
 }
 
 /**
