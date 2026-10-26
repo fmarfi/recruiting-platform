@@ -1,7 +1,7 @@
-// Pure parser for the command-bar operator syntax: owner:me stale:90 city:izmir type:exec consent:given company:"Y Holding" status:active
+// Pure parser for the command-bar operator syntax: owner:me stale:90 city:izmir type:exec consent:given company:"Y Holding" status:active tag:java source:referral cv:"project manager"
 // Unknown operators, empty or invalid values stay in the free text, so typing never loses input.
 
-export type OperatorKey = 'owner' | 'stale' | 'city' | 'type' | 'consent' | 'company' | 'status';
+export type OperatorKey = 'owner' | 'stale' | 'city' | 'type' | 'consent' | 'company' | 'status' | 'tag' | 'source' | 'cv';
 
 export interface ParsedOperator {
   key: OperatorKey;
@@ -31,6 +31,10 @@ const CONSENT_ALIASES: Record<string, string> = {
   given: 'GIVEN', yes: 'GIVEN', sent: 'SENT', refused: 'REFUSED', withdrawn: 'WITHDRAWN',
   not_sent: 'NOT_SENT', notsent: 'NOT_SENT', none: 'NOT_SENT',
 };
+const SOURCE_CHANNELS = ['LINKEDIN_AD', 'LINKEDIN_DIRECT', 'WEBSITE', 'REFERRAL', 'EXISTING_POOL', 'EMAIL', 'CV_UPLOAD'];
+const SOURCE_ALIASES: Record<string, string> = {
+  linkedin: 'LINKEDIN_DIRECT', direct: 'LINKEDIN_DIRECT', ad: 'LINKEDIN_AD', site: 'WEBSITE', ref: 'REFERRAL', pool: 'EXISTING_POOL', existing: 'EXISTING_POOL', upload: 'CV_UPLOAD', cv: 'CV_UPLOAD',
+};
 export const ACCOUNT_STATUSES = ['LEAD', 'PROPOSAL_SENT', 'ACTIVE', 'ON_HOLD', 'CLOSED'];
 export const JOB_ORDER_STATUSES = ['OPEN', 'SOURCING', 'SHORTLIST_SENT', 'INTERVIEWING', 'OFFER', 'FILLED', 'CANCELLED'];
 
@@ -39,6 +43,17 @@ const NORMALIZERS: Record<OperatorKey, (v: string) => string | null> = {
   stale: (v) => (/^\d{1,4}$/.test(v.trim()) && Number(v) > 0 ? String(Number(v)) : null),
   city: (v) => v.trim() || null,
   company: (v) => v.trim() || null,
+  // tags are stored lower-case, 1 to 50 characters, no personal data; a comma would break the list value
+  tag: (v) => (v.trim().length >= 1 && v.trim().length <= 50 && !v.includes(',') ? v.trim().toLowerCase() : null),
+  source: (v) => {
+    const c = constant(v);
+    return SOURCE_CHANNELS.includes(c) ? c : (SOURCE_ALIASES[c.toLowerCase()] ?? null);
+  },
+  // full-text query over the current CV (web-search syntax); a phrase of several words is sent as one quoted phrase
+  cv: (v) => {
+    const t = v.trim().replace(/s+/g, ' ');
+    return t.length >= 2 && t.length <= 200 ? (t.includes(' ') ? `"${t}"` : t) : null;
+  },
   type: (v) => TYPE_ALIASES[constant(v).toLowerCase()] ?? null,
   consent: (v) => CONSENT_ALIASES[constant(v).toLowerCase()] ?? null,
   status: (v) => {
@@ -113,23 +128,25 @@ ot applied yet. */
 }
 
 const ACCEPTED: Record<OperatorRoute['path'], OperatorKey[]> = {
-  '/network': ['owner', 'stale', 'type', 'consent', 'city', 'company'],
+  '/network': ['owner', 'stale', 'type', 'consent', 'city', 'company', 'tag', 'source', 'cv'],
   '/accounts': ['owner', 'status'],
   '/job-orders': ['owner', 'status'],
 };
-const ORDER: OperatorKey[] = ['owner', 'stale', 'type', 'consent', 'city', 'company', 'status'];
+const ORDER: OperatorKey[] = ['owner', 'stale', 'type', 'consent', 'city', 'company', 'tag', 'source', 'cv', 'status'];
+/** Query parameter name per operator, where it differs from the operator name (the /people API names). */
+const PARAM: Partial<Record<OperatorKey, string>> = { source: 'sourceChannel' };
 
 /**
  * Which list screen the operators belong to, with filters as query params:
  * /network?owner=me&stale=90&type=EXECUTIVE&consent=GIVEN&city=izmir&company=Y+Holding&q=text,
  * /accounts?owner=me&status=ACTIVE&q=text, /job-orders?owner=me&status=OPEN&q=text.
- * Repeated type/city/company operators are joined with commas (type=EXECUTIVE,CANDIDATE); owner, stale and status keep the last one.
+ * Repeated type/city/company/tag/source operators are joined with commas (type=EXECUTIVE,CANDIDATE); owner, stale, status and cv keep the last one. tag, source (as sourceChannel) and cv are API filters of /people (1.2.0); cv is a full-text query over the current CV.
  * Returns null when no operator maps to a list.
  */
 export function routeFor(p: ParsedQuery): OperatorRoute | null {
   const has = (k: OperatorKey) => p.operators.some((o) => o.key === k);
   let path: OperatorRoute['path'] | null = null;
-  if (['stale', 'type', 'consent', 'city', 'company'].some((k) => has(k as OperatorKey))) path = '/network';
+  if (['stale', 'type', 'consent', 'city', 'company', 'tag', 'source', 'cv'].some((k) => has(k as OperatorKey))) path = '/network';
   else if (p.operators.some((o) => o.key === 'status' && JOB_ORDER_STATUSES.includes(o.value))) path = '/job-orders';
   else if (has('status') || has('owner')) path = '/accounts';
   if (!path) return null;
@@ -140,7 +157,7 @@ export function routeFor(p: ParsedQuery): OperatorRoute | null {
   const params: [string, string][] = [];
   for (const k of ORDER) {
     const vals = [...new Set(kept.filter((o) => o.key === k).map((o) => o.value))];
-    if (vals.length) params.push([k, k === 'owner' || k === 'stale' || k === 'status' ? vals[vals.length - 1]! : vals.join(',')]);
+    if (vals.length) params.push([PARAM[k] ?? k, k === 'owner' || k === 'stale' || k === 'status' || k === 'cv' ? vals[vals.length - 1]! : vals.join(',')]);
   }
   if (p.text) params.push(['q', p.text]);
   const pending = path === '/network' ? kept.filter((o) => o.key === 'city' || o.key === 'company') : [];
