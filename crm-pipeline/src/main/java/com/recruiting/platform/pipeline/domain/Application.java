@@ -34,6 +34,10 @@ public class Application extends AuditableEntity {
     @Column(name = "stage_changed_at")
     private Instant stageChangedAt = Instant.now();
 
+    /** Set when a manager moved the person despite an off-limits rule (1.2.0); scrubbed like rejection_reason. */
+    @Column(name = "off_limits_override_reason")
+    private String offLimitsOverrideReason;
+
     public Application() {
         // for JPA
     }
@@ -80,6 +84,14 @@ public class Application extends AuditableEntity {
 
     public void setStageChangedAt(Instant stageChangedAt) {
         this.stageChangedAt = stageChangedAt;
+    }
+
+    public String getOffLimitsOverrideReason() {
+        return offLimitsOverrideReason;
+    }
+
+    public void setOffLimitsOverrideReason(String offLimitsOverrideReason) {
+        this.offLimitsOverrideReason = offLimitsOverrideReason;
     }
 
 }

@@ -31,9 +31,6 @@ public class BulkActionItem implements Persistable<BulkActionItem.Key> {
     @Enumerated(EnumType.STRING)
     private BulkResultCode code;
 
-    @Column(name = "message", length = 500)
-    private String message;
-
     @Transient
     private boolean isNew = true;
 
@@ -41,12 +38,11 @@ public class BulkActionItem implements Persistable<BulkActionItem.Key> {
         // for JPA
     }
 
-    public BulkActionItem(UUID bulkActionId, UUID entityId, BulkOutcome outcome, BulkResultCode code, String message) {
+    public BulkActionItem(UUID bulkActionId, UUID entityId, BulkOutcome outcome, BulkResultCode code) {
         this.bulkActionId = bulkActionId;
         this.entityId = entityId;
         this.outcome = outcome;
         this.code = code;
-        this.message = message;
     }
 
     @Override
@@ -79,10 +75,6 @@ public class BulkActionItem implements Persistable<BulkActionItem.Key> {
 
     public BulkResultCode getCode() {
         return code;
-    }
-
-    public String getMessage() {
-        return message;
     }
 
     public record Key(UUID bulkActionId, UUID entityId) implements Serializable {
