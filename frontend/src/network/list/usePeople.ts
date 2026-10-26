@@ -11,6 +11,10 @@ export type PeopleFilters = {
   /** `field,dir`; empty = default order. */
   sort: string;
   page: number;
+  tags?: string[];
+  channels?: Schemas["SourceChannel"][];
+  cv?: string;
+  shareable?: boolean;
 };
 
 const query = (f: PeopleFilters, page: number, size: number) => {
@@ -21,15 +25,20 @@ const query = (f: PeopleFilters, page: number, size: number) => {
     ownerId: f.ownerId,
     consentStatus: f.consent ? [f.consent] : undefined,
     lastContactBefore: before ? toIsoDate(before) : undefined,
+    tag: f.tags?.length ? f.tags : undefined,
+    sourceChannel: f.channels?.length ? f.channels : undefined,
+    cv: f.cv || undefined,
+    shareable: f.shareable ? true : undefined,
     page,
     size,
-    sort: [f.sort || (before ? 'lastContactAt,asc' : 'name,asc')],
+    // With a cv search the server default (relevance) applies unless a sort is chosen.
+    sort: f.sort ? [f.sort] : f.cv ? undefined : [before ? 'lastContactAt,asc' : 'name,asc'],
   };
 };
 
 /** Network list query (A-12). With the stale filter on, the oldest contact comes first unless a sort is chosen. */
 export function usePeople(f: PeopleFilters) {
-  return useAsync(() => api.GET('/people', { params: { query: query(f, f.page, 25) } }), [f.q, f.types.join(','), f.ownerId, f.consent, f.staleDays, f.sort, f.page]);
+  return useAsync(() => api.GET('/people', { params: { query: query(f, f.page, 25) } }), [f.q, f.types.join(','), f.ownerId, f.consent, f.staleDays, f.sort, f.page, f.tags?.join(','), f.channels?.join(','), f.cv, f.shareable]);
 }
 
 export const EXPORT_LIMIT = 1000;

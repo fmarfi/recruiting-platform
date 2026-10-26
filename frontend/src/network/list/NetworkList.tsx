@@ -13,6 +13,7 @@ import { tokens } from '../../theme/tokens';
 import { migrateLegacyViews } from './legacyViews';
 import { downloadCsv, toCsv, visibleCsv } from './csv';
 import { NewPersonDialog } from './NewPersonDialog';
+import { PoolFilters } from './PoolFilters';
 import { PresetsBar } from './PresetsBar';
 import { clientFilter, DEFAULT_FILTERS, filtersFromParams, gridKey, paramsFromFilters, PERSON_TYPES, viewSort, type ViewFilters } from './networkFilters';
 import { PersonCard, usePersonColumns, type Person } from './personColumns';
@@ -33,19 +34,19 @@ export function NetworkList() {
   const [notice, setNotice] = useState<{ color: string; text: string }>();
   const [busy, setBusy] = useState(false);
   const [viewWarn, setViewWarn] = useState(false);
-  const defs = usePersonColumns();
+  const defs = usePersonColumns(!!f.cv);
   const columns = useGridColumns<Person>(GRID_ID, defs);
   const views = useMemo(() => {
     migrateLegacyViews();
     return localViewStore<ViewFilters>(GRID_ID, () => setViewWarn(true));
   }, []);
 
-  const filters: PeopleFilters = { q: f.q, types: f.types, ownerId: f.mine ? me?.id : undefined, consent: f.consent, staleDays: f.staleDays, sort: f.sort, page };
+  const filters: PeopleFilters = { q: f.q, types: f.types, ownerId: f.mine ? me?.id : undefined, consent: f.consent, staleDays: f.staleDays, sort: f.sort, page, tags: f.tags, channels: f.channels, cv: f.cv, shareable: f.shareable };
   const res = usePeople(filters);
   const people = useMemo(() => clientFilter(res.data?.content ?? [], f), [res.data, f]);
   const set = (next: ViewFilters, p = 0) => setParams(paramsFromFilters(next, p), { replace: true });
   const change = (patch: Partial<ViewFilters>) => set({ ...f, ...patch });
-  const filtered = !!(f.q || f.types.length || f.mine || f.consent || f.staleDays || f.city || f.company);
+  const filtered = !!(f.q || f.types.length || f.mine || f.consent || f.staleDays || f.city || f.company || f.tags.length || f.channels.length || f.cv || f.shareable);
   const sort = viewSort(f);
 
   const exportCsv = async () => {
@@ -128,6 +129,7 @@ export function NetworkList() {
           ))}
         </Group>
       </Chip.Group>
+      <PoolFilters f={f} onChange={change} />
       {(f.city || f.company) && (
         <Group gap="xs" mb="sm" data-testid="pending-chips">
           {(['city', 'company'] as const).map(
