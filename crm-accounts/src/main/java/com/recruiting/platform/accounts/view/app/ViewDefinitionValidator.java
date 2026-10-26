@@ -61,6 +61,13 @@ final class ViewDefinitionValidator {
                     "statusChangedAt", "statusReason", "sentOn", "decidedOn", "owner", "createdAt", "updatedAt",
                     "version"));
 
+    /** Sortable keys of the list endpoints (contract sort descriptions); proposals accept any list property. */
+    private static final Map<ListEntity, Set<String>> SORTS = Map.of(
+            ListEntity.PEOPLE, Set.of("name", "company", "lastContactAt", "createdAt"),
+            ListEntity.ACCOUNTS, Set.of("name", "status", "openedOn", "lastActivityAt", "openJobCount"),
+            ListEntity.JOB_ORDERS, Set.of("title", "status", "openedOn", "daysOpen"),
+            ListEntity.PROPOSALS, PROPERTIES.get(ListEntity.PROPOSALS));
+
     private ViewDefinitionValidator() {
     }
 
@@ -94,7 +101,7 @@ final class ViewDefinitionValidator {
             add(errors, "definition.sort", "TOO_MANY", "at most 5 sort keys");
         }
         for (String s : d.sort()) {
-            if (s == null || !SORT.matcher(s).matches() || !props.contains(root(s, ','))) {
+            if (s == null || !SORT.matcher(s).matches() || !SORTS.get(entity).contains(root(s, ','))) {
                 add(errors, "definition.sort", "UNKNOWN_PROPERTY", "unknown sort key: " + s);
             }
         }

@@ -12,15 +12,17 @@
 - Tests: `ViewDefinitionValidatorTest`, `SavedViewServiceTest`, `PersonDataServiceTest`, `SavedViewApiIT` (6 ITs: permissions, uniqueness, shared visibility, versions, validation, 401).
 
 **Not done / left**
+- Cap check is count-then-insert (race accepted for now).
 - Tags are not yet in read models or list filters (follow-up per ADR 0010).
 
 **Others must know**
 - The cap of 50 PRIVATE views per user and entity (contract ASSUMPTION) returns 400 VALIDATION_FAILED, `field = entity`, code LIMIT; the contract names no error code for it.
 - `SavedViewRepository` gained `countByOwnerIdAndEntityAndVisibility`.
+- Review fixes: SHARED->PRIVATE only by owner (else 403) and checks the 50 cap; sort keys per entity follow the list endpoints; one query when `entity` absent; only uq_saved_view_owner_entity_name maps to DUPLICATE. A PATCH with only `version` is 400.
 
 **Change requests** (for files you don't own)
+- (resolved) KVKK `q` ruling: ADR 0010 amendment 2 implemented, SHARED views drop filters.q; version-only or empty PATCH is 400; 50-view cap 400 LIMIT.
 - security-privacy · privacy `AuditPurger` · scrub `tags` in `person_aud` (and `account_aud` if relevant) when a person is anonymised or erased; tags in old revisions otherwise survive (ADR 0010, ADR 0009).
-- architect · contracts/openapi.yaml · document the 400 for the 50 private views limit on POST /views (or drop the cap), and that PATCH with an empty body is 400.
 
 **Verified with**
 - `mvn -q -B verify` -> green.

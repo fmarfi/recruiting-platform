@@ -29,7 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Saved list views (ADR 0010). Users see their own PRIVATE views and all SHARED views. Another user's PRIVATE view
  * is a 404. SHARED views are created, switched to and changed by MANAGER/ADMIN (and by their owner when already
- * shared); anyone else gets 403. Views are user settings: no audit, no timeline.
+ * shared); anyone else gets 403. Only the owner may switch SHARED back to PRIVATE (50-view cap applies).
+ * A PATCH with no property or only {@code version} is 400 (ADR 0010 amendment 2); SHARED views drop filters.q. Views are user settings: no audit, no timeline.
  */
 @Service
 @Transactional
@@ -48,9 +49,8 @@ public class SavedViewService {
     @Transactional(readOnly = true)
     public List<SavedViewResponse> list(ListEntity entity, Actor actor) {
         List<SavedView> found = new ArrayList<>();
-        for (ListEntity e : entity == null ? ListEntity.values() : new ListEntity[] {entity}) {
-            found.addAll(views.findVisible(e, actor.id(), ViewVisibility.SHARED));
-        }
+        found.addAll(entity == null ? views.findVisibleAll(actor.id(), ViewVisibility.SHARED)
+                : views.findVisible(entity, actor.id(), ViewVisibility.SHARED));
         found.sort(Comparator.comparing((SavedView v) -> v.getName().toLowerCase()).thenComparing(SavedView::getId));
         Map<UUID, UserRef> owners = users.refs(found.stream().map(SavedView::getOwnerId).toList());
         return found.stream().map(v -> response(v, owners.get(v.getOwnerId()), actor)).toList();
@@ -66,11 +66,8 @@ public class SavedViewService {
             throw new ApiException(ErrorCode.FORBIDDEN, "Only a manager or admin may create a shared view.");
         }
         ViewDefinitionValidator.validate(r.entity(), r.definition());
-        if (visibility == ViewVisibility.PRIVATE
-                && views.countByOwnerIdAndEntityAndVisibility(actor.id(), r.entity(), ViewVisibility.PRIVATE)
-                        >= MAX_PRIVATE_PER_ENTITY) {
-            throw PatchBinder.validation("entity", "LIMIT",
-                    "At most " + MAX_PRIVATE_PER_ENTITY + " private views per grid.");
+        if (visibility == ViewVisibility.PRIVATE) {
+            failIfPrivateCapReached(actor.id(), r.entity());
         }
         failIfNameTaken(actor.id(), r.entity(), name, null);
         SavedView v = new SavedView();
@@ -79,12 +76,13 @@ public class SavedViewService {
         v.setVisibility(visibility);
         v.setOwnerId(actor.id());
         v.setDefinition(toMap(r.definition()));
+        stripQIfShared(v);
         return response(save(v), actor);
     }
 
     public SavedViewResponse update(UUID id, Patch<SavedViewUpdateRequest> patch, Actor actor) {
         SavedViewUpdateRequest b = patch.body();
-        if (patch.present().isEmpty()) {
+        if (patch.present().stream().allMatch("version"::equals)) {
             throw PatchBinder.validation("body", "EMPTY", "at least one property is required");
         }
         PatchBinder.notNull(patch, "name", b.name());
@@ -111,12 +109,19 @@ public class SavedViewService {
             v.setName(name);
         }
         if (patch.has("visibility")) {
+            if (b.visibility() == ViewVisibility.PRIVATE && v.getVisibility() == ViewVisibility.SHARED) {
+                if (!owner) {
+                    throw new ApiException(ErrorCode.FORBIDDEN, "Only the owner may make a shared view private.");
+                }
+                failIfPrivateCapReached(v.getOwnerId(), v.getEntity());
+            }
             v.setVisibility(b.visibility());
         }
         if (patch.has("definition")) {
             ViewDefinitionValidator.validate(v.getEntity(), b.definition());
             v.setDefinition(toMap(b.definition()));
         }
+        stripQIfShared(v);
         return response(save(v), actor);
     }
 
@@ -141,7 +146,32 @@ public class SavedViewService {
         try {
             return views.saveAndFlush(v);
         } catch (DataIntegrityViolationException e) {
+            if (!String.valueOf(e.getMostSpecificCause().getMessage()).contains("uq_saved_view_owner_entity_name")) {
+                throw e;
+            }
             throw new ApiException(ErrorCode.DUPLICATE, "You already have a view with this name for this grid.");
+        }
+    }
+
+    /** SHARED views never store free-text `q` (may name a person; ADR 0010 amendment 2). */
+    private static void stripQIfShared(SavedView v) {
+        if (v.getVisibility() == ViewVisibility.SHARED) {
+            Map<String, Object> def = new LinkedHashMap<>(v.getDefinition());
+            Object filters = def.get("filters");
+            if (filters instanceof Map<?, ?> f && f.containsKey("q")) {
+                Map<Object, Object> copy = new LinkedHashMap<>(f);
+                copy.remove("q");
+                def.put("filters", copy);
+                v.setDefinition(def);
+            }
+        }
+    }
+
+    private void failIfPrivateCapReached(UUID ownerId, ListEntity entity) {
+        if (views.countByOwnerIdAndEntityAndVisibility(ownerId, entity, ViewVisibility.PRIVATE)
+                >= MAX_PRIVATE_PER_ENTITY) {
+            throw PatchBinder.validation("entity", "LIMIT",
+                    "At most " + MAX_PRIVATE_PER_ENTITY + " private views per grid.");
         }
     }
 

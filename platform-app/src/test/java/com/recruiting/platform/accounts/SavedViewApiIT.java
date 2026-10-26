@@ -160,6 +160,18 @@ class SavedViewApiIT extends AbstractApiIT {
     }
 
     @Test
+    void sharedViewsDropQButPrivateKeepsIt() throws Exception {
+        String def = "{\"filters\":{\"q\":\"Ayse\"},\"columns\":[],\"sort\":[]}";
+        JsonNode shared = send(manager, post("/api/v1/views").contentType(MediaType.APPLICATION_JSON).content(
+                "{\"entity\":\"ACCOUNTS\",\"name\":\"" + unique("Q ") + "\",\"visibility\":\"SHARED\",\"definition\":" + def + "}"), 201);
+        assertThat(shared.get("definition").get("filters").has("q")).isFalse();
+        JsonNode priv = send(manager, post("/api/v1/views").contentType(MediaType.APPLICATION_JSON).content(
+                "{\"entity\":\"ACCOUNTS\",\"name\":\"" + unique("Q ") + "\",\"definition\":" + def + "}"), 201);
+        assertThat(priv.get("definition").get("filters").get("q").asText()).isEqualTo("Ayse");
+        patchView(manager, priv.get("id").asText(), "{\"version\":" + priv.get("version").asLong() + "}", 400);
+    }
+
+    @Test
     void anonymousIsRejected() throws Exception {
         mvc.perform(get("/api/v1/views")).andExpect(status().isUnauthorized());
     }
