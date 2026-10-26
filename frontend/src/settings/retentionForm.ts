@@ -11,3 +11,13 @@ export function parseReminderDays(values: string[]): number[] | null {
   if (uniq.length > 5) return null;
   return uniq.sort((a, b) => b - a);
 }
+
+/**
+ * State of the reminder tag input: the raw tags stay visible (so an invalid one can be seen and removed);
+ * `error` is derived from them, never stored, so removing the bad tag clears it and saving is possible again.
+ */
+export function reminderState(raw: string[] | null, saved: number[]): { tags: string[]; error: boolean; days: number[] } {
+  if (raw === null) return { tags: saved.map(String), error: false, days: saved };
+  const days = parseReminderDays(raw);
+  return { tags: raw, error: days === null, days: days ?? saved };
+}

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { ColumnState, SavedView, SortState, ViewStore } from './types';
 import { viewErrorCode } from './viewErrors';
 import type { ViewNotice } from './viewStoreFactory';
+import { effectiveShare, findOverwrite, saveVisibility, shouldWarnQ } from './viewsMenuLogic';
 
 interface Props<F> {
   store: ViewStore<F>;
@@ -20,7 +21,7 @@ export function ViewsMenu<F>({ store, current, onApply, notice }: Props<F>) {
   const [views, setViews] = useState<SavedView<F>[]>([]);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
-  const [share, setShare] = useState(false);
+  const [shareChoice, setShareChoice] = useState<boolean | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [renaming, setRenaming] = useState<SavedView<F> | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -36,21 +37,23 @@ export function ViewsMenu<F>({ store, current, onApply, notice }: Props<F>) {
     setNaming(false);
     setRenaming(null);
     setName('');
-    setShare(false);
+    setShareChoice(null);
     setConfirm(false);
     setErr(null);
   };
 
+  const overwrite = findOverwrite(views, name);
+  const share = effectiveShare(shareChoice, overwrite);
   const save = async () => {
     const n = name.trim();
     if (!n) return;
-    const existing = views.find((v) => v.name.toLowerCase() === n.toLowerCase() && v.mine !== false && v.editable !== false);
+    const existing = overwrite;
     if (existing && !confirm) {
       setConfirm(true);
       return;
     }
     try {
-      await store.save({ id: existing?.id, name: n, ...current, visibility: share ? 'SHARED' : existing?.visibility });
+      await store.save({ id: existing?.id, name: n, ...current, visibility: saveVisibility(!!store.canShare, share, existing) });
       close();
       refresh();
     } catch (e) {
@@ -73,11 +76,11 @@ export function ViewsMenu<F>({ store, current, onApply, notice }: Props<F>) {
 
   const noticeText =
     notice?.type === 'migrated'
-      ? t('grid.notice.migrated', { moved: notice.moved }) + (notice.left ? t('grid.notice.migratedLeft', { left: notice.left }) : '')
+      ? t('grid.notice.migrated', { moved: notice.moved }) + (notice.left ? t('grid.notice.migratedLeft', { left: notice.left }) : '') + (notice.dropped ? t('grid.notice.migratedDropped', { dropped: notice.dropped }) : '')
       : notice
         ? t(`grid.notice.${notice.type}`)
         : null;
-  const warnQ = share && store.warnsOnShare?.(current.filters);
+  const warnQ = shouldWarnQ(share, !!store.warnsOnShare?.(current.filters));
   const errorAlert = err && (
     <Alert color="red" role="alert">
       {t(`grid.err.${err}`)}
@@ -160,7 +163,7 @@ export function ViewsMenu<F>({ store, current, onApply, notice }: Props<F>) {
             }}
             onKeyDown={(e) => e.key === 'Enter' && void save()}
           />
-          {store.canShare && <Checkbox label={t('grid.shareToggle')} checked={share} onChange={(e) => setShare(e.currentTarget.checked)} />}
+          {store.canShare && <Checkbox label={t('grid.shareToggle')} checked={share} onChange={(e) => setShareChoice(e.currentTarget.checked)} />}
           {warnQ && (
             <Text size="sm" role="status">
               {t('grid.qNotSaved')}

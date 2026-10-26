@@ -51,8 +51,8 @@ const NORMALIZERS: Record<OperatorKey, (v: string) => string | null> = {
   },
   // full-text query over the current CV (web-search syntax); a phrase of several words is sent as one quoted phrase
   cv: (v) => {
-    const t = v.trim().replace(/\s+/g, ' ');
-    return t.length >= 2 && t.length <= 200 ? (t.includes(' ') ? `"${t}"` : t) : null;
+    const t = v.trim();
+    return t.length >= 2 && t.length <= 200 ? t : null;
   },
   type: (v) => TYPE_ALIASES[constant(v).toLowerCase()] ?? null,
   consent: (v) => CONSENT_ALIASES[constant(v).toLowerCase()] ?? null,
@@ -98,7 +98,7 @@ export function parseQuery(input: string): ParsedQuery {
     const m = /^([A-Za-z]+):(.*)$/.exec(tok.text);
     const key = m ? (m[1]!.toLowerCase() as OperatorKey) : null;
     if (m && key && Object.hasOwn(NORMALIZERS, key)) {
-      const value = NORMALIZERS[key](unquote(m[2]!));
+      const value = NORMALIZERS[key](key === 'cv' ? m[2]! : unquote(m[2]!));
       if (value) {
         operators.push({ key, value, start: tok.start, end: tok.end });
         continue;
@@ -140,7 +140,7 @@ const PARAM: Partial<Record<OperatorKey, string>> = { source: 'sourceChannel' };
  * Which list screen the operators belong to, with filters as query params:
  * /network?owner=me&stale=90&type=EXECUTIVE&consent=GIVEN&city=izmir&company=Y+Holding&q=text,
  * /accounts?owner=me&status=ACTIVE&q=text, /job-orders?owner=me&status=OPEN&q=text.
- * Repeated type/city/company/tag/source operators are joined with commas (type=EXECUTIVE,CANDIDATE); owner, stale, status and cv keep the last one. tag, source (as sourceChannel) and cv are API filters of /people (1.2.0); cv is a full-text query over the current CV.
+ * Repeated type/city/company/tag/source operators are joined with commas (type=EXECUTIVE,CANDIDATE); owner, stale and status keep the last one; repeated cv are joined with a space (AND in the CV web-search syntax); cv keeps the user's own quotes. tag, source (as sourceChannel) and cv are API filters of /people (1.2.0); cv is a full-text query over the current CV.
  * Returns null when no operator maps to a list.
  */
 export function routeFor(p: ParsedQuery): OperatorRoute | null {
@@ -157,7 +157,7 @@ export function routeFor(p: ParsedQuery): OperatorRoute | null {
   const params: [string, string][] = [];
   for (const k of ORDER) {
     const vals = [...new Set(kept.filter((o) => o.key === k).map((o) => o.value))];
-    if (vals.length) params.push([PARAM[k] ?? k, k === 'owner' || k === 'stale' || k === 'status' || k === 'cv' ? vals[vals.length - 1]! : vals.join(',')]);
+    if (vals.length) params.push([PARAM[k] ?? k, k === 'cv' ? vals.join(' ') : k === 'owner' || k === 'stale' || k === 'status' ? vals[vals.length - 1]! : vals.join(',')]);
   }
   if (p.text) params.push(['q', p.text]);
   const pending = path === '/network' ? kept.filter((o) => o.key === 'city' || o.key === 'company') : [];

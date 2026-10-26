@@ -59,3 +59,22 @@ export function useOffLimitsRules(active: boolean | undefined) {
 export function useAccountOffLimits(accountId: string) {
   return useAsync(() => api.GET('/off-limits', { params: { query: { accountId, active: true, size: 20 } } }), [accountId]);
 }
+
+const shiftDay = (iso: string, days: number) => {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  const t = new Date(Date.UTC(y, m - 1, d + days));
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
+};
+
+/**
+ * `endsOn` is the last day in force, so ending "today" would keep the rule active until tomorrow. End it
+ * yesterday when that is not before its start (the click then has a visible effect); a rule that starts today
+ * or later cannot end earlier than its start, so it ends on its start day and is shown as "ends today".
+ */
+export function endDateFor(rule: Pick<OffLimitsRule, 'startsOn'>, today: string): string {
+  const yesterday = shiftDay(today, -1);
+  return yesterday >= rule.startsOn ? yesterday : rule.startsOn > today ? rule.startsOn : today;
+}
+
+/** Active rule whose last day is today. */
+export const endsToday = (rule: Pick<OffLimitsRule, 'active' | 'endsOn'>, today: string) => rule.active && rule.endsOn === today;

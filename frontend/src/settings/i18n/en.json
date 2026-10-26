@@ -149,7 +149,7 @@
       "active": "In force",
       "ended": "Ended",
       "openEnded": "open-ended",
-      "end": "End today",
+      "end": "End now",
       "delete": "Delete",
       "deleteConfirm": "Delete this rule? Use End today to keep the history; delete is for entries made by mistake.",
       "targetKind": "Type of company",
@@ -176,7 +176,8 @@
         "forbidden": "Only managers and administrators can change off-limits rules.",
         "validation": "Check the form and try again.",
         "generic": "Could not save. Try again."
-      }
+      },
+      "endsToday": "Ends today"
     }
   }
 }

@@ -51,7 +51,8 @@
       "fallback": "Sunucuya ulaşılamadığı için kayıtlı görünümler yalnızca bu tarayıcıda tutuluyor.",
       "migrated": "Bu tarayıcıdaki {{moved}} görünüm hesabınıza kopyalandı.",
       "migratedLeft": " {{left}} görünüm taşınamadı, bu tarayıcıda kaldı.",
-      "persist": "Görünümler bu tarayıcıda kaydedilemedi; sayfa yenilenene kadar geçerli."
+      "persist": "Görünümler bu tarayıcıda kaydedilemedi; sayfa yenilenene kadar geçerli.",
+      "migratedDropped": " {{dropped}} görünüm sunucuda saklanamadı ve bu tarayıcıdan silindi."
     },
     "err": {
       "DUPLICATE": "Bu adla zaten bir görünümünüz var.",
