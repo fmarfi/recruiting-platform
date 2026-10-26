@@ -7,12 +7,12 @@ describe('pool filters <-> URL', () => {
     const f = { ...DEFAULT_FILTERS, tags: ['cfo', 'istanbul'], channels: ['REFERRAL' as const, 'WEBSITE' as const], cv: '"financial controller" -intern', shareable: true };
     const p = paramsFromFilters(f, 0);
     expect(p.get('tag')).toBe('cfo,istanbul');
-    expect(p.get('channel')).toBe('REFERRAL,WEBSITE');
+    expect(p.get('sourceChannel')).toBe('REFERRAL,WEBSITE');
     expect(p.get('shareable')).toBe('true');
     expect(filtersFromParams(p).filters).toEqual(f);
   });
   it('lower-cases tags, drops unknown channels and over-long tags, ignores shareable=false', () => {
-    const p = new URLSearchParams('tag=CFO,cfo, &tag=' + 'x'.repeat(41) + '&channel=referral,NOPE&shareable=false');
+    const p = new URLSearchParams('tag=CFO,cfo, &tag=' + 'x'.repeat(41) + '&sourceChannel=referral,NOPE&shareable=false');
     const { filters } = filtersFromParams(p);
     expect(filters.tags).toEqual(['cfo']);
     expect(filters.channels).toEqual(['REFERRAL']);

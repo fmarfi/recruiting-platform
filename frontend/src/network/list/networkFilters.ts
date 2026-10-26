@@ -72,7 +72,7 @@ export function filtersFromParams(params: URLSearchParams): { filters: ViewFilte
       city: params.get('city')?.trim() ?? '',
       company: params.get('company')?.trim() ?? '',
       tags: normTags(params.getAll('tag').join(',').split(',')),
-      channels: [...new Set(params.getAll('channel').join(',').split(',').map((x) => x.trim().toUpperCase()))].filter((x): x is Schemas['SourceChannel'] => (SOURCE_CHANNELS as string[]).includes(x)),
+      channels: [...new Set([...params.getAll('sourceChannel'), ...params.getAll('channel')].join(',').split(',').map((x) => x.trim().toUpperCase()))].filter((x): x is Schemas['SourceChannel'] => (SOURCE_CHANNELS as string[]).includes(x)),
       cv: params.get('cv')?.trim() ?? '',
       shareable: params.get('shareable') === 'true',
     },
@@ -91,7 +91,7 @@ export function paramsFromFilters(f: ViewFilters, page: number): URLSearchParams
   if (f.company) p.set('company', f.company);
   if (f.q) p.set('q', f.q);
   if (f.tags.length) p.set('tag', f.tags.join(','));
-  if (f.channels.length) p.set('channel', f.channels.join(','));
+  if (f.channels.length) p.set('sourceChannel', f.channels.join(','));
   if (f.cv) p.set('cv', f.cv);
   if (f.shareable) p.set('shareable', 'true');
   if (f.sort) p.set('sort', f.sort);

@@ -9,6 +9,7 @@ import { ReasonDialog } from '../../board/ReasonDialog';
 import { useBoardMoves } from '../../board/useBoardMoves';
 import { QuickAdd, type QuickAddContext } from '../../quickadd/QuickAdd';
 import { StatusBadge, problemText, useCurrentUser, useFormat, useLabel, type Schemas } from '../../shared';
+import { StageGuardDialog } from '../../board/StageGuardDialog';
 import { AddCandidateDialog } from './AddCandidateDialog';
 import { JobStatusMenu } from './JobStatusMenu';
 import { MoveToast } from './MoveToast';
@@ -163,6 +164,15 @@ export function JobOrderPage() {
         onAdded={() => {
           appsRes.reload();
           job.reload();
+        }}
+      />
+      <StageGuardDialog
+        guard={moves.guard}
+        role={me?.role}
+        onClose={moves.clearGuard}
+        onOverride={(g, reason) => {
+          moves.clearGuard();
+          void moves.move(g.app, g.to, g.reason, false, reason);
         }}
       />
       <QuickAdd opened={!!logCtx} onClose={() => setLogCtx(undefined)} context={logCtx} />
