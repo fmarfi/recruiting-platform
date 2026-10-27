@@ -9,7 +9,35 @@
   </parent>
   <artifactId>crm-accounts</artifactId>
   <name>crm-accounts</name>
+  <properties>
+    <tika.version>3.2.3</tika.version>
+  </properties>
   <dependencies>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-core</artifactId>
+      <version>${tika.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parser-text-module</artifactId>
+      <version>${tika.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parser-pdf-module</artifactId>
+      <version>${tika.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parser-microsoft-module</artifactId>
+      <version>${tika.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parser-miscoffice-module</artifactId>
+      <version>${tika.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.recruiting</groupId>
       <artifactId>contracts</artifactId>

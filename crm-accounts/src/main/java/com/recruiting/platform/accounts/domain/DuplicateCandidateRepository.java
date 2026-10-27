@@ -18,4 +18,12 @@ public interface DuplicateCandidateRepository extends JpaRepository<DuplicateCan
 
     @Query("SELECT d FROM DuplicateCandidate d WHERE d.personAId = :id OR d.personBId = :id")
     List<DuplicateCandidate> findByPerson(@Param("id") UUID personId);
+
+    Page<DuplicateCandidate> findByStatusIn(java.util.Collection<DuplicateStatus> statuses, Pageable pageable);
+
+    /** Pairs that involve one person. */
+    @Query("SELECT d FROM DuplicateCandidate d WHERE d.status IN :statuses AND "
+            + "(d.personAId = :personId OR d.personBId = :personId)")
+    Page<DuplicateCandidate> searchByPerson(@Param("statuses") java.util.Collection<DuplicateStatus> statuses,
+            @Param("personId") UUID personId, Pageable pageable);
 }
