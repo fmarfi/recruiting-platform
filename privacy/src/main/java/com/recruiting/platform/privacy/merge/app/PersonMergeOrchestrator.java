@@ -39,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
  * The merged id's Envers history is purged later together with the survivor's (the purge reads person_merge first).
  */
 @Service
-public class PersonMergeService {
+public class PersonMergeOrchestrator {
 
     private final ObjectProvider<PersonMergeApi> accounts;
     private final ObjectProvider<PipelinePersonApi> pipeline;
@@ -53,7 +53,7 @@ public class PersonMergeService {
     private final ApplicationEventPublisher events;
     private final Clock clock;
 
-    PersonMergeService(ObjectProvider<PersonMergeApi> accounts, ObjectProvider<PipelinePersonApi> pipeline,
+    PersonMergeOrchestrator(ObjectProvider<PersonMergeApi> accounts, ObjectProvider<PipelinePersonApi> pipeline,
             PersonGateway people, PersonPrivacyRepository privacy, ConsentRecordRepository records,
             ConsentRequestRepository requests, DataSubjectRequestRepository dsrs, RetentionPolicy retention,
             CurrentUser currentUser, ApplicationEventPublisher events, Clock clock) {
