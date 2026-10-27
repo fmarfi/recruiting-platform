@@ -8,7 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface CvIntakeItemRepository extends JpaRepository<CvIntakeItem, UUID> {
+public interface CvIntakeItemRepository extends JpaRepository<CvIntakeItem, UUID>,
+        org.springframework.data.jpa.repository.JpaSpecificationExecutor<CvIntakeItem> {
 
     List<CvIntakeItem> findByBatchId(UUID batchId);
 
@@ -27,4 +28,9 @@ public interface CvIntakeItemRepository extends JpaRepository<CvIntakeItem, UUID
             + "AND detected @> jsonb_build_object('emails', jsonb_build_array(CAST(:email AS text)))",
             nativeQuery = true)
     List<CvIntakeItem> findPendingByDetectedEmail(@Param("email") String emailLower);
+
+    List<CvIntakeItem> findTop10ByStatusAndTextStatusOrderByUploadedAt(CvIntakeStatus status,
+            com.recruiting.platform.contracts.TextExtractionStatus textStatus);
+
+    List<CvIntakeItem> findByStatusInAndUploadedAtBefore(java.util.Collection<CvIntakeStatus> statuses, Instant cutoff);
 }
