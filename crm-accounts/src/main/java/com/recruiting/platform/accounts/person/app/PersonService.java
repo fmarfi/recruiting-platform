@@ -6,6 +6,7 @@ import com.recruiting.platform.accounts.domain.PersonEducationRepository;
 import com.recruiting.platform.accounts.domain.PersonEmployment;
 import com.recruiting.platform.accounts.domain.PersonEmploymentRepository;
 import com.recruiting.platform.accounts.domain.PersonRepository;
+import com.recruiting.platform.accounts.duplicate.app.DuplicateService;
 import com.recruiting.platform.accounts.person.web.dto.EducationDto;
 import com.recruiting.platform.accounts.person.web.dto.Employment;
 import com.recruiting.platform.accounts.person.web.dto.LanguageSkillDto;
@@ -50,10 +51,12 @@ public class PersonService {
     private final ApplicationEventPublisher events;
     private final CompensationAccess compensationAccess;
     private final AccessRecorder access;
+    private final DuplicateService duplicates;
 
     public PersonService(PersonRepository people, PersonEmploymentRepository employments,
             PersonEducationRepository educations, PersonMapper mapper, UserDirectory users,
-            ApplicationEventPublisher events, CompensationAccess compensationAccess, AccessRecorder access) {
+            ApplicationEventPublisher events, CompensationAccess compensationAccess, AccessRecorder access,
+            DuplicateService duplicates) {
         this.people = people;
         this.employments = employments;
         this.educations = educations;
@@ -62,6 +65,7 @@ public class PersonService {
         this.events = events;
         this.compensationAccess = compensationAccess;
         this.access = access;
+        this.duplicates = duplicates;
     }
 
     public PersonResponse create(PersonCreateRequest request, Actor actor) {
@@ -102,6 +106,7 @@ public class PersonService {
         p = people.saveAndFlush(p);
         replaceEmployments(p.getId(), r.employments());
         replaceEducations(p.getId(), r.educations());
+        duplicates.record(p);
         events.publishEvent(new PersonCreated(Events.newId(), Instant.now(), actor.id(), p.getId(), p.getType(),
                 ownerId, email != null, importId));
         return p;
@@ -201,6 +206,7 @@ public class PersonService {
         if (patch.has("educations")) {
             replaceEducations(p.getId(), r.educations() == null ? List.of() : r.educations());
         }
+        duplicates.record(p);
         events.publishEvent(new PersonUpdated(Events.newId(), Instant.now(), actor.id(), p.getId(), p.getType(),
                 emailChanged));
         return mapper.response(p);
