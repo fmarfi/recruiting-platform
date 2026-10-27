@@ -1,60 +1,26 @@
-# Next session: where we stopped (2026-10-23) and what to do
+# State of the work (2026-10-28)
 
-Start the next session with: "Read CLAUDE.md, docs/plan/STATE.md and docs/plan/work-plan.md, then continue."
+Resume with: "Read docs/plan/STATE.md and docs/plan/work-plan.md, then continue." Run commands are in the root `README.md`.
 
-> 2026-10-25: scope and wave order changed by the Product Plan; **`docs/plan/work-plan.md` supersedes the wave order below and in `docs/archive/mastermind-plan.md`** (the feature ideas there still hold). State on 2026-10-25: ALL Wave 2a work so far (contract 1.1.0, DataGrid, command bar, network and job orders on the grid, tags/saved_view/bulk_action tables) is merged into `feature/network-customer-tools` (767cbff) and verified (tsc, 90 frontend tests, `mvn verify -Pintegration` 70 tests). The `wt-*` worktrees and `worktree-wave2a-*` branches are removed. Docker Desktop and WSL work (`.env` is git-ignored; the local profile expects Postgres on 5433). **STOPPED BY THE USER 2026-10-26, resume from here (supersedes everything below where it differs):** `feature/network-customer-tools` (3a61e53 + docs) is GREEN: `mvn -B verify -Pintegration` 105 tests, 0 failures; frontend tsc clean, 154 tests, build ok. Merged: Wave 2a, contracts 1.1.1 + 1.2.0, `/views` backend, db Wave 2b migrations/entities, frontend-shell and frontend-pipeline Wave 2b. **Three Wave 2b backend agents were killed mid-work; their worktrees under `.worktrees/` hold UNREVIEWED, UNVERIFIED partial work:** `be-accounts` (branch worktree-wave2b-backend-accounts, 0 commits, 26 uncommitted files: people repository queries/query service in progress), `be-pipeline` (worktree-wave2b-backend-pipeline, 0 commits, 7 uncommitted files, a test was being fixed), `be-security` (worktree-wave2b-security-privacy, 1 commit d38676f FieldCipher AES-GCM + 21 uncommitted files). Resume them with the same briefs (see `docs/process/handoffs/architect.md` Wave 2b change requests per owner): first `git status`/`git diff --stat` in each, commit what compiles, then continue slice by slice, commit per slice; backend-accounts codes against `com.recruiting.platform.security.FieldCipher`; pipeline defines the `ShareGuard` and `BulkActionHandler` SPIs that privacy implements. Review each branch before merging; merge order accounts, pipeline, security-privacy. The decisions and stages queued after that, in order: **Stage Structure** (ADR 0012 PROPOSED, one decision needed from the user: extract a `talent` module from `accounts`; must run with no agent worktrees open), then **Stage UX** (browser audit, WCAG 2.2 AA, design system; requested by the user), then Wave 2c. Plan in `docs/plan/work-plan.md`. Docs from this session are uncommitted in the main checkout (work-plan-v2, TASKS, NEXT-SESSION, ADR 0012).
+## Where we are
+Branch `feature/network-customer-tools` holds everything. Verified on the merged result: `mvn -B verify -Pintegration` 151 tests, 0 failures; frontend `tsc` clean, 154 tests, build ok.
 
-**UPDATE 2026-10-26 (older, superseded by the block above):** contracts 1.1.1 + 1.2.0 (candidate pool, ADR 0011) and the `/views` backend are merged into `feature/network-customer-tools` (137bd5a). **KNOWN RED (expected, not flaky):** `mvn -B verify -Pintegration` on that merged HEAD gives 77 tests, 1 failure: `MigrationIT.checkConstraintsMatchTheContractEnums` on `access_log.entity_type`, because contract 1.2.0 added `PERSON_FILE`, `CV_INTAKE_ITEM`, `OFF_LIMITS_RULE` to `EntityType` and the DB CHECK is not migrated yet. The db-engineer's Wave 2b migrations (branch `worktree-wave2b-db`) must fix it; it goes green when that merges. (tsc clean, 90 frontend tests pass.) An earlier one-off `PipelineApiIT.everyChangeAppearsInTheTimeline` failure (SCREENED vs SOURCED) did not reproduce in 5 reruns; watch it. Worktrees live in `.worktrees/` (git-excluded): `db` (worktree-wave2b-db, agent was still running, c75978d+), `fe-pipeline` (02c2907+, agent still running), `fe-shell` (6d30a8f, finished: tsc clean, 112 tests, build ok, NOT yet reviewed or merged; change request: contract `cv` param is a text query, architect must add boolean `hasCv` if cv:yes|no is wanted). Nothing from these three is verified or reviewed yet. Then: merge order db, backends (accounts, pipeline, security-privacy; see `docs/process/handoffs/architect.md` Wave 2b change requests, incl. `AuditPurger` person_aud tags scrub), frontends. Old note: architect contract 1.2.0 for the candidate pool, then the `/views` and `/bulk-actions` backends with the review change requests in `docs/plan/TASKS.md`.
+Merged: Wave 2a (DataGrid, command bar, saved views, bulk-action tables), contracts 1.1.1 and 1.2.0, Wave 2b db migrations and entities, Wave 2b backends (accounts: people profile, encrypted compensation, files and Tika, CV intake, duplicates, off-limits; pipeline: bulk actions, ShareGuard stage guards, exposure; security-privacy: FieldCipher, consent engine, merge orchestration, purge), Wave 2b frontends, and a UX polish pass (My day, highlights, accessibility basics).
 
-## Setup facts (this machine)
-- Repo: `C:\Users\SID-DRW\Desktop\New folder\recruiting-platform` (branch `feature/network-customer-tools`). No worktrees at the moment (create them by hand when launching agents).
-- Tools installed by winget: Git, JDK 21, Node 24, Docker Desktop. Maven 3.9.9 is manual at `C:\Users\SID-DRW\tools\apache-maven-3.9.9`.
-- Every fresh PowerShell needs: `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`.
-- Git has no global identity; commit with `git -c user.name="asim" -c user.email="ilhanasimfurkan@gmail.com" commit ...`.
-- Docker Desktop is installed but has never been started: launch it once before `-Pintegration` tests or the local DB.
-- **REMINDER: start Claude Code INSIDE `recruiting-platform` (`cd recruiting-platform`, then `claude`).** Then the harness creates agent worktrees itself under `.claude/worktrees/` (hidden, cleaned up) and no `wt-*` folders pile up next to the repo. This session started in the parent folder, so worktrees were made by hand with `git worktree add -b <branch> ..\wt-<name>`; remove each with `git worktree remove` after its merge.
-- `frontend/package-lock.json` shows as modified in every checkout (npm install side effect). Do not commit it.
-- Nothing is pushed to GitHub.
+Local development: the `local` profile signs in as the demo admin (`app.security.dev-auto-login-as` in `application-local.yml`). Delete that line to get the login screen back. The dev server needs `API_TARGET=http://localhost:8080` to use the real backend.
 
-## State of the work
-| Piece | Branch / place | Status |
-| --- | --- | --- |
-| Network and client tools (smart lists, CSV, bulk consent, relationship map and snapshot, account Relationships tab) | `feature/network-customer-tools`, commit cc5f751 | Done and verified: tsc clean, 24 tests, vite build ok. Not clicked through in a browser. |
-| Mastermind plan | `docs/archive/mastermind-plan.md`, commit 09a0d81 | Approved by the user ("yes go", start with grid and command bar). |
-| Contract 1.1.0: saved views + bulk actions, ADR 0010 | `worktree-wave2a-architect`, commits 55ecce8 and 5f706e6 | Committed by the architect; its verification report had NOT been read yet. Re-verify before merging (below). |
-| DataGrid, ViewStore, command bar (Ctrl+K), accounts list on grid | `worktree-wave2a-frontend-shell`, commits f87e806 and 0f9ec8d | Verified by the orchestrator: tsc clean, 64 tests pass. Left: bulk selection off on accounts, CSV is current page only, group-by has no UI. |
-| Code review of the frontend-shell branch | agent was still running when the session ended | Result not read. If lost, rerun the review (read-only, Opus) on `worktree-wave2a-frontend-shell`. |
+## Known gaps and follow-ups
+- `POST /people/{id}/merge` returns a reduced person record, not the contract's full `Person`; accounts needs a `survivorView` API.
+- Not built yet: nightly duplicate scan, weekly orphan sweep, `GET /bulk-actions`, accounts and people bulk handlers, `hasCv` filter field.
+- Phone layout of the UX pass was not checked in a browser; the Network filter card is long on phones; a Referrer page still says "Candidate profile".
+- `ConsentEngineApiIT` flaked once; fixed in the test, watch it.
+- Frontend: off-limits override field and exposure warning toast on add-to-job, file delete button, network list on the server-backed view store, Playwright end-to-end tests, demo people at PRESENTED need consent GIVEN.
+- Open client questions: `docs/plan/work-plan.md` section 4.
 
-Command-bar URL params for the network and job screens (from the frontend-shell hand-off): `/network`: `owner=me, stale=N, type=A,B, consent=X, city, company, q`; `/job-orders`: `owner=me, status, q`; `/accounts` (already reads): `owner=me|all, status, q`.
+## Queue
+1. Stage Structure (ADR 0012, needs the decision to extract a `talent` module from `accounts`; run with no agent worktrees open).
+2. Stage UX in full: browser audit of every screen, WCAG 2.2 AA, design system, performance, usability test.
+3. Wave 2c (BD and assignments), 2d (client output), 2e (relationship edge and integrations).
 
-## Update later on 2026-10-23 (supersedes the table above where they differ)
-- Architect branch `worktree-wave2a-architect` (head 8d81d21): VERIFIED by the orchestrator (tsc clean, 24 tests, `mvn -q -B verify` exit 0 without -Pintegration). Ready to merge.
-- Code review of frontend-shell: DONE, no blockers, 6 should-fix + nits. The frontend-shell agent was asked to fix them (same worktree). After it reports: re-run tsc, vitest, vite build there yourself, then merge. Review items are in that agent's brief; key ones: Object.hasOwn in operators.ts, repeated `status:` operator, AccountsList filters in the URL, no people names in localStorage recents (KVKK), viewStore setItem failure.
-- `db-engineer` was launched on worktree `..\wt-db` (branch `worktree-wave2a-db`, based on the architect branch). Check `git -C ..\wt-db log --oneline -5` and `docs/process/handoffs/db-engineer.md` there; verify with `mvn -q -B verify` (and `-Pintegration` with Docker running).
-- LATER UPDATE: frontend-shell fixes done and verified by the orchestrator (79 tests, tsc clean, build ok). Architect + frontend-shell are MERGED into branch `wave2a-integration` (worktree `..\wt-integration`, head e24ec0a); tsc/79 tests/vite build verified on the merge.
-- `frontend-pipeline` was launched on `..\wt-frontend-pipeline` (branch `worktree-wave2a-frontend-pipeline`, based on wave2a-integration): network list and job orders list onto the DataGrid. Not yet reviewed or verified.
-- The main checkout (`recruiting-platform`, branch `feature/network-customer-tools`) does NOT contain Wave 2a yet: continue from `wave2a-integration`.
-- Not yet started: backend-accounts (/views), backend-pipeline + security-privacy (/bulk-actions). They follow db-engineer's merge (rebase their worktrees on wave2a-integration + db branch).
-
-## Steps for tomorrow (in order)
-1. **Check the agents.** `git -C ..\wt-architect log --oneline -3`; read `docs/process/handoffs/architect.md` in `wt-architect` and the review result for frontend-shell (or rerun it).
-2. **Verify the architect branch** in `..\wt-architect`: `cd frontend; npm install; npm run gen:api; npm run typecheck; npm test`, then `mvn -q -B verify` at the repo root (Docker running for `-Pintegration`), and a Prism smoke on `/views` and `/bulk-actions`. Send it to code-reviewer.
-3. **Merge in the repo order** into a fresh integration branch from `feature/network-customer-tools`: architect (contracts) first, then frontend-shell. Fix review blockers via the author. Resolve any overlap in `frontend/src/shell/i18n/*.json` and regenerate the API client.
-4. **Wave 2a, part 2: launch in ONE message, each in its own hand-made worktree**, briefed from `docs/process/context/brief.md` and the architect's change requests:
-   - `db-engineer` (Sonnet): Flyway migration + entity + repository + IT for `saved_view`.
-   - `backend-accounts` (Sonnet): `/views` endpoints; accept the command-bar operators in people/account list queries if the contract needs it.
-   - `backend-pipeline` + `security-privacy` (Sonnet): `/bulk-actions`: status changes through the status machine, consent gate with explicit reason codes, one audit entry per record.
-   - `frontend-pipeline` (Sonnet): move the Network list onto the shared DataGrid (my version in `network/list/` is the reference for presets, saved views, CSV export, bulk consent), read the command-bar URL params, adopt the server-backed ViewStore and bulk-action bar once endpoints exist.
-   - Merge order: db-engineer, backend agents, security-privacy, frontends. Green build and tests or no merge.
-5. **Then the rest of Wave 2a:** activity composer and timeline on every record, path component (stage guide), dashboards v1 on existing data, CSV for every grid (all pages). Update `docs/plan/TASKS.md` (orchestrator only) with a Wave 2a section and gate.
-6. **Run the app end to end** (Docker up, `mvn -q install -DskipTests`, `spring-boot:run -Dspring-boot.run.profiles=local`, `npm run dev`) and click through the new screens; none of the new UI has been seen in a browser yet. Fix what looks off.
-7. **Wave 2b and 2c** per `docs/archive/mastermind-plan.md` section 5 (reports with fees, calendar, e-mail, files, duplicates, then relationship strength, warm-path finder, org chart, alumni, "we have been here before", compliance cockpit).
-
-## Open decisions (ask the user if still unanswered)
-- Who may create shared saved views: any consultant or managers only (contract assumes MANAGER/ADMIN).
-- Fees on job orders: fixed, percent of salary, or both.
-- Whether contract changes for Wave 2b/2c (path finder, org chart, reports, files) go through the architect now.
-- "No competitor does this" claims are unverified; check Bullhorn, Vincere, Invenias before using them externally.
-
-## Rules to keep
-Synthetic data only; never the pilot client's name. Light corporate enterprise UI, TR and EN for every label. Contracts change only through the architect. Every branch reviewed before merge. Reports from agents are claims: verify in the worktree.
+## Housekeeping rules
+Agents work in `.worktrees/` (git-excluded); remove each worktree and branch after its merge. `frontend/package-lock.json` is never committed. Commits carry no attribution lines. `CLAUDE.md` and `.claude/` are git-ignored and kept local; a copy is on Google Drive.
