@@ -6,6 +6,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CandidateExposureRepository extends JpaRepository<CandidateExposure, UUID> {
 
+    /** Merge: exposures of the merged person move to the survivor (ids and dates only, not audited). */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE CandidateExposure e SET e.personId = :to WHERE e.personId = :from")
+    int movePerson(@org.springframework.data.repository.query.Param("from") UUID from,
+            @org.springframework.data.repository.query.Param("to") UUID to);
+
+    /** Merge: exposures of a removed duplicate application point at the survivor application. */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE CandidateExposure e SET e.applicationId = :to WHERE e.applicationId = :from")
+    int moveApplication(@org.springframework.data.repository.query.Param("from") UUID from,
+            @org.springframework.data.repository.query.Param("to") UUID to);
+
     /** Exposure tab and merge: newest first. */
     List<CandidateExposure> findByPersonIdOrderByPresentedAtDesc(UUID personId);
 

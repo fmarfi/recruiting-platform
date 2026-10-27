@@ -29,6 +29,11 @@ public interface NextActionRepository extends JpaRepository<NextAction, UUID>, J
     @Query("UPDATE NextAction n SET n.title = '[removed]' WHERE n.personId = :personId")
     int scrubTitles(@Param("personId") UUID personId);
 
+    /** Open follow-ups of a person with the given title (the "Renew consent" action). */
+    List<NextAction> findByPersonIdAndTitleAndDoneFalse(UUID personId, String title);
+
+    List<NextAction> findByPersonId(UUID personId);
+
     /** Removes the Envers history rows of the next actions of a person (schema.md, Anonymisation). */
     @Modifying
     @Query(value = "DELETE FROM next_action_aud WHERE person_id = :personId", nativeQuery = true)
