@@ -58,6 +58,14 @@ export function tokenCss(): string {
     ...Object.keys(tokens.tone.light).map(
       (t) => `.tone-${t.toLowerCase()}{background:var(--tone-${t.toLowerCase()}-bg);color:var(--tone-${t.toLowerCase()}-fg);}`,
     ),
+    `.kpi-tile{transition:border-color .12s,box-shadow .12s;box-shadow:inset 0 3px 0 var(--color-accent);}`,
+    `.kpi-tile:hover{border-color:var(--color-borderStrong);box-shadow:inset 0 3px 0 var(--color-accent),0 2px 8px rgba(15,26,43,.08);}`,
+    `.kpi-tile:focus-visible,.nav-link:focus-visible,.skip-link:focus-visible,.brand-link:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px;}`,
+    `.nav-link:not([aria-current="page"]):hover{background:var(--color-surface2)!important;}`,
+    `.skip-link{position:absolute;left:8px;top:-48px;z-index:1000;background:var(--color-surface);color:var(--color-accent);padding:8px 14px;border-radius:var(--radius-md);border:1px solid var(--color-accent);font-weight:600;text-decoration:none;}`,
+    `.skip-link:focus{top:8px;}`,
+    `.brand-link{color:var(--color-accent);font-weight:700;text-decoration:none;white-space:nowrap;border-radius:var(--radius-sm);}`,
+    `th,td{overflow-wrap:anywhere;}`,
     tokens.motion.honourReducedMotion ? `@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}` : '',
   ].join('\n');
 }

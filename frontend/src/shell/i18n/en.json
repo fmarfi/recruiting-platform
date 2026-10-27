@@ -9,6 +9,14 @@
     "new": "New",
     "menu": "Menu",
     "mainNav": "Main navigation",
+    "skipToContent": "Skip to main content",
+    "pagination": {
+      "first": "First page",
+      "last": "Last page",
+      "next": "Next page",
+      "previous": "Previous page",
+      "page": "Page {{n}}"
+    },
     "logout": "Sign out",
     "userMenu": "User menu",
     "changeStatus": "Change status",
@@ -142,6 +150,8 @@
     "noJobs": "No open job orders",
     "noJobsHint": "Job orders appear here once a client opens one.",
     "recent": "Recent clients",
+    "viewAllJobs": "View all job orders",
+    "viewAllClients": "View all clients",
     "daysOpen": "{{n}} days open",
     "candidates": "{{n}} candidates"
   },
