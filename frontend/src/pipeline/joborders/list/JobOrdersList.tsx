@@ -1,4 +1,5 @@
 // Flat list of job orders for 3-click access (UX-03): defaults to open jobs owned by me. DataGrid with column chooser, sort, density, views and CSV.
+import { useAuth } from '../../../shell/auth/useAuth';
 import { Button, Chip, Container, Group, Pagination, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
@@ -18,12 +19,13 @@ type JobView = Pick<JobListState, 'q' | 'status' | 'mine'>;
 export function JobOrdersList() {
   const { t } = useTranslation();
   const me = useCurrentUser();
+  const { isAdmin } = useAuth();
   const { ref, label } = useLabel();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
   // Filters, page and sort are the URL (command bar links, Back, reload); replace keeps history clean.
   const [params, setParams] = useSearchParams();
-  const s = useMemo(() => jobStateFromParams(params), [params]);
-  const set = (patch: Partial<JobListState>, resetPage = true) => setParams(jobParamsFromState({ ...s, ...(resetPage ? { page: 0 } : {}), ...patch }), { replace: true });
+  const s = useMemo(() => jobStateFromParams(params, isAdmin), [params, isAdmin]);
+  const set = (patch: Partial<JobListState>, resetPage = true) => setParams(jobParamsFromState({ ...s, ...(resetPage ? { page: 0 } : {}), ...patch }, isAdmin), { replace: true });
   const [viewWarn, setViewWarn] = useState(false);
   const defs = useJobColumns();
   const columns = useGridColumns<JobOrderRow>(GRID_ID, defs);
@@ -33,7 +35,7 @@ export function JobOrdersList() {
   const res = useJobOrders({ q: s.q, status: s.status, openOnly: true, ownerId, page: s.page, sort: s.sort });
   const statuses = ref?.lifecycles.jobOrder.statuses ?? [];
   const sort = parseSort(s.sort) ?? parseSort(DEFAULT_JOB_SORT);
-  const filtered = !!(s.q || s.status.length || !s.mine);
+  const filtered = !!(s.q || s.status.length || (isAdmin ? s.mine : !s.mine));
 
   return (
     <Container maw="var(--content-max-width)" fluid>
