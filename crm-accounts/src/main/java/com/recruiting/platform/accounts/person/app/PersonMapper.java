@@ -7,6 +7,7 @@ import com.recruiting.platform.accounts.domain.PersonEmployment;
 import com.recruiting.platform.accounts.domain.PersonEmploymentRepository;
 import com.recruiting.platform.accounts.domain.PersonFile;
 import com.recruiting.platform.accounts.domain.PersonFileRepository;
+import com.recruiting.platform.accounts.offlimits.app.OffLimitsService;
 import com.recruiting.platform.accounts.person.web.dto.EducationDto;
 import com.recruiting.platform.accounts.person.web.dto.Employment;
 import com.recruiting.platform.accounts.person.web.dto.LanguageSkillDto;
@@ -34,14 +35,17 @@ public class PersonMapper {
     private final PersonEducationRepository educations;
     private final PersonFileRepository files;
     private final CompensationAccess compensationAccess;
+    private final OffLimitsService offLimits;
 
     public PersonMapper(UserDirectory users, PersonEmploymentRepository employments,
-            PersonEducationRepository educations, PersonFileRepository files, CompensationAccess compensationAccess) {
+            PersonEducationRepository educations, PersonFileRepository files, CompensationAccess compensationAccess,
+            OffLimitsService offLimits) {
         this.users = users;
         this.employments = employments;
         this.educations = educations;
         this.files = files;
         this.compensationAccess = compensationAccess;
+        this.offLimits = offLimits;
     }
 
     public List<PersonSummaryResponse> summaries(Collection<Person> people) {
@@ -76,7 +80,7 @@ public class PersonMapper {
                 p.getAnonymisedAt() != null, p.getCreatedAt(), p.getUpdatedAt(),
                 p.getVersion() == null ? 0 : p.getVersion(),
                 p.getNoticePeriodDays() == null ? null : p.getNoticePeriodDays().intValue(), p.getMobility(),
-                canSee ? p.getCompensation() : null, !canSee, languages(p), education, currentCv, List.of());
+                canSee ? p.getCompensation() : null, !canSee, languages(p), education, currentCv, offLimits.activeFor(p));
     }
 
     public PersonFileResponse file(PersonFile f) {
