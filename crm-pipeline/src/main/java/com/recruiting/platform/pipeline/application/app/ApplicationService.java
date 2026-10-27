@@ -37,9 +37,11 @@ public class ApplicationService {
     private final Refs refs;
     private final PersonDirectory people;
     private final ApplicationEventPublisher events;
+    private final ApplicationGuards guards;
 
     ApplicationService(ApplicationRepository repo, JobOrderRepository jobOrders, Refs refs, PersonDirectory people,
-            ApplicationEventPublisher events, CurrentUser currentUser) {
+            ApplicationEventPublisher events, CurrentUser currentUser, ApplicationGuards guards) {
+        this.guards = guards;
         this.currentUser = currentUser;
         this.repo = repo;
         this.jobOrders = jobOrders;
@@ -70,7 +72,8 @@ public class ApplicationService {
     }
 
     @Transactional
-    public Application add(UUID jobOrderId, UUID personId) {
+    public Application add(UUID jobOrderId, UUID personId, String offLimitsOverride) {
+        String override = guards.checkOverride(offLimitsOverride);
         JobOrder job = requireJob(jobOrderId);
         if (!job.getStatus().isOpen()) {
             throw new ApiException(ErrorCode.TRANSITION_GUARD_FAILED,
@@ -85,7 +88,9 @@ public class ApplicationService {
             throw new ApiException(ErrorCode.DUPLICATE, "This person is already on the job order.",
                     Map.of("existingId", existing.get().getId().toString()));
         }
+        guards.requireNotOffLimits(personId, job.getAccountId(), override != null);
         Application a = new Application();
+        a.setOffLimitsOverrideReason(override);
         a.setJobOrderId(jobOrderId);
         a.setPersonId(personId);
         a.setStage(PipelineStage.INITIAL);

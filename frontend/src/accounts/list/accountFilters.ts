@@ -11,7 +11,7 @@ export const DEFAULT_SORT = 'lastActivityAt,desc';
  * status: one account status constant (a repeated or comma separated list keeps the last one, the list takes a single status).
  * page is 1-based; defaults are left out of the URL.
  */
-export function filtersFromParams(params: URLSearchParams, meId: string): AccountFilters {
+export function filtersFromParams(params: URLSearchParams, meId: string, defaultAll = false): AccountFilters {
   const raw = params.getAll('status').join(',').split(',').pop() ?? '';
   const status = raw.trim().toUpperCase();
   const sort = parseSort(params.get('sort'));
@@ -19,15 +19,16 @@ export function filtersFromParams(params: URLSearchParams, meId: string): Accoun
   return {
     q: params.get('q') ?? '',
     status: STATUSES.includes(status) ? status : '',
-    ownerId: params.get('owner') === 'all' ? '' : meId,
+    ownerId: (params.get('owner') ?? (defaultAll ? 'all' : 'me')) === 'all' ? '' : meId,
     page: Number.isInteger(page) && page > 1 ? page - 1 : 0,
     sort: sort && SORT_FIELDS.includes(sort.field) ? formatSort(sort) : DEFAULT_SORT,
   };
 }
 
-export function paramsFromFilters(f: AccountFilters): URLSearchParams {
+/** `defaultAll`: the default scope is everybody (admins own no records), so only "me" is written. */
+export function paramsFromFilters(f: AccountFilters, defaultAll = false): URLSearchParams {
   const p = new URLSearchParams();
-  if (!f.ownerId) p.set('owner', 'all');
+  if (defaultAll ? !!f.ownerId : !f.ownerId) p.set('owner', defaultAll ? 'me' : 'all');
   if (f.status) p.set('status', f.status);
   if (f.q) p.set('q', f.q);
   if (f.page > 0) p.set('page', String(f.page + 1));

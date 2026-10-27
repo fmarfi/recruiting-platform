@@ -31,4 +31,17 @@ public interface PersonFileRepository extends JpaRepository<PersonFile, UUID> {
     @Query(value = "SELECT person_id FROM person_file WHERE kind = 'CV' AND is_current "
             + "AND text_tsv @@ plainto_tsquery('tr_unaccent', :q)", nativeQuery = true)
     List<UUID> findPersonIdsByCvText(@Param("q") String q);
+
+    /** Web-search syntax over the current CVs (words AND, "phrases", or, -word), best match first: [person_id, rank]. */
+    @Query(value = "SELECT person_id, ts_rank(text_tsv, websearch_to_tsquery('tr_unaccent', :q)) AS rank "
+            + "FROM person_file WHERE kind = 'CV' AND is_current "
+            + "AND text_tsv @@ websearch_to_tsquery('tr_unaccent', :q) ORDER BY rank DESC LIMIT 5000",
+            nativeQuery = true)
+    List<Object[]> searchCurrentCv(@Param("q") String q);
+
+    /** Short excerpts for the people on one page: [person_id, headline] with the match between guillemets. */
+    @Query(value = "SELECT person_id, ts_headline('tr_unaccent', extracted_text, websearch_to_tsquery('tr_unaccent', :q), "
+            + "'StartSel=«, StopSel=», MaxFragments=1, MaxWords=25, MinWords=8') "
+            + "FROM person_file WHERE kind = 'CV' AND is_current AND person_id IN (:ids)", nativeQuery = true)
+    List<Object[]> headlines(@Param("q") String q, @Param("ids") java.util.Collection<UUID> ids);
 }

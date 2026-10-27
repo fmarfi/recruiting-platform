@@ -65,7 +65,7 @@ class Wave2bAccountsRepositoryIT extends Wave2bSupport {
         p.setSourceChannel(SourceChannel.CV_UPLOAD);
         p.setNoticePeriodDays((short) 90);
         p.setMobility(Mobility.WITHIN_COUNTRY);
-        p.setCompensationEnc(new byte[] {1, 2, 3, 4, 5});
+        p.setCompensation(new com.recruiting.platform.accounts.domain.Compensation(null, null, new java.math.BigDecimal("300000"), "TRY", com.recruiting.platform.contracts.CompensationPeriod.ANNUAL, com.recruiting.platform.contracts.SalaryBasis.GROSS, null, null));
         p.setLanguages(List.of(Map.of("language", "EN", "level", "FLUENT")));
         p.setPhoneNormalized("+905551112233");
         p.setLinkedinUrlNormalized("https://www.linkedin.com/in/fictional-" + UUID.randomUUID());
@@ -75,7 +75,7 @@ class Wave2bAccountsRepositoryIT extends Wave2bSupport {
         assertThat(loaded.getSourceChannel()).isEqualTo(SourceChannel.CV_UPLOAD);
         assertThat(loaded.getNoticePeriodDays()).isEqualTo((short) 90);
         assertThat(loaded.getMobility()).isEqualTo(Mobility.WITHIN_COUNTRY);
-        assertThat(loaded.getCompensationEnc()).containsExactly(1, 2, 3, 4, 5);
+        assertThat(loaded.getCompensation().currency()).isEqualTo("TRY");
         assertThat(loaded.getLanguages()).singleElement().satisfies(l -> assertThat(l).containsEntry("level", "FLUENT"));
         assertThat(people.findByPhoneNormalized("+905551112233")).extracting(Person::getId).contains(id);
         assertThat(people.findByLinkedinUrlNormalized(p.getLinkedinUrlNormalized())).hasSize(1);

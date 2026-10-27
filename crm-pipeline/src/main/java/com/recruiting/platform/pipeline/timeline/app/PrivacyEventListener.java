@@ -2,6 +2,8 @@ package com.recruiting.platform.pipeline.timeline.app;
 
 import com.recruiting.platform.contracts.PersonAnonymised;
 import com.recruiting.platform.contracts.RetentionFlagged;
+import com.recruiting.platform.contracts.RetentionRenewed;
+import java.time.Instant;
 import com.recruiting.platform.pipeline.domain.ActivityRepository;
 import com.recruiting.platform.pipeline.domain.ApplicationRepository;
 import com.recruiting.platform.pipeline.domain.NextAction;
@@ -38,7 +40,17 @@ class PrivacyEventListener {
         if (!e.deleted()) {
             activities.scrubNotes(e.personId());
             applications.scrubRejectionReason(e.personId());
+            applications.scrubOffLimitsReason(e.personId());
             nextActions.scrubTitles(e.personId());
+        }
+    }
+
+    @ApplicationModuleListener
+    void on(RetentionRenewed e) {
+        for (NextAction n : nextActions.findByPersonIdAndTitleAndDoneFalse(e.personId(), RENEW_TITLE)) {
+            n.setDone(true);
+            n.setDoneAt(Instant.now());
+            nextActions.save(n);
         }
     }
 

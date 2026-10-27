@@ -4,7 +4,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * Lifecycle of a client account (A-02). Matches {@code docs/status-lifecycles.md}.
+ * Lifecycle of a client account (A-02). Matches {@code docs/plan/status-lifecycles.md}.
  *
  * <p>Reason required for moves to {@link #ON_HOLD}, to {@link #CLOSED} and
  * {@code CLOSED -> LEAD}. Moves to {@link #CLOSED} and {@code CLOSED -> LEAD} are

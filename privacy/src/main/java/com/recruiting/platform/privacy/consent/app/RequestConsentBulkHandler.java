@@ -7,12 +7,14 @@ import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.ErrorCode;
 import com.recruiting.platform.contracts.Language;
 import com.recruiting.platform.contracts.Role;
+import com.recruiting.platform.contracts.ListEntity;
 import com.recruiting.platform.pipeline.BulkActionHandler;
+import com.recruiting.platform.pipeline.BulkCommand;
+import com.recruiting.platform.pipeline.BulkItemResult;
 import com.recruiting.platform.privacy.domain.PersonPrivacyRepository;
 import com.recruiting.platform.privacy.person.app.PersonGateway;
 import com.recruiting.platform.privacy.person.app.PersonInfo;
 import java.time.Clock;
-import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,60 +44,51 @@ class RequestConsentBulkHandler implements BulkActionHandler {
     }
 
     @Override
-    public BulkActionType action() {
-        return BulkActionType.REQUEST_CONSENT;
+    public boolean supports(ListEntity entity, BulkActionType action) {
+        return entity == ListEntity.PEOPLE && action == BulkActionType.REQUEST_CONSENT;
     }
 
     @Override
-    public Result handle(UUID actorId, Role role, Map<String, Object> params, UUID id) {
+    public BulkItemResult handle(BulkCommand command, UUID id) {
+        Role role = command.role();
+        UUID actorId = command.actorId();
         if (role != Role.MANAGER && role != Role.ADMIN) {
-            return Result.skipped(BulkResultCode.FORBIDDEN);
+            return BulkItemResult.skipped(BulkResultCode.FORBIDDEN);
         }
         PersonInfo person = people.find(id).orElse(null);
         if (person == null) {
-            return Result.skipped(BulkResultCode.NOT_FOUND);
+            return BulkItemResult.skipped(BulkResultCode.NOT_FOUND);
         }
         if (person.anonymised()) {
-            return Result.skipped(BulkResultCode.ANONYMISED);
+            return BulkItemResult.skipped(BulkResultCode.ANONYMISED);
         }
         ConsentStatus status = privacy.findById(id).map(p -> p.getConsentStatus()).orElse(ConsentStatus.NOT_SENT);
         switch (status) {
             case GIVEN:
-                return Result.skipped(BulkResultCode.CONSENT_GIVEN);
+                return BulkItemResult.skipped(BulkResultCode.CONSENT_GIVEN);
             case REFUSED:
-                return Result.skipped(BulkResultCode.CONSENT_REFUSED);
+                return BulkItemResult.skipped(BulkResultCode.CONSENT_REFUSED);
             case WITHDRAWN:
-                return Result.skipped(BulkResultCode.CONSENT_WITHDRAWN);
+                return BulkItemResult.skipped(BulkResultCode.CONSENT_WITHDRAWN);
             default:
                 break;
         }
         if (person.email() == null || person.email().isBlank()) {
-            return Result.skipped(BulkResultCode.NO_EMAIL);
+            return BulkItemResult.skipped(BulkResultCode.NO_EMAIL);
         }
         if (requests.askedSince(id, clock.instant().minus(ConsentBulkService.REMINDER_GAP))) {
-            return Result.skipped(BulkResultCode.REQUEST_PENDING);
+            return BulkItemResult.skipped(BulkResultCode.REQUEST_PENDING);
         }
         try {
-            requests.send(id, language(params), actorId);
-            return Result.ok();
+            requests.send(id, command.params() == null || command.params().language() == null ? Language.TR
+                    : command.params().language(), actorId);
+            return BulkItemResult.ok();
         } catch (ApiException ex) {
-            return Result.skipped(ex.code() == ErrorCode.NOT_FOUND ? BulkResultCode.NOT_FOUND
+            return BulkItemResult.skipped(ex.code() == ErrorCode.NOT_FOUND ? BulkResultCode.NOT_FOUND
                     : BulkResultCode.STATE_CONFLICT);
         } catch (RuntimeException ex) {
             LOG.warn("Bulk consent request failed for a person: {}", ex.getClass().getSimpleName());
-            return Result.failed(BulkResultCode.INTERNAL_ERROR);
-        }
-    }
-
-    private static Language language(Map<String, Object> params) {
-        Object value = params == null ? null : params.get("language");
-        if (value == null) {
-            return Language.TR;
-        }
-        try {
-            return Language.valueOf(value.toString());
-        } catch (IllegalArgumentException ex) {
-            return Language.TR;
+            return BulkItemResult.failed(BulkResultCode.INTERNAL_ERROR);
         }
     }
 }

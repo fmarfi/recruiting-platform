@@ -4,5 +4,5 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 /** OpenAPI ApplicationCreateRequest. */
-public record ApplicationCreateRequest(@NotNull UUID personId) {
+public record ApplicationCreateRequest(@NotNull UUID personId, String offLimitsOverrideReason) {
 }

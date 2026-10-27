@@ -49,6 +49,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * a ready authentication whose principal carries the user id (as the session principal does).
  */
 @AutoConfigureMockMvc
+@org.springframework.context.annotation.Import(GuardTestConfig.class)
 class PipelineApiIT extends AbstractPersistenceIT {
 
     private record Principal(UUID userId) implements IdentifiedUser {

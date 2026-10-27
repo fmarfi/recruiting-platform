@@ -43,7 +43,8 @@ public class ApplicationMapper {
             JobOrder j = jobs.get(a.getJobOrderId());
             return new ApplicationResponse(a.getId(), new JobOrderRef(j.getId(), j.getTitle(), j.getStatus()),
                     l.account(j.getAccountId()), l.person(a.getPersonId()), a.getStage(), a.getRejectionReason(),
-                    a.getStageChangedAt(), a.getCreatedAt(), l.user(a.getCreatedBy()), a.getVersion());
+                    a.getStageChangedAt(), a.getCreatedAt(), l.user(a.getCreatedBy()), a.getVersion(),
+                    a.getOffLimitsOverrideReason(), null);
         }).toList();
     }
 }

@@ -1,53 +1,37 @@
 package com.recruiting.platform.pipeline;
 
 import com.recruiting.platform.contracts.BulkActionType;
-import com.recruiting.platform.contracts.BulkOutcome;
-import com.recruiting.platform.contracts.BulkResultCode;
-import com.recruiting.platform.contracts.Role;
-import java.util.Map;
+import com.recruiting.platform.contracts.ListEntity;
 import java.util.UUID;
 
 /**
- * SPI of the bulk action dispatcher (ADR 0010, {@code POST /bulk-actions}). The dispatcher in pipeline calls the
- * handler registered for the action once per id, each call in its own transaction, and writes the audit row from the
- * result. {@code privacy} implements {@link BulkActionType#REQUEST_CONSENT}.
+ * SPI for {@code POST /bulk-actions} (ADR 0010, same pattern as accounts' {@code SearchContributor}). The dispatcher
+ * in pipeline calls the first handler that {@link #supports supports} the (entity, action) pair, once per record,
+ * inside that record's own transaction. accounts implements PEOPLE and ACCOUNTS, privacy implements REQUEST_CONSENT.
  *
- * <p>NOTE: minimal copy written by security-privacy so that privacy compiles; backend-pipeline's definition wins at
- * merge if it differs, and {@code RequestConsentBulkHandler} is adapted.
+ * <p>Rules for implementations: change records only through the module's normal services (lifecycle checks, events,
+ * Envers), never around them. Return {@link BulkItemResult#skipped} or {@link BulkItemResult#failed} before writing
+ * anything; a thrown {@link com.recruiting.platform.contracts.ApiException} is mapped to the matching
+ * {@link com.recruiting.platform.contracts.BulkResultCode} by the dispatcher and the record's transaction is rolled
+ * back. Never put names, e-mail addresses or exception messages in a result: only the code is used.
  */
 public interface BulkActionHandler {
 
-    /** The action this handler serves. */
-    BulkActionType action();
+    /**
+     * Tells whether this handler runs the action on the entity.
+     *
+     * @param entity the grid entity
+     * @param action the action
+     * @return {@code true} if this handler is responsible
+     */
+    boolean supports(ListEntity entity, BulkActionType action);
 
     /**
-     * Processes one record. Must not throw for expected refusals: return SKIPPED or FAILED with a code.
+     * Applies the action to one record.
      *
-     * @param actorId the user who started the bulk action
-     * @param role    the user's role
-     * @param params  the typed params of the request as a map (no free text is audited, ADR 0010 amendment 1)
+     * @param command the action and its validated params
      * @param id      the record id
+     * @return the outcome of this record
      */
-    Result handle(UUID actorId, Role role, Map<String, Object> params, UUID id);
-
-    /**
-     * Result for one record; {@code code} is null when OK.
-     *
-     * @param outcome OK, SKIPPED or FAILED
-     * @param code    reason, null when OK
-     */
-    record Result(BulkOutcome outcome, BulkResultCode code) {
-
-        public static Result ok() {
-            return new Result(BulkOutcome.OK, null);
-        }
-
-        public static Result skipped(BulkResultCode code) {
-            return new Result(BulkOutcome.SKIPPED, code);
-        }
-
-        public static Result failed(BulkResultCode code) {
-            return new Result(BulkOutcome.FAILED, code);
-        }
-    }
+    BulkItemResult handle(BulkCommand command, UUID id);
 }

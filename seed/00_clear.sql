@@ -7,6 +7,10 @@ $$ SELECT format('01930000-%s-7000-8000-%s', lpad(k::text, 4, '0'), lpad(n::text
 CREATE FUNCTION pg_temp.slug(t text) RETURNS text LANGUAGE sql IMMUTABLE AS
 $$ SELECT regexp_replace(lower(translate(t, 'çğıöşüÇĞİÖŞÜâÂ', 'cgiosucgiosuaa')), '[^a-z0-9]+', '', 'g') $$;
 
+DELETE FROM bulk_action_item;
+DELETE FROM bulk_action;
+DELETE FROM saved_view;
+DELETE FROM candidate_exposure;
 DELETE FROM timeline_entry;
 DELETE FROM next_action;
 DELETE FROM activity;
@@ -16,6 +20,11 @@ DELETE FROM job_order;
 DELETE FROM account_open_job;
 DELETE FROM contact;
 DELETE FROM network_link;
+DELETE FROM person_merge;
+DELETE FROM duplicate_candidate;
+DELETE FROM cv_intake_item;
+DELETE FROM person_file;
+DELETE FROM person_education;
 DELETE FROM person_employment;
 DELETE FROM consent_record;
 DELETE FROM consent_request;
@@ -31,6 +40,10 @@ DELETE FROM event_publication;
 DELETE FROM event_publication_archive;
 DELETE FROM app_user_aud;
 DELETE FROM account_aud;
+DELETE FROM person_file_aud;
+DELETE FROM person_education_aud;
+DELETE FROM off_limits_rule_aud;
+DELETE FROM off_limits_rule;
 DELETE FROM person_aud;
 DELETE FROM person_employment_aud;
 DELETE FROM contact_aud;

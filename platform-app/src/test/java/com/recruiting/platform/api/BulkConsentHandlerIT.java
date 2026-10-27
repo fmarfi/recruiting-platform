@@ -8,11 +8,14 @@ import com.recruiting.platform.contracts.BulkOutcome;
 import com.recruiting.platform.contracts.BulkResultCode;
 import com.recruiting.platform.contracts.Role;
 import com.recruiting.platform.pipeline.BulkActionHandler;
-import com.recruiting.platform.pipeline.BulkActionHandler.Result;
+import com.recruiting.platform.pipeline.BulkCommand;
+import com.recruiting.platform.pipeline.BulkItemResult;
+import com.recruiting.platform.pipeline.BulkParams;
+import com.recruiting.platform.contracts.Language;
+import com.recruiting.platform.contracts.ListEntity;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +43,8 @@ class BulkConsentHandlerIT extends AbstractApiIT {
     }
 
     private BulkActionHandler handler() {
-        return handlers.stream().filter(h -> h.action() == BulkActionType.REQUEST_CONSENT).findFirst().orElseThrow();
+        return handlers.stream().filter(h -> h.supports(ListEntity.PEOPLE, BulkActionType.REQUEST_CONSENT)).findFirst()
+                .orElseThrow();
     }
 
     private UUID person(Client c, String email, String status) {
@@ -52,8 +56,10 @@ class BulkConsentHandlerIT extends AbstractApiIT {
         return p;
     }
 
-    private Result run(Client c, Role role, UUID id) {
-        return handler().handle(c.userId(), role, Map.of("language", "EN"), id);
+    private BulkItemResult run(Client c, Role role, UUID id) {
+        BulkParams params = new BulkParams(null, null, null, null, null, null, Language.EN);
+        return handler().handle(new BulkCommand(ListEntity.PEOPLE, BulkActionType.REQUEST_CONSENT, params, c.userId(),
+                role), id);
     }
 
     @Test
@@ -61,21 +67,21 @@ class BulkConsentHandlerIT extends AbstractApiIT {
         Client m = login(Role.MANAGER);
         String mail = "bulk-" + UUID.randomUUID() + "@example.test";
         UUID fresh = person(m, mail, null);
-        assertThat(run(m, Role.MANAGER, fresh)).isEqualTo(Result.ok());
+        assertThat(run(m, Role.MANAGER, fresh)).isEqualTo(BulkItemResult.ok());
         assertThat(jdbc.queryForObject("select consent_status from person_privacy where person_id = ?", String.class,
                 fresh)).isEqualTo("SENT");
-        assertThat(run(m, Role.ADMIN, fresh)).isEqualTo(Result.skipped(BulkResultCode.REQUEST_PENDING));
+        assertThat(run(m, Role.ADMIN, fresh)).isEqualTo(BulkItemResult.skipped(BulkResultCode.REQUEST_PENDING));
 
-        assertThat(run(m, Role.MANAGER, person(m, mail + "1", "GIVEN"))).isEqualTo(Result.skipped(BulkResultCode.CONSENT_GIVEN));
+        assertThat(run(m, Role.MANAGER, person(m, mail + "1", "GIVEN"))).isEqualTo(BulkItemResult.skipped(BulkResultCode.CONSENT_GIVEN));
         assertThat(run(m, Role.MANAGER, person(m, mail + "2", "REFUSED")))
-                .isEqualTo(Result.skipped(BulkResultCode.CONSENT_REFUSED));
+                .isEqualTo(BulkItemResult.skipped(BulkResultCode.CONSENT_REFUSED));
         assertThat(run(m, Role.MANAGER, person(m, mail + "3", "WITHDRAWN")))
-                .isEqualTo(Result.skipped(BulkResultCode.CONSENT_WITHDRAWN));
-        assertThat(run(m, Role.MANAGER, person(m, null, null))).isEqualTo(Result.skipped(BulkResultCode.NO_EMAIL));
-        assertThat(run(m, Role.MANAGER, UUID.randomUUID())).isEqualTo(Result.skipped(BulkResultCode.NOT_FOUND));
+                .isEqualTo(BulkItemResult.skipped(BulkResultCode.CONSENT_WITHDRAWN));
+        assertThat(run(m, Role.MANAGER, person(m, null, null))).isEqualTo(BulkItemResult.skipped(BulkResultCode.NO_EMAIL));
+        assertThat(run(m, Role.MANAGER, UUID.randomUUID())).isEqualTo(BulkItemResult.skipped(BulkResultCode.NOT_FOUND));
         UUID anon = person(m, mail + "4", null);
         jdbc.update("update person set anonymised_at = now() where id = ?", anon);
-        assertThat(run(m, Role.MANAGER, anon)).isEqualTo(Result.skipped(BulkResultCode.ANONYMISED));
+        assertThat(run(m, Role.MANAGER, anon)).isEqualTo(BulkItemResult.skipped(BulkResultCode.ANONYMISED));
         assertThat(jdbc.queryForObject("select count(*) from consent_request where person_id = ?", Integer.class,
                 anon)).isZero();
     }
@@ -84,7 +90,7 @@ class BulkConsentHandlerIT extends AbstractApiIT {
     void consultantsAreForbiddenAndNothingIsSent() throws Exception {
         Client c = login(Role.CONSULTANT);
         UUID p = person(c, "bulk-" + UUID.randomUUID() + "@example.test", null);
-        Result r = run(c, Role.CONSULTANT, p);
+        BulkItemResult r = run(c, Role.CONSULTANT, p);
         assertThat(r.outcome()).isEqualTo(BulkOutcome.SKIPPED);
         assertThat(r.code()).isEqualTo(BulkResultCode.FORBIDDEN);
         assertThat(jdbc.queryForObject("select count(*) from consent_request where person_id = ?", Integer.class, p))

@@ -6,7 +6,7 @@ export function EmptyState({ title, hint, actions }: { title: string; hint?: str
   return (
     <Card withBorder padding="lg" data-testid="empty-state">
       <Stack align="center" gap="xs" ta="center">
-        <Title order={3}>{title}</Title>
+        <Title order={2} size="h3">{title}</Title>
         {hint && <Text c="dimmed">{hint}</Text>}
         {actions && <Group justify="center">{actions}</Group>}
       </Stack>

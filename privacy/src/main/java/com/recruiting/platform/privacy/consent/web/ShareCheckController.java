@@ -1,6 +1,6 @@
 package com.recruiting.platform.privacy.consent.web;
 
-import com.recruiting.platform.pipeline.ShareGuard.ShareCheck;
+import com.recruiting.platform.privacy.consent.app.ShareGuardImpl.ShareCheck;
 import com.recruiting.platform.privacy.consent.app.ShareGuardImpl;
 import com.recruiting.platform.privacy.consent.web.dto.ConsentDtos.ShareCheckResult;
 import com.recruiting.platform.privacy.consent.web.dto.ConsentRequests;

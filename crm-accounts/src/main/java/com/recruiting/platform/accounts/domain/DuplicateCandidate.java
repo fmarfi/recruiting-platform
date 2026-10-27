@@ -51,10 +51,19 @@ public class DuplicateCandidate {
         // for JPA
     }
 
+    /** Postgres orders uuid values as unsigned bytes; java.util.UUID.compareTo is signed, so compare by hand. */
+    public static boolean before(UUID one, UUID other) {
+        int c = Long.compareUnsigned(one.getMostSignificantBits(), other.getMostSignificantBits());
+        if (c == 0) {
+            c = Long.compareUnsigned(one.getLeastSignificantBits(), other.getLeastSignificantBits());
+        }
+        return c < 0;
+    }
+
     /** Orders the two ids so that a < b, as the CHECK requires. */
     public static DuplicateCandidate of(UUID one, UUID other, List<String> reasons) {
         DuplicateCandidate d = new DuplicateCandidate();
-        boolean oneFirst = one.compareTo(other) < 0;
+        boolean oneFirst = before(one, other);
         d.personAId = oneFirst ? one : other;
         d.personBId = oneFirst ? other : one;
         d.reasons = new ArrayList<>(reasons);
