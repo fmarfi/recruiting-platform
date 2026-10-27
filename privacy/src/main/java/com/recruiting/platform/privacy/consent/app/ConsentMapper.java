@@ -37,7 +37,8 @@ public class ConsentMapper {
         return requests.stream().map(r -> new ConsentRequestResponse(r.getId(), r.getPersonId(),
                 refs.get(r.getNoticeId()), r.getLanguage(), r.getDeliveryStatus(), r.getQueuedAt(), r.getSentAt(),
                 r.getFailureReason(), r.getExpiresAt(), r.getRespondedAt(), r.getResponse(),
-                users.get(r.getRequestedBy()))).toList();
+                users.get(r.getRequestedBy()), r.getOpenedAt(), r.getPurpose(),
+                r.getReminderDaysBefore() == null ? null : r.getReminderDaysBefore().intValue())).toList();
     }
 
     @Transactional(readOnly = true)

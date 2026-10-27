@@ -7,6 +7,8 @@ import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.ConsentStatusChanged;
 import com.recruiting.platform.contracts.ErrorCode;
 import com.recruiting.platform.contracts.IllegalTransitionException;
+import com.recruiting.platform.contracts.RetentionBasis;
+import com.recruiting.platform.contracts.RetentionRenewed;
 import com.recruiting.platform.contracts.RetentionStatus;
 import com.recruiting.platform.privacy.domain.ConsentRecord;
 import com.recruiting.platform.privacy.domain.ConsentRecordRepository;
@@ -14,6 +16,7 @@ import com.recruiting.platform.privacy.domain.ConsentRequest;
 import com.recruiting.platform.privacy.domain.ConsentRequestRepository;
 import com.recruiting.platform.privacy.domain.PersonPrivacy;
 import com.recruiting.platform.privacy.domain.PrivacyNoticeRepository;
+import com.recruiting.platform.privacy.domain.RetentionSettings;
 import com.recruiting.platform.privacy.person.app.PersonGateway;
 import com.recruiting.platform.privacy.person.app.PersonInfo;
 import com.recruiting.platform.privacy.retention.app.RetentionPolicy;
@@ -97,11 +100,19 @@ public class ConsentService {
             requests.findById(d.consentRequestId()).ifPresent(r -> markAnswered(r, d.decision(), now));
         }
         privacy.setConsentStatus(to);
-        if (to == ConsentStatus.GIVEN && retention.settings().isRenewOnConsent()) {
-            privacy.setBasisDate(retention.today());
-            privacy.setRetainUntil(retention.retainUntil(privacy.getBasisDate()));
-            privacy.setRetentionStatus(RetentionStatus.ACTIVE);
-            privacy.setFlaggedAt(null);
+        if (to == ConsentStatus.GIVEN) {
+            if (privacy.getLastConsentAt() == null || recordedAt.isAfter(privacy.getLastConsentAt())) {
+                privacy.setLastConsentAt(recordedAt);
+            }
+            RetentionSettings settings = retention.settings();
+            if (settings.isRenewOnConsent() || settings.getBasis() == RetentionBasis.FROM_LAST_CONSENT) {
+                privacy.setBasisDate(retention.dateOf(privacy.getLastConsentAt()));
+                privacy.setRetainUntil(retention.retainUntil(privacy.getBasisDate()));
+                privacy.setRetentionStatus(RetentionStatus.ACTIVE);
+                privacy.setFlaggedAt(null);
+                events.publishEvent(new RetentionRenewed(UUID.randomUUID(), now, d.recordedBy(), d.personId(),
+                        privacy.getRetainUntil()));
+            }
         }
         if (from != to) {
             events.publishEvent(new ConsentStatusChanged(UUID.randomUUID(), now, d.recordedBy(), d.personId(),

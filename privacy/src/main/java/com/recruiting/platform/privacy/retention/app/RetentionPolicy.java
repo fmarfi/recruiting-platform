@@ -38,6 +38,11 @@ public class RetentionPolicy {
         return basisDate.plusMonths(settings().getRetentionMonths());
     }
 
+    /** Calendar day of an instant in the application's zone. */
+    public LocalDate dateOf(java.time.Instant instant) {
+        return instant.atZone(clock.getZone()).toLocalDate();
+    }
+
     public LocalDate today() {
         return LocalDate.now(clock);
     }
