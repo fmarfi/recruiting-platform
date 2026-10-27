@@ -61,8 +61,8 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, JpaSpecif
     List<Person> findByCityNormalized(@Param("city") String city);
 
     /** The {@code city} filter: ids of people whose normalised city is one of the values (unit separator delimited). */
-    @Query(value = "SELECT p.id FROM person p WHERE immutable_unaccent(lower(trim(p.city))) IN "
-            + "(SELECT immutable_unaccent(lower(trim(x))) FROM unnest(string_to_array(:csv, chr(31))) AS x)",
+    @Query(value = "SELECT p.id FROM person p WHERE immutable_unaccent(lower(translate(trim(p.city), 'İı', 'Ii'))) IN "
+            + "(SELECT immutable_unaccent(lower(translate(trim(x), 'İı', 'Ii'))) FROM unnest(string_to_array(:csv, chr(31))) AS x)",
             nativeQuery = true)
     List<UUID> findIdsByCities(@Param("csv") String csv);
 

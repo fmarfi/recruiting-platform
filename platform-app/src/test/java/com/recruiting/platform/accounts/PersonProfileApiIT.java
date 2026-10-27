@@ -77,7 +77,7 @@ class PersonProfileApiIT extends AccountsApiTestBase {
 
     @Test
     void compensationIsEncryptedAndRestrictedToManagersAndTheOwner() throws Exception {
-        JsonNode p = createPerson(owner, unique("Maaş "), COMP);
+        JsonNode p = createPerson(owner, unique("Maas "), COMP);
         String id = p.get("id").asText();
         assertThat(p.get("compensationRestricted").asBoolean()).isFalse();
         assertThat(p.get("compensation").get("expected").asInt()).isEqualTo(300000);
@@ -96,7 +96,7 @@ class PersonProfileApiIT extends AccountsApiTestBase {
         assertThat(asManager.get("compensation").get("currency").asText()).isEqualTo("TRY");
 
         // never in lists
-        JsonNode list = get(manager, "/api/v1/people?q=" + p.get("name").asText().replace(" ", "%20"), 200);
+        JsonNode list = get(manager, "/api/v1/people?q=" + p.get("name").asText(), 200);
         assertThat(list.get("content").get(0).has("compensation")).isFalse();
 
         // 403 on write for everybody else, also when it is the only thing sent
@@ -144,7 +144,7 @@ class PersonProfileApiIT extends AccountsApiTestBase {
         assertThat(ids(get(manager, "/api/v1/people?city=SİŞLİ", 200))).contains(idA);
         assertThat(ids(get(manager, "/api/v1/people?city=sisli&city=ANKARA", 200))).contains(idA, idB);
         // company contains, accent-insensitive
-        assertThat(ids(get(manager, "/api/v1/people?company=celik%20" + marker, 200))).containsExactly(idA);
+        assertThat(ids(get(manager, "/api/v1/people?company=celik " + marker, 200))).containsExactly(idA);
         // tags (any of)
         assertThat(ids(get(manager, "/api/v1/people?tag=cfo-network", 200))).contains(idA).doesNotContain(idB);
         assertThat(ids(get(manager, "/api/v1/people?tag=CFO-network&tag=istanbul&size=100", 200))).contains(idA, idB);
@@ -174,9 +174,9 @@ class PersonProfileApiIT extends AccountsApiTestBase {
         assertThat(ids(r)).containsExactly(idA);
         assertThat(r.get("content").get(0).get("cvMatch").asText()).contains("«").contains("»");
         // web-search syntax: exclusion and phrase
-        assertThat(ids(get(manager, "/api/v1/people?cv=" + word + "%20-finans", 200))).isEmpty();
-        assertThat(ids(get(manager, "/api/v1/people?cv=%22isli%20ofisi%22", 200))).isEmpty();
-        assertThat(ids(get(manager, "/api/v1/people?cv=%22sisli%20ofisi%22%20" + word, 200))).containsExactly(idA);
+        assertThat(ids(get(manager, "/api/v1/people?cv=" + word + " -finans", 200))).isEmpty();
+        assertThat(ids(get(manager, "/api/v1/people?cv=\"isli ofisi\"", 200))).isEmpty();
+        assertThat(ids(get(manager, "/api/v1/people?cv=\"sisli ofisi\" " + word, 200))).containsExactly(idA);
     }
 
     private void insertCv(String personId, String text, boolean current) {
