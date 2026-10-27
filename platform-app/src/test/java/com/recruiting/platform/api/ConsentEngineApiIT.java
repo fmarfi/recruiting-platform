@@ -171,6 +171,10 @@ class ConsentEngineApiIT extends AbstractApiIT {
                 .andExpect(jsonPath("$.purpose").value("RENEWAL")).andExpect(jsonPath("$.openedAt").doesNotExist());
         // the link is not exposed: read the hash row, issue a known token instead
         String token = "renewal-token-" + UUID.randomUUID() + "-0123456789";
+        // the async mail job rewrites the row (full-column update) when it finishes: wait for it first
+        await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.queryForObject(
+                "select count(*) from consent_request where person_id = ? and delivery_status = 'QUEUED'",
+                Integer.class, p) == 0);
         int updated = jdbc.update("update consent_request set token_hash = encode(sha256(convert_to(?, 'UTF8')), 'hex') "
                 + "where person_id = ? and purpose = 'RENEWAL'", token, p);
         assertThat(updated).as("renewal request rows").isEqualTo(1);
