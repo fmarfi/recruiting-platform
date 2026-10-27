@@ -27,3 +27,30 @@
 **Verified with**
 - `mvn -q -B verify` -> green.
 - `mvn -B verify -Pintegration` -> Tests run: 76, Failures: 0, BUILD SUCCESS.
+
+# Hand-off: backend-accounts · Wave 2b (contracts 1.1.1 + 1.2.0) · 2026-10-28
+
+**Branch / commits:** `worktree-wave2b-backend-accounts` · 6 commits (one per slice)
+
+**Done**
+- People: `GET /people` filters city (accent/İ-safe), company, tag, sourceChannel, `cv` (websearch_to_tsquery on `tr_unaccent`, relevance order, `cvMatch` excerpt), shareable; profile fields, languages, educations, normalised phone and LinkedIn; compensation encrypted through a converter calling `FieldCipher`, readable and writable only by MANAGER/ADMIN/owner (`compensationRestricted`, 403 on write); VIEW log on `GET /people/{id}`.
+- Files: `/people/{id}/files` (upload with Tika type check, 10 MB, SHA-256 409, versions, download as attachment + DOWNLOAD log, delete), Tika worker (`TextExtractionWorker`, no AI), `LocalFileStore` in platform-app (`app.files.*`), `/cv-intake` (bulk, list, get, content, attach, discard, 14-day expiry job), `CvIntakeApi.findPendingByEmail` + `discardPendingByEmail`.
+- Duplicates: `POST /duplicates/check`, `GET /duplicates`, dismiss; pairs queued on create/update/attach; `PersonMergeApi` (`mergeProfile`, `finish`, `mergedIds` = purge step 0) with person_merge row, JPA delete (Envers DEL), `PersonMerged`.
+- Off-limits: `/off-limits` CRUD (write MANAGER/ADMIN, overlap 409), `Person.offLimits`, `OffLimitsApi` (`findForPerson`, `findForCompany`, `isBlocked`).
+- Anonymise/delete: profile columns, education, files (+bytes after commit), duplicate pairs, intake items minimised.
+- Tests: unit (normaliser, converter, anonymise) + ITs `PersonProfileApiIT`, `PersonFilesApiIT`, `DuplicatesAndMergeApiIT`, `OffLimitsApiIT`.
+
+**Not done / left**
+- `POST /people/{id}/merge` controller: contract owner is privacy (orchestrates accounts + pipeline + privacy steps); accounts offers `PersonMergeApi` only.
+- Bulk handlers (REASSIGN_OWNER, ADD_TAG, REMOVE_TAG, CHANGE_STATUS): `BulkActionHandler` does not exist and accounts may not depend on pipeline. Needs the SPI in `contracts/spi`.
+- Nightly duplicate scan and weekly orphan-bytes sweep (`FileStore` has no list method).
+
+**Others must know**
+- `FieldCipher` (security) is a minimal interface made by me (`encrypt/decrypt(byte[])`); platform-app has `FallbackFieldCipherConfig` (AES-GCM, `@ConditionalOnMissingBean`, ephemeral key unless `app.security.field-encryption-key`; fails in profile pilot). Orchestrator: keep security-privacy's version at merge.
+- `Person.compensationEnc` became `Person.compensation` (converter). DB `lower('İ')` is not accent-stripped: city filter and off-limits use `translate(..., 'İı', 'Ii')`.
+
+**Change requests**
+- architect · move `BulkActionHandler` to `contracts/spi`. security-privacy · call `PersonMergeApi`, `CvIntakeApi` (DSR export/deletion). backend-pipeline · use `OffLimitsApi.findForPerson(personId, jobOrderAccountId)`.
+
+**Verified with**
+- `mvn -B verify -Pintegration` → 122 ITs, 0 failures, BUILD SUCCESS; `mvn -q -B verify` exit 0.
