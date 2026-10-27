@@ -27,6 +27,10 @@ class PersonFilesApiIT extends AccountsApiTestBase {
     TextExtractionWorker worker;
     @Autowired
     CvIntakeService intake;
+    @Autowired
+    PersonDataApi personData;
+    @Autowired
+    com.recruiting.platform.contracts.FileStore store;
 
     private Client consultant;
     private Client manager;
@@ -225,5 +229,57 @@ class PersonFilesApiIT extends AccountsApiTestBase {
         jdbc.update("update cv_intake_item set expires_at = now() - interval '1 day' where id = ?::uuid", id);
         intake.expire();
         get(consultant, "/api/v1/cv-intake/" + id, 404);
+    }
+
+    @Test
+    void anonymiseAndDeleteRemoveProfileFilesAndBytes() throws Exception {
+        for (boolean delete : new boolean[] {false, true}) {
+            String email = unique("anon") + "@example.test";
+            JsonNode p = createPerson(consultant, unique("Silinecek "), ",\"email\":\"" + email
+                    + "\",\"phone\":\"0555 111 22 33\",\"linkedinUrl\":\"https://www.linkedin.com/in/x-" + unique("")
+                    + "\",\"sourceChannel\":\"REFERRAL\",\"noticePeriodDays\":30,\"mobility\":\"NONE\","
+                    + "\"languages\":[{\"language\":\"en\",\"level\":\"FLUENT\"}],"
+                    + "\"educations\":[{\"school\":\"ODTÜ\"}],\"compensation\":{\"currency\":\"TRY\","
+                    + "\"period\":\"ANNUAL\",\"basis\":\"GROSS\"}");
+            String id = p.get("id").asText();
+            upload(consultant, id, "cv.txt", text("özgeçmiş " + word()), 201);
+            String key = jdbc.queryForObject("select storage_key from person_file where person_id = ?::uuid",
+                    String.class, id);
+            JsonNode item = intakeUpload(consultant, 201, part("i.txt", text("Aday " + email + " " + word())))
+                    .get("items").get(0);
+            worker.runOnce();
+            post(consultant, "/api/v1/cv-intake/" + item.get("id").asText() + "/attach", "{\"personId\":\"" + id
+                    + "\"}", 201);
+            assertThat(store.get(key)).isPresent().get().satisfies(in -> {
+                try {
+                    in.close();
+                } catch (java.io.IOException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+            if (delete) {
+                personData.delete(java.util.UUID.fromString(id), null);
+                assertThat(jdbc.queryForObject("select count(*) from person where id = ?::uuid", Integer.class, id))
+                        .isZero();
+            } else {
+                personData.anonymise(java.util.UUID.fromString(id), null);
+                var row = jdbc.queryForMap("select notice_period_days, mobility, compensation_enc, phone_normalized, "
+                        + "linkedin_url_normalized, languages::text l, source_channel from person where id = ?::uuid", id);
+                assertThat(row.get("notice_period_days")).isNull();
+                assertThat(row.get("mobility")).isNull();
+                assertThat(row.get("compensation_enc")).isNull();
+                assertThat(row.get("phone_normalized")).isNull();
+                assertThat(row.get("linkedin_url_normalized")).isNull();
+                assertThat(row.get("l")).isEqualTo("[]");
+                assertThat(row.get("source_channel")).isEqualTo("REFERRAL"); // not personal data
+                assertThat(jdbc.queryForObject("select count(*) from person_education where person_id = ?::uuid",
+                        Integer.class, id)).isZero();
+                assertThat(jdbc.queryForObject("select count(*) from person_file where person_id = ?::uuid",
+                        Integer.class, id)).isZero();
+                assertThat(jdbc.queryForObject("select count(*) from cv_intake_item where attached_person_id = ?::uuid "
+                        + "and file_name is null and storage_key is null", Integer.class, id)).isEqualTo(1);
+            }
+            assertThat(store.get(key)).isEmpty(); // bytes are gone after the commit
+        }
     }
 }
