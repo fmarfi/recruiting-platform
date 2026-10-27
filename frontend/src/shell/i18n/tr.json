@@ -9,6 +9,15 @@
     "new": "Yeni",
     "menu": "Menü",
     "mainNav": "Ana gezinme",
+    "language": "Dil",
+    "skipToContent": "Ana içeriğe geç",
+    "pagination": {
+      "first": "İlk sayfa",
+      "last": "Son sayfa",
+      "next": "Sonraki sayfa",
+      "previous": "Önceki sayfa",
+      "page": "Sayfa {{n}}"
+    },
     "logout": "Çıkış yap",
     "userMenu": "Kullanıcı menüsü",
     "changeStatus": "Durumu değiştir",
@@ -142,6 +151,8 @@
     "noJobs": "Açık pozisyon yok",
     "noJobsHint": "Bir müşteri pozisyon açtığında burada görünür.",
     "recent": "Son müşteriler",
+    "viewAllJobs": "Tüm pozisyonları gör",
+    "viewAllClients": "Tüm müşterileri gör",
     "daysOpen": "{{n}} gündür açık",
     "candidates": "{{n}} aday"
   },

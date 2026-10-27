@@ -8,6 +8,7 @@
     "undo": "Undo"
   },
   "pipeline": {
+    "hl": { "client": "Client", "location": "Location", "seniority": "Seniority", "fee": "Fee terms", "owner": "Owner", "opened": "Opened", "candidates": "Active candidates" },
     "activeCandidates": "{{count}} active candidates",
     "add": "Add",
     "addCandidate": "Add candidate",

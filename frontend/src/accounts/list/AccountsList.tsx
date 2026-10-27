@@ -1,4 +1,5 @@
-import { Button, Container, Group, Pagination, Stack, Title } from '@mantine/core';
+import { AppPagination } from '../../shell/components/AppPagination';
+import { Button, Container, Group, Stack, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,14 +19,14 @@ const GRID_ID = 'accounts';
 /** Accounts list (A-01): owner defaults to Me, status chips filter, sortable columns, pages of 20. Filters can come from the URL query. */
 export function AccountsList() {
   const { t } = useTranslation();
-  const { user, isManager } = useAuth();
+  const { user, isManager, isAdmin } = useAuth();
   const nav = useNavigate();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
   const meId = user?.id ?? '';
   // The filters are the URL: Ctrl+K links, Back and reload all keep the state. Replace avoids a history entry per keystroke.
   const [params, setParams] = useSearchParams();
-  const filters = useMemo(() => filtersFromParams(params, meId), [params, meId]);
-  const setFilters = (fn: (f: AccountFilters) => AccountFilters) => setParams(paramsFromFilters(fn(filters)), { replace: true });
+  const filters = useMemo(() => filtersFromParams(params, meId, isAdmin), [params, meId, isAdmin]);
+  const setFilters = (fn: (f: AccountFilters) => AccountFilters) => setParams(paramsFromFilters(fn(filters), isAdmin), { replace: true });
   const [creating, setCreating] = useState(false);
   const res = useAccounts(filters);
   const defs = useAccountColumns();
@@ -98,7 +99,7 @@ export function AccountsList() {
             )
           }
         />
-        {d && d.page.totalPages > 1 && <Pagination total={d.page.totalPages} value={d.page.number + 1} onChange={(p) => setFilters((f) => ({ ...f, page: p - 1 }))} />}
+        {d && d.page.totalPages > 1 && <AppPagination total={d.page.totalPages} value={d.page.number + 1} onChange={(p) => setFilters((f) => ({ ...f, page: p - 1 }))} />}
       </Stack>
       <NewAccountDialog opened={creating} onClose={() => setCreating(false)} onCreated={(id) => nav(`/accounts/${id}`)} />
     </Container>

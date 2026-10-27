@@ -1,5 +1,6 @@
 // Duplicates queue (MANAGER/ADMIN): pairs found after create, update, CV attach and by the nightly scan. Merge or mark as different people.
-import { Alert, Anchor, Button, Card, Container, Group, Pagination, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { AppPagination } from '../../shell/components/AppPagination';
+import { Alert, Anchor, Button, Card, Container, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -98,7 +99,7 @@ export function DuplicatesPage() {
             </Group>
           </Card>
         ))}
-        {(res.data?.page.totalPages ?? 0) > 1 && <Pagination total={res.data!.page.totalPages} value={page + 1} onChange={(p) => setPage(p - 1)} />}
+        {(res.data?.page.totalPages ?? 0) > 1 && <AppPagination total={res.data!.page.totalPages} value={page + 1} onChange={(p) => setPage(p - 1)} />}
       </Stack>
       <MergeDialog
         key={merging?.id ?? 'none'}

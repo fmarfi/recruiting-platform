@@ -1,5 +1,5 @@
 // Talent pool filters (ADR 0011): tag = pool, source channel, CV full text, shareable. Chips and inputs write the URL through the parent.
-import { Chip, Group, TagsInput, TextInput } from '@mantine/core';
+import { Chip, Group, TagsInput, Text, TextInput } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Schemas } from '../../pipeline/shared';
@@ -38,7 +38,8 @@ export function PoolFilters({ f, onChange }: { f: ViewFilters; onChange: (patch:
           style={{ minWidth: 240 }}
         />
       </Group>
-      <Group gap="xs" mb="sm" style={{ overflowX: 'auto' }} wrap="nowrap" role="group" aria-label={t('network.pool.channels')}>
+      <Group gap="xs" style={{ overflowX: 'auto' }} wrap="nowrap" role="group" aria-label={t('network.pool.channels')}>
+        <Text size="xs" c="dimmed" fw={600} tt="uppercase" w={112} style={{ flex: 'none' }}>{t('network.pool.channels')}</Text>
         <Chip.Group multiple value={f.channels} onChange={(v) => onChange({ channels: v as Schemas['SourceChannel'][] })}>
           {SOURCE_CHANNELS.map((c) => (
             <Chip key={c} value={c} size="sm">
