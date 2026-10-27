@@ -5,6 +5,8 @@ import com.recruiting.platform.contracts.ApiException;
 import com.recruiting.platform.contracts.EmailDeliveryStatus;
 import com.recruiting.platform.contracts.EntityType;
 import com.recruiting.platform.contracts.ErrorCode;
+import com.recruiting.platform.contracts.ShareBlockReason;
+import com.recruiting.platform.privacy.retention.app.RenewalReminderService;
 import com.recruiting.platform.privacy.consent.web.dto.ConsentDtos.ConsentOverviewResponse;
 import com.recruiting.platform.privacy.consent.web.dto.ConsentDtos.ConsentRequestResponse;
 import com.recruiting.platform.privacy.consent.web.dto.ConsentDtos.RetentionInfo;
@@ -35,15 +37,18 @@ public class ConsentQueryService {
     private final ConsentRequestRepository requests;
     private final ConsentMapper mapper;
     private final AccessRecorder access;
+    private final RenewalReminderService reminders;
 
     ConsentQueryService(PersonGateway people, RetentionPolicy retention, ConsentRecordRepository records,
-            ConsentRequestRepository requests, ConsentMapper mapper, AccessRecorder access) {
+            ConsentRequestRepository requests, ConsentMapper mapper, AccessRecorder access,
+            RenewalReminderService reminders) {
         this.people = people;
         this.retention = retention;
         this.records = records;
         this.requests = requests;
         this.mapper = mapper;
         this.access = access;
+        this.reminders = reminders;
     }
 
     /** Creates the privacy record if the person predates the module, so this is not a read-only transaction. */
@@ -56,9 +61,12 @@ public class ConsentQueryService {
         access.record(AccessAction.VIEW, EntityType.PERSON, personId);
         ConsentRequestResponse last = requests.findFirstByPersonIdOrderByQueuedAtDesc(personId)
                 .map(r -> mapper.requests(List.of(r)).get(0)).orElse(null);
+        boolean anonymised = people.find(personId).map(p -> p.anonymised()).orElse(false);
+        ShareBlockReason block = ShareGuardImpl.reason(privacy.getConsentStatus(), anonymised);
         return new ConsentOverviewResponse(personId, privacy.getConsentStatus(), privacy.getNoticeSentAt(), last,
                 new RetentionInfo(privacy.getRetentionStatus(), privacy.getBasisDate(), privacy.getRetainUntil(),
                         privacy.getFlaggedAt()),
+                block == null, block, privacy.getLastConsentAt(), reminders.nextReminderOn(privacy),
                 mapper.records(records.findByPersonIdOrderByRecordedAtDesc(personId)));
     }
 

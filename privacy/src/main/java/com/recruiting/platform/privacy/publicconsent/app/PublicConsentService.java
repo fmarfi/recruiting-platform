@@ -47,10 +47,18 @@ public class PublicConsentService {
         this.controllerName = controllerName;
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Shows the notice. The first successful view records {@code openedAt}; that is a read receipt only (mail link
+     * scanners open links too) and never changes the consent status.
+     */
+    @Transactional
     public PublicConsentView view(String token) {
         ConsentRequest request = valid(token);
-        return render(request, person(request));
+        PersonInfo person = person(request);
+        if (request.getOpenedAt() == null) {
+            request.setOpenedAt(clock.instant());
+        }
+        return render(request, person);
     }
 
     @Transactional

@@ -1,5 +1,6 @@
 package com.recruiting.platform.privacy.consent.app;
 
+import com.recruiting.platform.contracts.ConsentRequestPurpose;
 import com.recruiting.platform.contracts.Language;
 import com.recruiting.platform.privacy.domain.PrivacyNotice;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +29,27 @@ class ConsentMailComposer {
     }
 
     Mail compose(Language language, String firstName, String token, PrivacyNotice notice, int validDays) {
+        return compose(language, firstName, token, notice, validDays, ConsentRequestPurpose.INITIAL);
+    }
+
+    Mail compose(Language language, String firstName, String token, PrivacyNotice notice, int validDays,
+            ConsentRequestPurpose purpose) {
         String link = link(token);
+        if (purpose == ConsentRequestPurpose.RENEWAL) {
+            return language == Language.EN
+                    ? new Mail("Please renew your consent - " + controller,
+                            "Dear " + firstName + ",\n\n" + controller + " keeps your data for a limited time. "
+                            + "To keep your profile with us, please confirm your consent again on this page "
+                            + "(valid for " + validDays + " days):\n" + link + "\n\n"
+                            + "If you do nothing, your data is deleted or anonymised when the retention period ends.\n\n"
+                            + controller)
+                    : new Mail("Açık rızanızı yenileyin - " + controller,
+                            "Sayın " + firstName + ",\n\n" + controller + " verilerinizi sınırlı bir süre saklar. "
+                            + "Profilinizin bizde kalması için lütfen rızanızı aşağıdaki sayfadan yeniden onaylayın "
+                            + "(bağlantı " + validDays + " gün geçerlidir):\n" + link + "\n\n"
+                            + "Hiçbir işlem yapmazsanız saklama süresi dolduğunda verileriniz silinir veya anonimleştirilir.\n\n"
+                            + controller);
+        }
         if (language == Language.EN) {
             return new Mail("Information notice and consent request - " + controller,
                     "Dear " + firstName + ",\n\n"

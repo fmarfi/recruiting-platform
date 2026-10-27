@@ -49,10 +49,13 @@ public class RetentionRunService {
     private final ApplicationEventPublisher events;
     private final Clock clock;
     private final TransactionTemplate tx;
+    private final RenewalReminderService reminders;
+    private final RetentionBasisSync basisSync;
 
     RetentionRunService(PersonPrivacyRepository privacy, RetentionRunRepository runs, PersonGateway people,
             RetentionPolicy policy, PersonErasureService erasure, ApplicationEventPublisher events, Clock clock,
-            PlatformTransactionManager txManager) {
+            PlatformTransactionManager txManager, RenewalReminderService reminders,
+            RetentionBasisSync basisSync) {
         this.privacy = privacy;
         this.runs = runs;
         this.people = people;
@@ -61,6 +64,8 @@ public class RetentionRunService {
         this.events = events;
         this.clock = clock;
         this.tx = new TransactionTemplate(txManager);
+        this.reminders = reminders;
+        this.basisSync = basisSync;
     }
 
     /** Runs the job; {@code actorId} is null for the nightly scheduler. */
@@ -86,6 +91,7 @@ public class RetentionRunService {
         LocalDate today = policy.today();
         try {
             if (!dryRun) {
+                basisSync.sync();
                 backfill();
                 refreshDates(settings);
             }
@@ -102,6 +108,12 @@ public class RetentionRunService {
             }
             run.setFlaggedCount(dryRun ? toFlag.size() : flag(toFlag));
             eraseAll(run, due, settings.getAction(), dryRun, actorId);
+            if (!dryRun) {
+                int sent = reminders.run();
+                if (sent > 0) {
+                    LOG.info("Retention run queued {} renewal reminders", sent);
+                }
+            }
         } catch (RuntimeException ex) {
             LOG.error("Retention run failed", ex);
             run.setFailureReason(ex.getClass().getSimpleName());
@@ -134,6 +146,12 @@ public class RetentionRunService {
 
     private void refresh(UUID personId, PersonInfo info, RetentionSettings settings) {
         privacy.findById(personId).ifPresent(p -> {
+            if (settings.getBasis() == RetentionBasis.FROM_LAST_CONSENT && p.getLastConsentAt() != null) {
+                LocalDate consentDay = policy.dateOf(p.getLastConsentAt());
+                if (!consentDay.equals(p.getBasisDate())) {
+                    p.setBasisDate(consentDay);
+                }
+            }
             if (settings.getBasis() == RetentionBasis.FROM_LAST_CONTACT && info != null) {
                 LocalDate candidate = policy.basisFor(info);
                 if (candidate.isAfter(p.getBasisDate())) {

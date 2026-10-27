@@ -18,4 +18,11 @@ public interface ConsentRequestRepository
 
     /** True when a request to this person has been waiting for an answer since after the given time. */
     boolean existsByPersonIdAndRespondedAtIsNullAndQueuedAtAfter(UUID personId, Instant after);
+
+    /** An unanswered request with a link that is still valid; failed deliveries are not counted. */
+    boolean existsByPersonIdAndRespondedAtIsNullAndExpiresAtAfterAndDeliveryStatusNot(UUID personId, Instant now,
+            com.recruiting.platform.contracts.EmailDeliveryStatus status);
+
+    boolean existsByPersonIdAndReminderForRetainUntilAndReminderDaysBefore(UUID personId,
+            java.time.LocalDate retainUntil, Short daysBefore);
 }

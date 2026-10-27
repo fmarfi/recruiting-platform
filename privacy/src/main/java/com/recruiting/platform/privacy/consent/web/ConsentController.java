@@ -59,7 +59,8 @@ class ConsentController {
     @PostMapping("/requests")
     @ResponseStatus(HttpStatus.ACCEPTED)
     ConsentRequestResponse send(@PathVariable UUID id, @RequestBody(required = false) RequestCreate body) {
-        var saved = requests.send(id, body == null ? null : body.language(), currentUser.id());
+        var saved = requests.send(id, body == null ? null : body.language(), currentUser.id(),
+                body == null ? null : body.purpose());
         return mapper.requests(List.of(saved)).get(0);
     }
 
