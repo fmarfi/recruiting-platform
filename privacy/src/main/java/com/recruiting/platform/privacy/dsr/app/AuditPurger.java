@@ -1,5 +1,7 @@
 package com.recruiting.platform.privacy.dsr.app;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -9,15 +11,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * ADR 0009 step 4 (schema.md, "Anonymisation and deletion"): purges the Envers history so it no longer holds the
- * person's data. Idempotent, runs in its own transaction after the listeners. Any new audited table with person
- * data must be added here.
+ * person's data. The id set {@code :p} is the person plus every merged id, collected in step 0 before anything was
+ * deleted (never read from {@code person_merge} here: on DELETE the cascade has removed it). Idempotent, runs in its
+ * own transaction after the listeners. Any new audited table with person data must be added here.
  */
 @Component
 public class AuditPurger {
 
-    /** Audit tables matched by {@code person_id = :p}. */
+    /** Audit tables matched by {@code person_id IN :p} (current rows are minimised on ANONYMISE, all rows go on DELETE). */
     private static final List<String> BY_PERSON_ID = List.of("person_employment_aud", "contact_aud", "activity_aud",
-            "application_aud", "next_action_aud", "person_privacy_aud");
+            "application_aud", "next_action_aud", "person_privacy_aud", "person_education_aud", "person_file_aud");
 
     private final JdbcTemplate jdbc;
 
@@ -25,8 +28,19 @@ public class AuditPurger {
         this.jdbc = jdbc;
     }
 
+    /** Purge with the merged ids still known from {@code person_merge} (fine for ANONYMISE, where the rows stay). */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void purge(UUID p, boolean deleted) {
+        purge(p, jdbc.queryForList("select merged_id from person_merge where survivor_id = ?", UUID.class, p),
+                deleted);
+    }
+
+    /** Purge the person {@code p} and the history of every id in {@code mergedIds} (step 0 of the order). */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void purge(UUID p, Collection<UUID> mergedIds, boolean deleted) {
+        if (!mergedIds.isEmpty()) {
+            purgeMerged(List.copyOf(mergedIds));
+        }
         if (deleted) {
             purgeDeleted(p);
         } else {
@@ -36,6 +50,18 @@ public class AuditPurger {
         jdbc.update("update import_job set file_content = null, errors = null "
                 + "where status in ('COMPLETED', 'FAILED', 'DISCARDED') "
                 + "and (file_content is not null or errors is not null)");
+    }
+
+    /** The merged person no longer exists: every row goes, except the id-only delete row in person_aud. */
+    private void purgeMerged(List<UUID> merged) {
+        update("delete from person_aud where id in (%IN%) and revtype <> 2", merged);
+        for (String t : BY_PERSON_ID) {
+            update("delete from " + t + " where person_id in (%IN%)", merged);
+        }
+        update("delete from data_subject_request_aud where person_id in (%IN%) and revend is not null", merged);
+        List<UUID> twice = new ArrayList<>(merged);
+        twice.addAll(merged);
+        update("delete from network_link_aud where from_person_id in (%IN%) or to_person_id in (%IN%)", twice, merged.size());
     }
 
     /** Old revisions go; the current revision stays (ValidityAuditStrategy needs it) with placeholders. */
@@ -48,14 +74,21 @@ public class AuditPurger {
 
         jdbc.update("update person_aud set name = 'Anonymised person', title = null, company = null, email = null, "
                 + "phone = null, city = null, linkedin_url = null, how_we_know = null, notes = null, "
+                + "tags = '{}', compensation_enc = null, notice_period_days = null, mobility = null, "
+                + "languages = '[]'::jsonb, phone_normalized = null, linkedin_url_normalized = null, "
                 + "anonymised_at = coalesce(anonymised_at, now()) where id = ? and revend is null", p);
         jdbc.update("update person_employment_aud set company = '[removed]', title = null "
+                + "where person_id = ? and revend is null", p);
+        jdbc.update("update person_education_aud set school = '[removed]', degree = null, field = null, "
+                + "start_year = null, end_year = null where person_id = ? and revend is null", p);
+        jdbc.update("update person_file_aud set file_name = '[removed]', sha256 = null, storage_key = null "
                 + "where person_id = ? and revend is null", p);
         jdbc.update("update network_link_aud set note = null where (from_person_id = ? or to_person_id = ?) "
                 + "and revend is null", p, p);
         jdbc.update("update activity_aud set note = '[removed]' where person_id = ? and revend is null", p);
-        jdbc.update("update application_aud set rejection_reason = '[removed]' "
-                + "where person_id = ? and revend is null and rejection_reason is not null", p);
+        jdbc.update("update application_aud set rejection_reason = case when rejection_reason is not null "
+                + "then '[removed]' end, off_limits_override_reason = case when off_limits_override_reason is not null "
+                + "then '[removed]' end where person_id = ? and revend is null", p);
         jdbc.update("update next_action_aud set title = '[removed]' where person_id = ? and revend is null", p);
         jdbc.update("update data_subject_request_aud a set requester_name = d.requester_name, "
                 + "requester_email = d.requester_email, description = '[removed]' "
@@ -70,5 +103,15 @@ public class AuditPurger {
         jdbc.update("delete from data_subject_request_aud where person_id = ? and revend is not null", p);
         // the database's SET NULL is not audited, so clear the link in the kept row ourselves
         jdbc.update("update data_subject_request_aud set person_id = null where person_id = ? and revend is null", p);
+    }
+
+    private void update(String sql, List<UUID> ids) {
+        update(sql, ids, ids.size());
+    }
+
+    /** Replaces each {@code %IN%} with one placeholder per id of {@code groupSize}; args are consumed in order. */
+    private void update(String sql, List<UUID> args, int groupSize) {
+        String marks = String.join(",", java.util.Collections.nCopies(groupSize, "?"));
+        jdbc.update(sql.replace("%IN%", marks), args.toArray());
     }
 }
