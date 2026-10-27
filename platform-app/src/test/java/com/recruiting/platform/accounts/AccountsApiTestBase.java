@@ -36,12 +36,12 @@ abstract class AccountsApiTestBase extends AbstractApiIT {
     }
 
     protected JsonNode post(Client c, String url, String body, int expected) throws Exception {
-        return send(c, MockMvcRequestBuilders.post(url).contentType(MediaType.APPLICATION_JSON).content(body),
+        return send(c, MockMvcRequestBuilders.post(url).contentType(MediaType.APPLICATION_JSON).content(body.getBytes(StandardCharsets.UTF_8)),
                 expected);
     }
 
     protected JsonNode patch(Client c, String url, String body, int expected) throws Exception {
-        return send(c, MockMvcRequestBuilders.patch(url).contentType(MediaType.APPLICATION_JSON).content(body),
+        return send(c, MockMvcRequestBuilders.patch(url).contentType(MediaType.APPLICATION_JSON).content(body.getBytes(StandardCharsets.UTF_8)),
                 expected);
     }
 
