@@ -59,4 +59,15 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, JpaSpecif
     @Query(value = "SELECT * FROM person WHERE immutable_unaccent(lower(trim(city))) = immutable_unaccent(lower(trim(:city)))",
             nativeQuery = true)
     List<Person> findByCityNormalized(@Param("city") String city);
+
+    /** The {@code city} filter: ids of people whose normalised city is one of the values (unit separator delimited). */
+    @Query(value = "SELECT p.id FROM person p WHERE immutable_unaccent(lower(trim(p.city))) IN "
+            + "(SELECT immutable_unaccent(lower(trim(x))) FROM unnest(string_to_array(:csv, chr(31))) AS x)",
+            nativeQuery = true)
+    List<UUID> findIdsByCities(@Param("csv") String csv);
+
+    /** The {@code tag} filter: at least one of the (lower-case, comma delimited) tags; served by the GIN index. */
+    @Query(value = "SELECT p.id FROM person p WHERE p.tags && CAST(string_to_array(:csv, ',') AS varchar(50)[])",
+            nativeQuery = true)
+    List<UUID> findIdsByAnyTag(@Param("csv") String csv);
 }
