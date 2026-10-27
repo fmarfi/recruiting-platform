@@ -171,8 +171,11 @@ class ConsentEngineApiIT extends AbstractApiIT {
                 .andExpect(jsonPath("$.purpose").value("RENEWAL")).andExpect(jsonPath("$.openedAt").doesNotExist());
         // the link is not exposed: read the hash row, issue a known token instead
         String token = "renewal-token-" + UUID.randomUUID() + "-0123456789";
-        jdbc.update("update consent_request set token_hash = encode(sha256(convert_to(?, 'UTF8')), 'hex') "
+        int updated = jdbc.update("update consent_request set token_hash = encode(sha256(convert_to(?, 'UTF8')), 'hex') "
                 + "where person_id = ? and purpose = 'RENEWAL'", token, p);
+        assertThat(updated).as("renewal request rows").isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from person where id = ? and anonymised_at is null",
+                Integer.class, p)).as("person still active").isEqualTo(1);
 
         RetentionRenewedEvents.clear();
         mvc.perform(get("/api/v1/public/consent/" + token)).andExpect(status().isOk())
