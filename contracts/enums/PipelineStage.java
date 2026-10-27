@@ -5,7 +5,7 @@ import java.util.Set;
 
 /**
  * Stage of a candidate in the pipeline of one job order (A-07). Matches
- * {@code docs/status-lifecycles.md}.
+ * {@code docs/plan/status-lifecycles.md}.
  *
  * <p>Rules: an active candidate may move forward to any later active stage, back one
  * stage, or to {@link #REJECTED} (reason required). {@link #PLACED} is reachable only

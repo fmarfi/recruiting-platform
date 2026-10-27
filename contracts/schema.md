@@ -1,6 +1,6 @@
 # Database schema (contract)
 
-Owner: architect; the db-engineer turns it into Flyway migrations and JPA entities. Source: the core data model in `docs/requirements.md`, the demo domain, `contracts/openapi.yaml`.
+Owner: architect; the db-engineer turns it into Flyway migrations and JPA entities. Source: the core data model in `docs/product/requirements.md`, the demo domain, `contracts/openapi.yaml`.
 
 PostgreSQL 16+ with pgvector (vectors only in Phase 2). One schema, `public`.
 

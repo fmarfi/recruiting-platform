@@ -11,7 +11,7 @@ function useNavItems() {
     ['/job-orders', 'nav.jobOrders'],
     ['/network', 'nav.network'],
   ];
-  // Settings is hidden from consultants (docs/ux/screens/settings.md).
+  // Settings is hidden from consultants (docs/product/ux/screens/settings.md).
   if (isManager) items.push(['/settings/users', 'nav.settings']);
   return items;
 }

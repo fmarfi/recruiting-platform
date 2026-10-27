@@ -4,7 +4,7 @@ export type Stage = Schemas['PipelineStage'];
 export type Application = Schemas['Application'];
 export type Move = { to: Stage; reasonRequired: boolean };
 
-/** Moves offered for a stage: exactly the `next` list of /reference-data (docs/status-lifecycles.md section 4). */
+/** Moves offered for a stage: exactly the `next` list of /reference-data (docs/plan/status-lifecycles.md section 4). */
 export function legalMoves(ref: RefData | undefined, from: Stage): Move[] {
   const def = ref?.lifecycles.pipelineStage.statuses.find((s) => s.value === from);
   return (def?.next ?? []).map((n) => ({ to: n.to as Stage, reasonRequired: n.reasonRequired }));

@@ -5,7 +5,7 @@ import java.util.Set;
 
 /**
  * Lifecycle of a job order inside an account (A-06). Matches
- * {@code docs/status-lifecycles.md}.
+ * {@code docs/plan/status-lifecycles.md}.
  *
  * <p>Reason required for moves to {@link #CANCELLED}. {@code CANCELLED -> OPEN} is
  * limited to managers and admins. Guards (service): {@code OFFER -> FILLED} needs at
