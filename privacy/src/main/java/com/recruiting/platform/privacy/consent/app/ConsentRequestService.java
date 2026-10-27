@@ -92,6 +92,11 @@ public class ConsentRequestService {
         return Optional.of(create(personId, language, null, ConsentRequestPurpose.INITIAL, null, null));
     }
 
+    /** True when a request to this person has been waiting for an answer since after the given time. */
+    public boolean askedSince(UUID personId, Instant since) {
+        return requests.existsByPersonIdAndRespondedAtIsNullAndQueuedAtAfter(personId, since);
+    }
+
     /** An unanswered request whose link is still valid (a failed delivery does not count). */
     public boolean pending(UUID personId) {
         return requests.existsByPersonIdAndRespondedAtIsNullAndExpiresAtAfterAndDeliveryStatusNot(personId,
