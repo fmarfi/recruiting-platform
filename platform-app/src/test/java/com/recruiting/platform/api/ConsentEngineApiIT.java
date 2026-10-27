@@ -217,7 +217,7 @@ class ConsentEngineApiIT extends AbstractApiIT {
         assertThat(requests(given)).isEqualTo(1);
         assertThat(jdbc.queryForMap("select purpose, reminder_days_before, reminder_for_retain_until "
                 + "from consent_request where person_id = ?", given)).containsEntry("purpose", "RENEWAL")
-                .containsEntry("reminder_days_before", (short) 60);
+                .satisfies(m -> assertThat(((Number) m.get("reminder_days_before")).intValue()).isEqualTo(60));
         assertThat(requests(sent)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select purpose from consent_request where person_id = ?", String.class, sent))
                 .isEqualTo("INITIAL");

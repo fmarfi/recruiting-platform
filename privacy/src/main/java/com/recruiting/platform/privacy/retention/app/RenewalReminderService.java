@@ -61,7 +61,7 @@ public class RenewalReminderService {
                 continue; // an ended period is erased by the run, not reminded
             }
             Short step = dueStep(until, today, steps);
-            if (step == null || requests.existsByPersonIdAndReminderForRetainUntilAndReminderDaysBefore(
+            if (step == null || requests.reminderExists(
                     p.getPersonId(), until, step)) {
                 continue;
             }
@@ -82,7 +82,7 @@ public class RenewalReminderService {
         LocalDate next = null;
         for (Short step : steps()) {
             LocalDate on = p.getRetainUntil().minusDays(step);
-            boolean sent = requests.existsByPersonIdAndReminderForRetainUntilAndReminderDaysBefore(p.getPersonId(),
+            boolean sent = requests.reminderExists(p.getPersonId(),
                     p.getRetainUntil(), step);
             if (!sent && !on.isBefore(today) && (next == null || on.isBefore(next))) {
                 next = on;
