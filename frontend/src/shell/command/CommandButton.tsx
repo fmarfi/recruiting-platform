@@ -20,7 +20,7 @@ export function useCommandHotkey(toggle: () => void) {
 export function CommandButton({ onClick }: { onClick: () => void }) {
   const { t } = useTranslation();
   return (
-    <Button variant="default" size="sm" onClick={onClick} aria-label={t('command.open')} aria-haspopup="dialog" rightSection={<Kbd size="xs" visibleFrom="md">Ctrl K</Kbd>}>
+    <Button variant="default" size="sm" visibleFrom="sm" onClick={onClick} aria-label={t('command.open')} aria-haspopup="dialog" rightSection={<Kbd size="xs" visibleFrom="md">Ctrl K</Kbd>}>
       {t('command.button')}
     </Button>
   );

@@ -5,12 +5,12 @@ import { useAuth } from '../auth/useAuth';
 
 /** TR/EN switch; remembers the choice on the user profile when logged in. */
 export function LanguageSwitch() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   return (
     <SegmentedControl
       size="xs"
-      aria-label="Language"
+      aria-label={t('shell.language')}
       value={i18n.language.startsWith('tr') ? 'tr' : 'en'}
       data={[
         { value: 'tr', label: 'TR' },

@@ -1,4 +1,4 @@
-import { Select, Stack, Text } from '@mantine/core';
+import { Select, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import type { components } from '../../api';
 import { EmptyState } from '../../shell/components/EmptyState';
@@ -28,6 +28,9 @@ export function TimelinePanel({ entries, kind, onKind }: Props) {
   };
   return (
     <Stack gap="xs">
+      <Title order={2} size="h3">
+        {t('accounts.tab.timeline')}
+      </Title>
       <Select
         aria-label={t('accounts.tab.timeline')}
         value={kind || 'ALL'}
@@ -38,8 +41,10 @@ export function TimelinePanel({ entries, kind, onKind }: Props) {
       {entries.length === 0 ? (
         <EmptyState title={t('accounts.emptyTimeline')} />
       ) : (
-        entries.map((e) => (
-          <div key={e.id}>
+        <Stack gap={0} component="ol" m={0} p={0} style={{ listStyle: 'none', maxHeight: 640, overflowY: 'auto' }}>
+        {entries.map((e) => (
+          <li key={e.id} style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 5, padding: '0 0 14px 14px', position: 'relative' }}>
+            <span aria-hidden style={{ position: 'absolute', left: -6, top: 4, width: 10, height: 10, borderRadius: '50%', background: e.kind === 'ACTIVITY' ? 'var(--color-accent)' : 'var(--color-borderStrong)', border: '2px solid var(--color-surface)' }} />
             <Text size="xs" c="dimmed">
               {fmtDate(e.occurredAt, i18n.language)} - {e.actor?.name ?? t('accounts.system')}
             </Text>
@@ -49,8 +54,9 @@ export function TimelinePanel({ entries, kind, onKind }: Props) {
                 {e.reason}
               </Text>
             )}
-          </div>
-        ))
+          </li>
+        ))}
+        </Stack>
       )}
     </Stack>
   );
