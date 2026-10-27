@@ -40,6 +40,10 @@ export const theme = createTheme({
   colors: {
     brand,
     red: ['#fdecea', '#fbd9d5', '#f5b5ae', '#ee8b81', '#e0645a', '#cf4a40', '#b42318', '#9a1d14', '#82170f', '#6b120b'],
+    // Text-safe shades: Mantine paints c="green" / light badges with shade 6, which must pass WCAG AA on white and on its light tint.
+    green: ['#e8f5ee', '#dff0e6', '#bfe0cc', '#8fc8a6', '#5aa87c', '#2f8f5a', '#17573a', '#134a31', '#0f3d29', '#0a2d1e'],
+    yellow: ['#fdf6e3', '#fbf0d9', '#f6e0b0', '#eecb80', '#e2b04d', '#c98a12', '#7a4e00', '#694200', '#583700', '#432a00'],
+    blue: ['#eef3fb', '#e6eefa', '#c7d9f2', '#9dbce6', '#6f9bd6', '#3b78c0', '#1b4682', '#173c70', '#12315b', '#0d2443'],
     gray: ['#f6f7f9', '#f1f3f7', '#e7ebf1', '#e1e5ec', '#c5ccd8', '#a3acb9', '#566175', '#364154', '#1f2a3b', '#0f1a2b'],
   },
   fontFamily: tokens.typography.fontSans,

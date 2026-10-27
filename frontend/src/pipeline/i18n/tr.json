@@ -8,6 +8,7 @@
     "undo": "Geri al"
   },
   "pipeline": {
+    "hl": { "client": "Müşteri", "location": "Konum", "seniority": "Kıdem", "fee": "Ücret koşulları", "owner": "Sorumlu", "opened": "Açılış", "candidates": "Aktif aday" },
     "activeCandidates": "{{count}} aktif aday",
     "add": "Ekle",
     "addCandidate": "Aday ekle",

@@ -1,4 +1,5 @@
-import { Button, Container, Group, Pagination, Stack, Title } from '@mantine/core';
+import { AppPagination } from '../../shell/components/AppPagination';
+import { Button, Container, Group, Stack, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -98,7 +99,7 @@ export function AccountsList() {
             )
           }
         />
-        {d && d.page.totalPages > 1 && <Pagination total={d.page.totalPages} value={d.page.number + 1} onChange={(p) => setFilters((f) => ({ ...f, page: p - 1 }))} />}
+        {d && d.page.totalPages > 1 && <AppPagination total={d.page.totalPages} value={d.page.number + 1} onChange={(p) => setFilters((f) => ({ ...f, page: p - 1 }))} />}
       </Stack>
       <NewAccountDialog opened={creating} onClose={() => setCreating(false)} onCreated={(id) => nav(`/accounts/${id}`)} />
     </Container>

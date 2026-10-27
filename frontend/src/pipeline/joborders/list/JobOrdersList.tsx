@@ -1,6 +1,7 @@
 // Flat list of job orders for 3-click access (UX-03): defaults to open jobs owned by me. DataGrid with column chooser, sort, density, views and CSV.
+import { AppPagination } from '../../../shell/components/AppPagination';
 import { useAuth } from '../../../shell/auth/useAuth';
-import { Button, Chip, Container, Group, Pagination, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Chip, Container, Group, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,7 +110,7 @@ export function JobOrdersList() {
             </div>
           }
         />
-        {(res.data?.page.totalPages ?? 0) > 1 && <Pagination total={res.data!.page.totalPages} value={s.page + 1} onChange={(p) => set({ page: p - 1 }, false)} />}
+        {(res.data?.page.totalPages ?? 0) > 1 && <AppPagination total={res.data!.page.totalPages} value={s.page + 1} onChange={(p) => set({ page: p - 1 }, false)} />}
       </Stack>
     </Container>
   );

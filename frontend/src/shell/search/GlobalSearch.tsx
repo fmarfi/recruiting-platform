@@ -78,7 +78,9 @@ export function GlobalSearch() {
         <TextInput
           ref={input}
           type="search"
-          role="searchbox"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
           aria-label={t('shell.searchPlaceholder')}
           placeholder={t('shell.searchPlaceholder')}
           value={q}

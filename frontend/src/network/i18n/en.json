@@ -5,6 +5,7 @@
     "createFailed": "Could not create the person.", "daysAgo": "{{count}} days", "daysShort": "{{count}} d ago",
     "doNotContact": "Do not contact for new roles; data scheduled for deletion.",
     "fields": { "city": "City", "company": "Company", "consent": "Consent", "email": "Email", "howWeKnow": "How we know them", "lastContact": "Last contact", "name": "Name", "owner": "Relationship owner", "title": "Title", "titleCompany": "Title and company", "type": "Type" },
+    "filtersTitle": "Filters",
     "filterNotContacted": "Not contacted since", "formerRoles": "Former roles", "linkFailed": "Could not add the connection.", "linkType": "Connection type",
     "linkTypes": { "KNOWS": "Knows", "WORKED_WITH": "Worked with", "INTRODUCED": "Introduced", "REFERRED": "Referred", "REPORTS_TO": "Reports to" },
     "loadFailed": "Could not load the network.", "logActivity": "Log activity", "mine": "Mine", "never": "Never", "newPerson": "New person", "nextActions": "Next actions",

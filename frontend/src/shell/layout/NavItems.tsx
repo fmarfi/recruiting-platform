@@ -34,6 +34,7 @@ export function NavItems({ vertical, onNavigate }: { vertical: boolean; onNaviga
           to={to}
           end={to === '/'}
           onClick={onNavigate}
+          className="nav-link"
           style={({ isActive }) => ({
             minHeight: 'var(--touch-target-min)',
             display: 'flex',
