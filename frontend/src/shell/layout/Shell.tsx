@@ -2,7 +2,7 @@ import { ActionIcon, AppShell, Burger, Group, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { tokens } from '../../theme/tokens';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 import { CommandButton, useCommandHotkey } from '../command/CommandButton';
@@ -31,12 +31,15 @@ export function Shell() {
       footer={{ height: phone ? tokens.layout.bottomTabBarHeight : 0 }}
       padding="md"
     >
+      <a className="skip-link" href="#main-content">
+        {t('shell.skipToContent')}
+      </a>
       <AppShell.Header>
         <Group h="100%" px="md" gap="sm" wrap="nowrap">
           {phone && <Burger opened={drawer} onClick={() => setDrawer((o) => !o)} size="sm" aria-label={t('shell.menu')} />}
-          <Text fw={700} c="brand" visibleFrom="sm" style={{ whiteSpace: 'nowrap' }}>
+          <Link to="/" className="brand-link" style={{ display: phone ? 'none' : undefined }}>
             {t('app.title')}
-          </Text>
+          </Link>
           <GlobalSearch />
           <CommandButton onClick={() => setCommand(true)} />
           <NewMenu onChanged={() => setVersion((v) => v + 1)} />
@@ -47,7 +50,7 @@ export function Shell() {
       <AppShell.Navbar p="md">
         <NavItems vertical onNavigate={() => setDrawer(false)} />
       </AppShell.Navbar>
-      <AppShell.Main>
+      <AppShell.Main id="main-content" tabIndex={-1} style={{ outline: 'none' }}>
         <Outlet key={version} />
       </AppShell.Main>
       <CommandPalette opened={command} onClose={() => setCommand(false)} onChanged={() => setVersion((v) => v + 1)} />

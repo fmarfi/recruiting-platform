@@ -69,11 +69,13 @@ export function MyDay() {
           <StatsStrip stats={d.stats} />
           <Grid>
             <Grid.Col span={{ base: 12, md: 7 }}>
+              <Stack>
               <NextActionsCard actions={actions} today={d.today} undo={home.undo} onDone={(a, v) => void home.setDone(a, v)} onSnooze={(a, due) => void home.snooze(a, due)} onAdd={() => setAdding(true)} />
+              <OpenJobsCard jobs={d.openJobOrders} openTotal={d.stats.openJobOrders} />
+              </Stack>
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 5 }}>
               <Stack>
-                <OpenJobsCard jobs={d.openJobOrders} />
                 <RecentAccountsCard accounts={d.recentAccounts} today={d.today} />
               </Stack>
             </Grid.Col>

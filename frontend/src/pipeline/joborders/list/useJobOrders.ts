@@ -12,6 +12,9 @@ export type JobOrderFilters = {
 };
 
 /** Job orders for the list screen; defaults are open jobs owned by me (set by the screen). */
+/** The backend rejects `daysOpen` as a sort key (change request in the hand-off); days open is the opposite order of the opened date. */
+const backendSort = (s: string) => (s.startsWith('daysOpen') ? (s.endsWith('desc') ? 'openedOn,asc' : 'openedOn,desc') : s);
+
 export function useJobOrders(f: JobOrderFilters) {
   return useAsync(
     () =>
@@ -24,7 +27,7 @@ export function useJobOrders(f: JobOrderFilters) {
             ownerId: f.ownerId,
             page: f.page,
             size: 20,
-            sort: [f.sort || 'openedOn,desc'],
+            sort: [backendSort(f.sort || 'openedOn,desc')],
           },
         },
       }),

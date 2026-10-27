@@ -10,6 +10,7 @@ import { useBoardMoves } from '../../board/useBoardMoves';
 import { QuickAdd, type QuickAddContext } from '../../quickadd/QuickAdd';
 import { StatusBadge, problemText, useCurrentUser, useFormat, useLabel, type Schemas } from '../../shared';
 import { StageGuardDialog } from '../../board/StageGuardDialog';
+import { Highlights } from '../../../shell/components/Highlights';
 import { AddCandidateDialog } from './AddCandidateDialog';
 import { JobStatusMenu } from './JobStatusMenu';
 import { MoveToast } from './MoveToast';
@@ -78,33 +79,42 @@ export function JobOrderPage() {
           / {j.title}
         </Text>
       </Group>
-      <Group justify="space-between" align="flex-start">
-        <Group gap="sm">
-          <Title order={1} data-testid="screen-title" size="h2">
-            {j.title}
-          </Title>
-          <JobStatusMenu
-            status={j.status}
-            isManager={isManager}
-            onChoose={(to, reasonRequired) => (reasonRequired ? setStatusAsk(to) : void changeStatus(to))}
-          />
+      <Card withBorder mb="md">
+        <Group justify="space-between" align="flex-start" mb="md">
+          <Group gap="sm">
+            <Title order={1} data-testid="screen-title">
+              {j.title}
+            </Title>
+            <JobStatusMenu
+              status={j.status}
+              isManager={isManager}
+              onChoose={(to, reasonRequired) => (reasonRequired ? setStatusAsk(to) : void changeStatus(to))}
+            />
+          </Group>
+          <Group gap="xs">
+            {!readOnly && <Button onClick={() => setAddOpen(true)}>+ {t('pipeline.addCandidate')}</Button>}
+            <Button variant="default" onClick={() => setLogCtx({ account: j.account, jobOrder: j })}>
+              {t('pipeline.logActivity')}
+            </Button>
+          </Group>
         </Group>
-        <Group gap="xs">
-          {!readOnly && <Button onClick={() => setAddOpen(true)}>+ {t('pipeline.addCandidate')}</Button>}
-          <Button variant="default" onClick={() => setLogCtx({ account: j.account, jobOrder: j })}>
-            {t('pipeline.logActivity')}
-          </Button>
-        </Group>
-      </Group>
-      <Text size="sm" c="dimmed" mt={4}>
-        <StatusBadge lifecycle="account" value={j.account.status} /> {[j.location, j.seniority].filter(Boolean).join(' · ')}
-        {j.feeTerms ? ` · ${t('pipeline.fee')}: ${j.feeTerms}` : ''} · {t('pipeline.owner')}: {j.owner.name}
-      </Text>
-      <Text size="sm" c="dimmed" mb="md">
-        {t('pipeline.opened')}: {fmt.dateLong(j.openedOn)} ({t('pipeline.daysOpen', { count: j.daysOpen })}) ·{' '}
-        {t('pipeline.activeCandidates', { count: j.activeCandidates })}
-        {rejectedCount > 0 ? ` · ${t('pipeline.rejectedLane', { count: rejectedCount })}` : ''}
-      </Text>
+        <Highlights
+          testId="job-highlights"
+          items={[
+            { label: t('pipeline.hl.client'), value: <Group gap={6}><Anchor component={Link} to={`/accounts/${j.account.id}`} fw={600}>{j.account.name}</Anchor><StatusBadge lifecycle="account" value={j.account.status} /></Group> },
+            { label: t('pipeline.hl.location'), value: j.location || '-' },
+            { label: t('pipeline.hl.seniority'), value: j.seniority || '-' },
+            { label: t('pipeline.hl.owner'), value: j.owner.name },
+            { label: t('pipeline.hl.opened'), value: `${fmt.dateLong(j.openedOn)} (${t('pipeline.daysOpen', { count: j.daysOpen })})` },
+            { label: t('pipeline.hl.candidates'), value: `${j.activeCandidates}${rejectedCount > 0 ? ` · ${t('pipeline.rejectedLane', { count: rejectedCount })}` : ''}` },
+          ]}
+        />
+        {j.feeTerms && (
+          <Text size="sm" c="dimmed" mt="md">
+            <b>{t('pipeline.fee')}:</b> {j.feeTerms}
+          </Text>
+        )}
+      </Card>
 
       {readOnly && (
         <Alert color={j.status === 'FILLED' ? 'green' : 'gray'} mb="md" data-testid="readonly-banner">
@@ -144,7 +154,11 @@ export function JobOrderPage() {
           <Text c="dimmed" size="sm" mb="md">
             {t('pipeline.emptyBody')}
           </Text>
-          {!readOnly && <Button onClick={() => setAddOpen(true)}>{t('pipeline.addCandidate')}</Button>}
+          {!readOnly && (
+            <Group justify="center">
+              <Button onClick={() => setAddOpen(true)}>{t('pipeline.addCandidate')}</Button>
+            </Group>
+          )}
         </Card>
       ) : (
         <Board

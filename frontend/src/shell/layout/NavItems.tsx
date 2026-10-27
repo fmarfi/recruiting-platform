@@ -34,12 +34,16 @@ export function NavItems({ vertical, onNavigate }: { vertical: boolean; onNaviga
           to={to}
           end={to === '/'}
           onClick={onNavigate}
+          className="nav-link"
           style={({ isActive }) => ({
             minHeight: 'var(--touch-target-min)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: vertical ? 'flex-start' : 'center',
-            padding: '0 var(--space-3)',
+            padding: vertical ? '0 var(--space-3)' : '0 2px',
+            fontSize: vertical ? undefined : 12,
+            whiteSpace: 'nowrap',
+            textAlign: 'center',
             borderRadius: 'var(--radius-md)',
             textDecoration: 'none',
             fontWeight: 600,

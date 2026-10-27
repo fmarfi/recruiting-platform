@@ -25,3 +25,25 @@
 
 **Verified with**
 - `npx tsc --noEmit` clean; `npx vitest run` 125 passed; `npx vite build` ok (in frontend/).
+
+---
+
+# Hand-off: frontend-shell/ux · demo polish · 2026-10-28
+
+**Before / after**
+- Accounts, Job orders lists: 400 error screen (backend splits `sort=name,desc`) -> central `sortFix` middleware in `api/client.ts`; job `daysOpen` sort mapped to `openedOn`.
+- Admin demo login saw empty "Mine" lists -> admins default to all records (`owner=me` selects mine).
+- My day: "Open job orders (0)" next to 8 open jobs -> card shows the firm's oldest open jobs with "View all"; KPI tiles with accent, recent clients with links.
+- Job page header and account dashboard strip -> shared `Highlights` panel (label over value); empty pipeline button no longer full width.
+- Network filters grouped in one labelled card; account timeline as a rail with a heading.
+- Phone: command button hidden, avatar user menu, bottom bar text fits.
+- A11y: skip link, `main` target, pagination buttons named (TR/EN), search combobox role (axe: aria-allowed-attr), AA-safe green/yellow/blue text shades, visible focus on nav, EmptyState heading order, language switch label translated. axe-core added as devDependency (run via the dev server in the browser; clean on My day, Accounts, Network after the fixes except what is listed below).
+
+**Still rough:** not visually re-checked at 500 px after the last commit (browser extension disconnected); Network filter card is long on phone; Person page says "Candidate profile" for any type; no axe test in vitest.
+
+**Change requests (backend/architect)**
+- Paging.of: a single `sort=name,desc` is split by Spring into two keys, 400 "unsupported sort key: desc". Accept the comma form as one value.
+- `GET /job-orders` rejects `sort=daysOpen` although the contract lists it.
+- `GET /home` returns `openJobOrders: []` for users who own no jobs while `stats.openJobOrders` is 8.
+- `GET /search?q=Rüzgârgülü` returned 500 via curl (works from the browser with `Rüzgâr`): check long accented terms.
+- Search for "energy" (sector text) finds nothing; only names match.
