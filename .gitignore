@@ -16,3 +16,7 @@ dist/
 frontend/src/api/schema.d.ts
 frontend/coverage/
 *.tsbuildinfo
+
+# Claude Code orchestration files (kept local, not published)
+CLAUDE.md
+.claude/
