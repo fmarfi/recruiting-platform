@@ -3,6 +3,7 @@ package com.recruiting.platform.pipeline.application.web;
 import com.recruiting.platform.contracts.PipelineStage;
 import com.recruiting.platform.pipeline.application.app.ApplicationMapper;
 import com.recruiting.platform.pipeline.application.app.ApplicationService;
+import com.recruiting.platform.pipeline.exposure.app.ExposureService;
 import com.recruiting.platform.pipeline.application.web.dto.ApplicationCreateRequest;
 import com.recruiting.platform.pipeline.application.web.dto.ApplicationResponse;
 import com.recruiting.platform.pipeline.shared.Refs;
@@ -31,8 +32,11 @@ public class JobOrderApplicationController {
     private final ApplicationService service;
     private final ApplicationMapper mapper;
     private final Refs refs;
+    private final ExposureService exposure;
 
-    JobOrderApplicationController(ApplicationService service, ApplicationMapper mapper, Refs refs) {
+    JobOrderApplicationController(ApplicationService service, ApplicationMapper mapper, Refs refs,
+            ExposureService exposure) {
+        this.exposure = exposure;
         this.service = service;
         this.mapper = mapper;
         this.refs = refs;
@@ -46,7 +50,8 @@ public class JobOrderApplicationController {
     @PostMapping("/applications")
     @ResponseStatus(HttpStatus.CREATED)
     ApplicationResponse add(@PathVariable UUID id, @Valid @RequestBody ApplicationCreateRequest r) {
-        return mapper.toResponse(service.add(id, r.personId()));
+        var a = service.add(id, r.personId(), r.offLimitsOverrideReason());
+        return mapper.toResponse(a).withWarnings(exposure.warnings(a));
     }
 
     @GetMapping("/candidate-suggestions")

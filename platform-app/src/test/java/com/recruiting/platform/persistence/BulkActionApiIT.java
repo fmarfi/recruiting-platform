@@ -41,6 +41,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * text, manager rules and whole-request 400s.
  */
 @AutoConfigureMockMvc
+@org.springframework.context.annotation.Import(GuardTestConfig.class)
 class BulkActionApiIT extends AbstractPersistenceIT {
 
     private record Principal(UUID userId) implements IdentifiedUser {
