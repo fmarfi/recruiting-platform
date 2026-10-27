@@ -1,22 +1,18 @@
 package com.recruiting.platform.security;
 
 /**
- * Public API of the security module: field-level encryption for single columns (ADR 0011, AES-256-GCM, key outside
- * the database). Format of the ciphertext: 1 byte key version, 12 byte IV, ciphertext + tag. Other modules call it from
- * their JPA converters; they never see keys.
- *
- * <p>NOTE: this minimal interface was created by backend-accounts (Wave 2b) because security-privacy had not merged
- * its version yet. The orchestrator keeps the security-privacy file at merge; method names must stay identical.
+ * Field-level encryption for small personal values (ADR 0011: compensation). AES-256-GCM; the result is
+ * {@code 1 byte key version | 12 byte IV | ciphertext + 16 byte tag}, so keys can rotate by adding a version.
+ * Implementations never log plaintext or keys. {@code null} in, {@code null} out.
  */
 public interface FieldCipher {
 
-    /** Encrypts with the current key version; never returns null. */
-    byte[] encrypt(byte[] plaintext);
+    /** Encrypts with the current key version. */
+    byte[] encrypt(String plaintext);
 
-    /**
-     * Decrypts with the key version named in the first byte.
-     *
-     * @throws IllegalStateException when the key version is unknown or the data was tampered with
-     */
-    byte[] decrypt(byte[] ciphertext);
+    /** Decrypts with the key version named in the first byte; a wrong key or tampered data throws. */
+    String decrypt(byte[] ciphertext);
+
+    /** The version new values are encrypted with. */
+    int currentKeyVersion();
 }

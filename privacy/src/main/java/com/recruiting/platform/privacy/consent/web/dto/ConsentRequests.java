@@ -2,6 +2,7 @@ package com.recruiting.platform.privacy.consent.web.dto;
 
 import com.recruiting.platform.contracts.ConsentChannel;
 import com.recruiting.platform.contracts.ConsentDecision;
+import com.recruiting.platform.contracts.ConsentRequestPurpose;
 import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.Language;
 import jakarta.validation.constraints.NotNull;
@@ -22,7 +23,11 @@ public final class ConsentRequests {
     }
 
     /** Body of POST /people/{id}/consent/requests (optional). */
-    public record RequestCreate(Language language) {
+    public record RequestCreate(Language language, ConsentRequestPurpose purpose) {
+    }
+
+    /** Body of POST /consent/share-check. */
+    public record ShareCheck(@NotNull @jakarta.validation.constraints.NotEmpty @Size(max = 100) List<UUID> personIds) {
     }
 
     /** Body of POST /consent-requests/bulk: personIds, or importId, or consentStatus. */

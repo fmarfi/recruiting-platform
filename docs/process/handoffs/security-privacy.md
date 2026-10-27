@@ -34,3 +34,25 @@
 - Local run verified (own DB `security_privacy`, port 8083, `mvn spring-boot:run -Dspring-boot.run.profiles=local`, Flyway ok, seed loaded with `COMPOSE_PROJECT_NAME=recruiting-platform seed/load.sh security_privacy`): login admin@demo.example 200, `/auth/me` 200, `/accounts` 200, `/people` 200, export 200 with consent, `/retention/flagged` 200, `/users` 200, POST without CSRF 403. Server stopped.
 - BUG for synthetic-data: seeded rows have no `_aud` baseline, so PATCH /people/{id} (and anonymise/delete of seeded people) returns 500 "Cannot update previous revision". Seed must insert a revtype 0 `_aud` row plus `revinfo` per audited row (person, account, contact, job_order, application, proposal, app_user, network_link, person_employment).
 - `mvn -q -B -Pintegration verify` green (60 tests).
+
+# Hand-off: security-privacy - Wave 2b - 2026-10-27
+
+**Branch:** `worktree-wave2b-security-privacy` (based on 3a61e53).
+
+**Done (by slice)**
+- 1 `security.FieldCipher` + `crypto.AesGcmFieldCipher` (AES-256-GCM, 1 byte version + 12 byte IV + ct/tag; `FIELD_ENCRYPTION_KEY_V<k>` base64 32 bytes, `FIELD_ENCRYPTION_KEY_VERSION`). pilot/prod profile fails fast without key; any other profile (local, test, ITs) logs a warning and uses a public dev key. `FieldCipherTest`.
+- 2 Consent engine: `ShareGuardImpl` (privacy) + `POST /consent/share-check`; overview has shareable/shareBlockReason/lastConsentAt/nextReminderOn; `PersonFileUploaded` (CV) auto-sends the notice + consent mail (setting on; never REFUSED/WITHDRAWN; none while a valid unanswered request exists, row-locked); RENEWAL requests (only while GIVEN); reminders 60/14 (`RenewalReminderService`, idempotent via `reminder_for_retain_until`); `openedAt` set on first GET, never a consent signal; GIVEN sets `last_consent_at`, restarts the clock (FROM_LAST_CONSENT) and publishes `RetentionRenewed`; `RetentionBasisSync` (one-off, idempotent, runs at start and in every retention run) re-saves stale `person_privacy` rows through JPA and publishes `RetentionRenewed` for rows the migration unflagged. `ConsentEngineApiIT`.
+- 3 Purge: step 0 (`ErasureScopes`: merged ids + file keys collected first), `AuditPurger` covers person_education_aud, person_file_aud, new person_aud columns, tags, application_aud.off_limits_override_reason and merged ids; file bytes deleted via FileStore after the commit; attached intake items minimised (file_name, sha256, storage_key, extracted_text, detected), pending items matched by lower-cased detected e-mail are discarded on erasure and DELETION requests; export adds `files`, `exposure`, `pendingIntake`. Merge: `POST /people/{id}/merge` (MANAGER) orchestrates accounts, pipeline, privacy in one transaction, publishes `PersonMerged`. `PurgeWave2bIT`, `MergeApiIT`.
+- 4 `RequestConsentBulkHandler` (BulkActionHandler SPI), MANAGER/ADMIN only, codes per ADR 0010. `BulkConsentHandlerIT`.
+
+**Not done / notes**
+- Interfaces missing on this branch, so I created minimal copies (theirs win at merge; adapt call sites): `pipeline.ShareGuard`, `pipeline.PipelinePersonApi`, `pipeline.BulkActionHandler`, `accounts.PersonMergeApi`. Merge returns 501-like 409 when no implementation exists.
+- Live-table minimisation on ANONYMISE (person_file/person_education deletion, step 2) stays in backend-accounts; my IT checks only aud, intake and bytes there. Token reuse: a link stays usable until expiry so people can withdraw (decision kept from Wave 1).
+- Basis sync writes one extra person_privacy revision (shift then restore) because Envers needs a dirty field.
+- Privacy reads person_merge, person_file, cv_intake_item, candidate_exposure by SQL (ids/keys/metadata only) until accounts/pipeline offer APIs (`CvIntakeApi.findPendingByEmail`).
+
+**Change requests**
+- backend-pipeline: implement ShareGuard consumers, `PipelinePersonApi.movePerson`, dispatcher calling `BulkActionHandler.handle(actor, role, params, id)`; register no REQUEST_CONSENT handler yourself.
+- backend-accounts: implement `PersonMergeApi` (mergeProfile with version check, completeMerge, survivorView) and step 2 deletions; devops: provide a FileStore bean and env `FIELD_ENCRYPTION_KEY_V1`/`_VERSION` in pilot.
+
+**Verification:** `mvn -B verify -Pintegration` (see final reply).

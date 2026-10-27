@@ -47,17 +47,19 @@ public class DataSubjectRequestService {
     private final DataSubjectRequestRepository requests;
     private final PersonGateway people;
     private final PersonErasureService erasure;
+    private final ErasureScopes scopes;
     private final UserDirectory directory;
     private final CurrentUser currentUser;
     private final Clock clock;
     private final TransactionTemplate tx;
 
     DataSubjectRequestService(DataSubjectRequestRepository requests, PersonGateway people,
-            PersonErasureService erasure, UserDirectory directory, CurrentUser currentUser, Clock clock,
+            PersonErasureService erasure, ErasureScopes scopes, UserDirectory directory, CurrentUser currentUser, Clock clock,
             PlatformTransactionManager txManager) {
         this.requests = requests;
         this.people = people;
         this.erasure = erasure;
+        this.scopes = scopes;
         this.directory = directory;
         this.currentUser = currentUser;
         this.clock = clock;
@@ -111,6 +113,7 @@ public class DataSubjectRequestService {
             if (personId == null) {
                 throw new ApiException(ErrorCode.STATE_CONFLICT, "Link the person before completing a deletion request.");
             }
+            scopes.discardPendingByEmail(current.getRequesterEmail()); // before the e-mail is minimised
             erasure.erase(personId, RetentionAction.ANONYMISE, currentUser.id());
         }
         return tx.execute(status -> respond(List.of(apply(load(id), body))).get(0));

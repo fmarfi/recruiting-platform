@@ -3,7 +3,6 @@ package com.recruiting.platform.accounts.domain;
 import com.recruiting.platform.security.FieldCipher;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -28,7 +27,7 @@ public class CompensationEncryptionConverter implements AttributeConverter<Compe
         if (value == null) {
             return null;
         }
-        return cipher.encrypt(JSON.writeValueAsString(value).getBytes(StandardCharsets.UTF_8));
+        return cipher.encrypt(JSON.writeValueAsString(value));
     }
 
     @Override
@@ -36,6 +35,6 @@ public class CompensationEncryptionConverter implements AttributeConverter<Compe
         if (stored == null) {
             return null;
         }
-        return JSON.readValue(new String(cipher.decrypt(stored), StandardCharsets.UTF_8), Compensation.class);
+        return JSON.readValue(cipher.decrypt(stored), Compensation.class);
     }
 }

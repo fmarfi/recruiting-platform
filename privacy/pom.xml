@@ -36,6 +36,10 @@
     </dependency>
     <dependency>
       <groupId>com.recruiting</groupId>
+      <artifactId>crm-pipeline</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.recruiting</groupId>
       <artifactId>security</artifactId>
     </dependency>
     <dependency>
