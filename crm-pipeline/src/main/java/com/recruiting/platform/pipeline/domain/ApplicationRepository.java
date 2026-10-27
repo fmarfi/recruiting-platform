@@ -60,6 +60,12 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
             + "WHERE a.personId = :personId AND a.rejectionReason IS NOT NULL")
     int scrubRejectionReason(@Param("personId") UUID personId);
 
+    /** The manager override reason is free text too (1.2.0): replaced on anonymisation like the rejection reason. */
+    @Modifying
+    @Query("UPDATE Application a SET a.offLimitsOverrideReason = '[removed]' "
+            + "WHERE a.personId = :personId AND a.offLimitsOverrideReason IS NOT NULL")
+    int scrubOffLimitsReason(@Param("personId") UUID personId);
+
     /** Removes the Envers history rows of the applications of a person (schema.md, Anonymisation). */
     @Modifying
     @Query(value = "DELETE FROM application_aud WHERE person_id = :personId", nativeQuery = true)

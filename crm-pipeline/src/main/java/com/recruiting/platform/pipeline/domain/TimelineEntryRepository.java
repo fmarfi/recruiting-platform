@@ -12,6 +12,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface TimelineEntryRepository extends JpaRepository<TimelineEntry, UUID> {
 
+    /** Merge: the timeline of the merged person moves to the survivor. */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE TimelineEntry t SET t.personId = :to WHERE t.personId = :from")
+    int movePerson(@org.springframework.data.repository.query.Param("from") UUID from,
+            @org.springframework.data.repository.query.Param("to") UUID to);
+
     Page<TimelineEntry> findByAccountIdOrderByOccurredAtDesc(UUID accountId, Pageable pageable);
 
     boolean existsBySourceEventId(UUID sourceEventId);
