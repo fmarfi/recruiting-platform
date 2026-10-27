@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Pipeline step of a person merge; audited entities are changed through JPA so Envers writes revisions. */
-@Service
+@Service("pipelinePersonMergeService")
 class PersonMergeService implements PipelinePersonApi {
 
     private final ApplicationRepository applications;

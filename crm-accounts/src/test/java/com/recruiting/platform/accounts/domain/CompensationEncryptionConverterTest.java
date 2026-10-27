@@ -15,22 +15,28 @@ class CompensationEncryptionConverterTest {
     /** Test double: reverses the bytes after a marker byte, so plain JSON can never be stored by accident. */
     static final class ReversingCipher implements FieldCipher {
         @Override
-        public byte[] encrypt(byte[] plaintext) {
-            byte[] out = new byte[plaintext.length + 1];
+        public byte[] encrypt(String plaintext) {
+            byte[] plain = plaintext.getBytes(StandardCharsets.UTF_8);
+            byte[] out = new byte[plain.length + 1];
             out[0] = 7;
-            for (int i = 0; i < plaintext.length; i++) {
-                out[i + 1] = plaintext[plaintext.length - 1 - i];
+            for (int i = 0; i < plain.length; i++) {
+                out[i + 1] = plain[plain.length - 1 - i];
             }
             return out;
         }
 
         @Override
-        public byte[] decrypt(byte[] data) {
+        public String decrypt(byte[] data) {
             byte[] out = new byte[data.length - 1];
             for (int i = 0; i < out.length; i++) {
                 out[i] = data[data.length - 1 - i];
             }
-            return out;
+            return new String(out, StandardCharsets.UTF_8);
+        }
+
+        @Override
+        public int currentKeyVersion() {
+            return 1;
         }
     }
 
