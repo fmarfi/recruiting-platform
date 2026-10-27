@@ -101,7 +101,7 @@ export function JobOrderPage() {
         <Highlights
           testId="job-highlights"
           items={[
-            { label: t('pipeline.hl.client'), value: <Group gap={6} wrap="nowrap"><Anchor component={Link} to={`/accounts/${j.account.id}`} fw={600}>{j.account.name}</Anchor><StatusBadge lifecycle="account" value={j.account.status} /></Group> },
+            { label: t('pipeline.hl.client'), value: <Group gap={6}><Anchor component={Link} to={`/accounts/${j.account.id}`} fw={600}>{j.account.name}</Anchor><StatusBadge lifecycle="account" value={j.account.status} /></Group> },
             { label: t('pipeline.hl.location'), value: j.location || '-' },
             { label: t('pipeline.hl.seniority'), value: j.seniority || '-' },
             { label: t('pipeline.hl.owner'), value: j.owner.name },
