@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Account status moves (A-02, docs/status-lifecycles.md). Order of checks: transition table (409), manager-only
+ * Account status moves (A-02, docs/plan/status-lifecycles.md). Order of checks: transition table (409), manager-only
  * (403), reason (400), open job orders guard (409 with blockingItems, from the account_open_job projection).
  */
 @Service

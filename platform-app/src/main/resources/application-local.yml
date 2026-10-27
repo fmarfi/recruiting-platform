@@ -11,6 +11,9 @@ spring:
   mail:
     host: localhost
     port: 1025
+app:
+  security:
+    dev-auto-login-as: admin@demo.example # LOCAL ONLY: skips the login screen; delete this line to log in again
 server:
   servlet:
     session:

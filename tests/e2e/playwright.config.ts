@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// BASE_URL: where the UI runs. Default is the QA agent's Vite port (docs/context/wave-1b.md).
+// BASE_URL: where the UI runs. Default is the QA agent's Vite port (docs/process/context/wave-1b.md).
 // Start the UI yourself and set E2E_NO_SERVER=1, or let this config start Vite from ../../frontend.
 // Against the real stack (login, data): start Postgres + Spring, then run with API_TARGET=http://localhost:<spring port>.
 const baseURL = process.env.BASE_URL ?? 'http://localhost:5176';

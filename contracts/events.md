@@ -10,7 +10,7 @@ Owner: architect. Java records: `contracts/events/*.java`, package `com.recruiti
 4. **Within a module** the same event may be handled with a plain `@TransactionalEventListener` or a direct call; the rules above are for module boundaries.
 5. **Header** on every event (`DomainEvent`): `eventId` (UUID v7), `occurredAt` (UTC instant of the change), `actorId` (user, `null` for system jobs).
 6. **Payload** carries ids and the few values listeners need (status from/to, reason, type). Listeners that need more read it through the publisher's public API (`AccountApi`, `PersonApi`, `JobOrderApi`), never through its tables.
-7. **Every status change event carries `reason`** (required for the moves listed in `docs/status-lifecycles.md`, otherwise optional and may be `null`).
+7. **Every status change event carries `reason`** (required for the moves listed in `docs/plan/status-lifecycles.md`, otherwise optional and may be `null`).
 8. **Adding a field** to an event is a contract change through the architect; listeners must tolerate new fields. Renaming or removing needs all listeners updated in the same PR.
 9. Events never contain personal data beyond ids (no names, e-mails, notes), so `event_publication` stays out of the retention scope. Exception: `AccountCreated.name`, `JobOrderCreated.title` and `ProposalCreated.title` are business data, not personal data.
 

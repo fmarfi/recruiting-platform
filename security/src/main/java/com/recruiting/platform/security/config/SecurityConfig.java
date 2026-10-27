@@ -1,7 +1,9 @@
 package com.recruiting.platform.security.config;
 
 import com.recruiting.platform.contracts.Role;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
@@ -33,7 +35,11 @@ class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, ProblemResponses problems,
-            SecurityContextRepository contextRepository) throws Exception {
+            SecurityContextRepository contextRepository, UserDetailsService users,
+            @Value("${app.security.dev-auto-login-as:}") String devAutoLoginAs) throws Exception {
+        if (!devAutoLoginAs.isBlank()) {
+            http.addFilterBefore(new DevAutoLoginFilter(users, devAutoLoginAs), AnonymousAuthenticationFilter.class);
+        }
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookieCustomizer(cookie -> cookie.sameSite("Lax"));
         http

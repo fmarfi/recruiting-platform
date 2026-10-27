@@ -1,4 +1,4 @@
-// Dates: EN `16 Oct 2026`, TR `16.10.2026`; relative dates carry the absolute date in a tooltip (docs/ux/README.md).
+// Dates: EN `16 Oct 2026`, TR `16.10.2026`; relative dates carry the absolute date in a tooltip (docs/product/ux/README.md).
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function parts(iso: string): [number, number, number] {

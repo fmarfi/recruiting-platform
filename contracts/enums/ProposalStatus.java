@@ -4,7 +4,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * Lifecycle of a commercial proposal (A-05). Matches {@code docs/status-lifecycles.md}.
+ * Lifecycle of a commercial proposal (A-05). Matches {@code docs/plan/status-lifecycles.md}.
  *
  * <p>Reason required for moves to {@link #REJECTED}. Guard (service): title and terms
  * are read-only once the proposal is no longer {@link #DRAFT}.
