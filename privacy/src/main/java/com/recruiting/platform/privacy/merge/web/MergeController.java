@@ -1,6 +1,6 @@
 package com.recruiting.platform.privacy.merge.web;
 
-import com.recruiting.platform.privacy.merge.app.PersonMergeService;
+import com.recruiting.platform.privacy.merge.app.PersonMergeOrchestrator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -22,9 +22,9 @@ class MergeController {
     record MergeRequest(@NotNull UUID mergedPersonId, List<String> takeFromMerged, @NotNull Long version) {
     }
 
-    private final PersonMergeService service;
+    private final PersonMergeOrchestrator service;
 
-    MergeController(PersonMergeService service) {
+    MergeController(PersonMergeOrchestrator service) {
         this.service = service;
     }
 

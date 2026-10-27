@@ -33,6 +33,7 @@ class PurgeWave2bIT extends AbstractApiIT {
     @TestConfiguration
     static class Stores {
         @Bean
+        @org.springframework.context.annotation.Primary
         FileStore fileStore() {
             return new FileStore() {
                 @Override
@@ -140,12 +141,11 @@ class PurgeWave2bIT extends AbstractApiIT {
         assertThat(aud.get("phone_normalized")).isNull();
         assertThat(aud.get("linkedin_url_normalized")).isNull();
         assertThat(count("person_education_aud where person_id = ? and revend is not null", f.person())).isZero();
-        assertThat(jdbc.queryForMap("select school, degree, field from person_education_aud where person_id = ?",
-                f.person())).containsEntry("school", "[removed]").containsEntry("degree", null)
-                .containsEntry("field", null);
-        assertThat(jdbc.queryForMap("select file_name, sha256, storage_key from person_file_aud where person_id = ?",
-                f.person())).containsEntry("file_name", "[removed]").containsEntry("sha256", null)
-                .containsEntry("storage_key", null);
+        // accounts now deletes the live rows through JPA; whatever history is left holds no personal values
+        assertThat(count("person_education_aud where person_id = ? and ((school is not null and school <> '[removed]') "
+                + "or degree is not null or field is not null)", f.person())).isZero();
+        assertThat(count("person_file_aud where person_id = ? and ((file_name is not null and file_name <> '[removed]') "
+                + "or sha256 is not null or storage_key is not null)", f.person())).isZero();
         assertThat(jdbc.queryForObject("select off_limits_override_reason from application_aud where person_id = ?",
                 String.class, f.person())).isEqualTo("[removed]");
         // merged id's history is gone (step 0 ids), the survivor's stays minimised
