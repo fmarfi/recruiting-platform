@@ -23,6 +23,9 @@ public interface ConsentRequestRepository
     boolean existsByPersonIdAndRespondedAtIsNullAndExpiresAtAfterAndDeliveryStatusNot(UUID personId, Instant now,
             com.recruiting.platform.contracts.EmailDeliveryStatus status);
 
-    boolean existsByPersonIdAndReminderForRetainUntilAndReminderDaysBefore(UUID personId,
-            java.time.LocalDate retainUntil, Short daysBefore);
+    @org.springframework.data.jpa.repository.Query("select count(r) > 0 from ConsentRequest r where r.personId = :personId "
+            + "and r.reminderForRetainUntil = :retainUntil and r.reminderDaysBefore = :days")
+    boolean reminderExists(@org.springframework.data.repository.query.Param("personId") UUID personId,
+            @org.springframework.data.repository.query.Param("retainUntil") java.time.LocalDate retainUntil,
+            @org.springframework.data.repository.query.Param("days") Short days);
 }
