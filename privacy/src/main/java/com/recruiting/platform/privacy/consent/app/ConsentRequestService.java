@@ -81,7 +81,7 @@ public class ConsentRequestService {
     @Transactional
     public Optional<ConsentRequest> sendAutomaticInitial(UUID personId, Language language) {
         PersonPrivacy privacy = retention.ensure(personId);
-        privacy = locked.lockById(privacy.getPersonId()).orElse(privacy);
+        // no row lock: it can deadlock with a concurrent person delete (cascade to person_privacy)
         ConsentStatus status = privacy.getConsentStatus();
         if (status != ConsentStatus.NOT_SENT && status != ConsentStatus.SENT) {
             return Optional.empty();
