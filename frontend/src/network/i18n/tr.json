@@ -5,6 +5,7 @@
     "createFailed": "Kişi oluşturulamadı.", "daysAgo": "{{count}} gün", "daysShort": "{{count}} gün önce",
     "doNotContact": "Yeni pozisyonlar için iletişime geçmeyin; veriler silinmek üzere planlandı.",
     "fields": { "city": "Şehir", "company": "Şirket", "consent": "Onay", "email": "E-posta", "howWeKnow": "Nasıl tanışıyoruz", "lastContact": "Son görüşme", "name": "Ad", "owner": "İlişki sorumlusu", "title": "Unvan", "titleCompany": "Unvan ve şirket", "type": "Tür" },
+    "filtersTitle": "Filtreler",
     "filterNotContacted": "Şu tarihten beri görüşülmedi", "formerRoles": "Önceki görevler", "linkFailed": "Bağlantı eklenemedi.", "linkType": "Bağlantı türü",
     "linkTypes": { "KNOWS": "Tanıyor", "WORKED_WITH": "Birlikte çalıştı", "INTRODUCED": "Tanıştırdı", "REFERRED": "Yönlendirdi", "REPORTS_TO": "Bağlı çalışıyor" },
     "loadFailed": "Ağ yüklenemedi.", "logActivity": "Hareket ekle", "mine": "Benim", "never": "Hiç", "newPerson": "Yeni kişi", "nextActions": "Sıradaki aksiyonlar",

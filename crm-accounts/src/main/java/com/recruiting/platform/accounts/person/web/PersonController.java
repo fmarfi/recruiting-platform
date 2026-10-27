@@ -13,6 +13,7 @@ import com.recruiting.platform.accounts.shared.PatchBinder;
 import com.recruiting.platform.accounts.shared.dto.PageResponse;
 import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.PersonType;
+import com.recruiting.platform.contracts.SourceChannel;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.LocalDate;
@@ -61,10 +62,16 @@ public class PersonController {
             @RequestParam(required = false) List<ConsentStatus> consentStatus,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate lastContactBefore,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate lastContactAfter,
+            @RequestParam(required = false) List<String> city, @RequestParam(required = false) String company,
+            @RequestParam(required = false) List<String> tag,
+            @RequestParam(required = false) List<SourceChannel> sourceChannel,
+            @RequestParam(required = false) String cv, @RequestParam(required = false) Boolean shareable,
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
             @RequestParam(required = false) List<String> sort) {
-        return queries.list(q, type, ownerId, consentStatus, lastContactBefore, lastContactAfter,
-                Paging.of(page, size, sort, SORTS, Sort.by("name")));
+        PersonQueryService.Filter filter = new PersonQueryService.Filter(q, type, ownerId, consentStatus,
+                lastContactBefore, lastContactAfter, city, company, tag, sourceChannel, cv, shareable);
+        return queries.list(filter, Paging.of(page, size, sort, SORTS, Sort.by("name")),
+                sort != null && !sort.isEmpty());
     }
 
     @PostMapping
@@ -75,7 +82,7 @@ public class PersonController {
 
     @GetMapping("/{id}")
     public PersonResponse get(@PathVariable UUID id) {
-        return service.get(id);
+        return service.view(id);
     }
 
     @PatchMapping("/{id}")

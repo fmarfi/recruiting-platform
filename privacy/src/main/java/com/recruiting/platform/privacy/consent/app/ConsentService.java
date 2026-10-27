@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Records consent decisions (append-only, NFR-02) and moves the person's consent status along the lifecycle in
- * docs/status-lifecycles.md section 5. One place for both channels: staff recording a decision and the person
+ * docs/plan/status-lifecycles.md section 5. One place for both channels: staff recording a decision and the person
  * using the e-mail link.
  */
 @Service

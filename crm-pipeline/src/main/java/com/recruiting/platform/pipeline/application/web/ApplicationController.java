@@ -2,6 +2,7 @@ package com.recruiting.platform.pipeline.application.web;
 
 import com.recruiting.platform.pipeline.application.app.ApplicationMapper;
 import com.recruiting.platform.pipeline.application.app.ApplicationService;
+import com.recruiting.platform.pipeline.exposure.app.ExposureService;
 import com.recruiting.platform.pipeline.application.app.ApplicationStageService;
 import com.recruiting.platform.pipeline.application.web.dto.ApplicationResponse;
 import com.recruiting.platform.pipeline.application.web.dto.StageChangeRequest;
@@ -28,8 +29,11 @@ public class ApplicationController {
     private final ApplicationService service;
     private final ApplicationStageService stages;
     private final ApplicationMapper mapper;
+    private final ExposureService exposure;
 
-    ApplicationController(ApplicationService service, ApplicationStageService stages, ApplicationMapper mapper) {
+    ApplicationController(ApplicationService service, ApplicationStageService stages, ApplicationMapper mapper,
+            ExposureService exposure) {
+        this.exposure = exposure;
         this.service = service;
         this.stages = stages;
         this.mapper = mapper;
@@ -48,7 +52,9 @@ public class ApplicationController {
 
     @PatchMapping("/applications/{id}/stage")
     ApplicationResponse changeStage(@PathVariable UUID id, @Valid @RequestBody StageChangeRequest r) {
-        return mapper.toResponse(stages.change(id, r.stage(), r.reason(), r.version()));
+        var a = stages.change(id, r.stage(), r.reason(), r.version(), r.offLimitsOverrideReason());
+        var resp = mapper.toResponse(a);
+        return a.getStage().sharedWithClient() ? resp.withWarnings(exposure.warnings(a)) : resp;
     }
 
     @GetMapping("/people/{id}/applications")

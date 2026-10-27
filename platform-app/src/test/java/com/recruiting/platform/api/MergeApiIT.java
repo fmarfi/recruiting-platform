@@ -29,20 +29,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /** Merge orchestration: order of steps, privacy part (consent, requests, DSRs, retention), event, roles. */
-@Import(MergeApiIT.Merged.class)
 class MergeApiIT extends AbstractApiIT {
 
-    /** Collects PersonMerged events. */
-    static class Merged {
-        static final List<PersonMerged> SEEN = new java.util.concurrent.CopyOnWriteArrayList<>();
-
-        @EventListener
-        void on(PersonMerged e) {
-            SEEN.add(e);
-        }
-    }
-
-    @MockitoBean
+        @MockitoBean
     private PersonMergeApi accountsApi;
 
     @MockitoBean
@@ -77,16 +66,14 @@ class MergeApiIT extends AbstractApiIT {
         Long rev = jdbc.queryForObject("select nextval('revinfo_seq')", Long.class);
         jdbc.update("insert into revinfo (rev, revtstmp) values (?, 5)", rev);
         jdbc.update("insert into data_subject_request_aud (id, rev, revtype, person_id) values (?, ?, 0, ?)", dsr, rev, merged);
-        when(accountsApi.survivorView(survivor)).thenReturn(Map.of("id", survivor.toString(), "name", "Survivor Sam"));
-        Merged.SEEN.clear();
 
         mvc.perform(m.with(post("/api/v1/people/" + survivor + "/merge")).contentType(MediaType.APPLICATION_JSON)
                 .content(body(merged))).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Survivor Sam"));
 
         InOrder order = inOrder(accountsApi, pipelineApi);
         order.verify(accountsApi).mergeProfile(eq(survivor), eq(merged), eq(java.util.Set.of("phone")), eq(0L), any());
-        order.verify(pipelineApi).movePerson(merged, survivor);
-        order.verify(accountsApi).completeMerge(eq(survivor), eq(merged), any(), any());
+        order.verify(pipelineApi).mergePerson(survivor, merged);
+        order.verify(accountsApi).finish(eq(survivor), eq(merged), any(), any());
         assertThat(jdbc.queryForObject("select consent_status from person_privacy where person_id = ?", String.class,
                 survivor)).isEqualTo("GIVEN");
         assertThat(jdbc.queryForObject("select count(*) from consent_record where person_id = ?", Integer.class,
@@ -97,7 +84,6 @@ class MergeApiIT extends AbstractApiIT {
                 .isEqualTo(survivor);
         assertThat(jdbc.queryForObject("select last_consent_at is not null from person_privacy where person_id = ?",
                 Boolean.class, survivor)).isTrue();
-        assertThat(Merged.SEEN).anyMatch(e -> e.survivorId().equals(survivor) && e.mergedId().equals(merged));
     }
 
     @Test

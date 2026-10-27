@@ -1,33 +1,43 @@
 package com.recruiting.platform.pipeline;
 
 import com.recruiting.platform.contracts.ShareBlockReason;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Sharing guard SPI (ADR 0011 decision 8). Defined here, in the pipeline public package, so that pipeline can block a
- * move into a client-facing stage with 409 {@code CONSENT_REQUIRED} without depending on {@code privacy}; privacy
- * implements it from its master data (consent status in {@code person_privacy}), so the answer is never stale.
- * Wave 2d reports and share links call the same SPI.
- *
- * <p>NOTE: if backend-pipeline's branch defines this interface differently, theirs wins and the privacy
- * implementation ({@code ShareGuardImpl}) is adapted at merge; this copy only exists so that privacy compiles.
+ * Sharing guard SPI (ADR 0011 decision 8, Product Plan module 9). pipeline asks it on every move of an application
+ * into a client-facing stage ({@code PipelineStage.sharedWithClient()}); privacy implements it from its master data
+ * (a person is shareable only with consent GIVEN and not anonymised), so pipeline needs no dependency on privacy.
+ * Wave 2d reports and share links call the same SPI. The answer is always fresh, never from a cached copy.
  */
 public interface ShareGuard {
 
     /**
-     * @param personId the person to share
-     * @return empty when the person does not exist; otherwise the decision
+     * Tells whether the person may be shown to a client.
+     *
+     * @param personId the person
+     * @return the decision, with the reason when blocked
      */
-    Optional<ShareCheck> check(UUID personId);
+    ShareDecision check(UUID personId);
 
     /**
-     * Decision for one person.
+     * Decision of the guard.
      *
-     * @param personId  the person
-     * @param shareable consent GIVEN and not anonymised
-     * @param reason    null when shareable
+     * @param shareable {@code true} when the person may be shared
+     * @param reason    why not; {@code null} when shareable
      */
-    record ShareCheck(UUID personId, boolean shareable, ShareBlockReason reason) {
+    record ShareDecision(boolean shareable, ShareBlockReason reason) {
+
+        /** @return a positive decision */
+        public static ShareDecision allowed() {
+            return new ShareDecision(true, null);
+        }
+
+        /**
+         * @param reason why the person cannot be shared
+         * @return a negative decision
+         */
+        public static ShareDecision blocked(ShareBlockReason reason) {
+            return new ShareDecision(false, reason);
+        }
     }
 }

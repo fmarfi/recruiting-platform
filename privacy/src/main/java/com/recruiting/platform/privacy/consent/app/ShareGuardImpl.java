@@ -9,7 +9,6 @@ import com.recruiting.platform.privacy.person.app.PersonInfo;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,10 +42,19 @@ public class ShareGuardImpl implements ShareGuard {
         };
     }
 
+    /** One person's answer for the share-check endpoint. */
+    public record ShareCheck(UUID personId, boolean shareable, ShareBlockReason reason) {
+    }
+
+    /** The SPI: an unknown person is reported as never asked (nothing can be shared with her). */
     @Override
     @Transactional(readOnly = true)
-    public Optional<ShareCheck> check(UUID personId) {
-        return Optional.ofNullable(checkAll(java.util.List.of(personId)).get(personId));
+    public ShareDecision check(UUID personId) {
+        ShareCheck c = checkAll(java.util.List.of(personId)).get(personId);
+        if (c == null) {
+            return ShareDecision.blocked(ShareBlockReason.CONSENT_NOT_REQUESTED);
+        }
+        return c.shareable() ? ShareDecision.allowed() : ShareDecision.blocked(c.reason());
     }
 
     /** One result per known id, in request order; unknown ids are left out. */

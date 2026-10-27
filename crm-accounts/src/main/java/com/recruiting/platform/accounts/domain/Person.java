@@ -96,13 +96,10 @@ public class Person extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     private Mobility mobility;
 
-    /**
-     * Ciphertext of the Compensation JSON (1 byte key version, 12 byte IV, ciphertext + tag). security.FieldCipher
-     * (built by security-privacy) will replace this raw mapping with an AttributeConverter; until then callers must
-     * not write plain text here.
-     */
+    /** Stored encrypted (1 byte key version, 12 byte IV, ciphertext + tag) through security.FieldCipher. */
+    @Convert(converter = CompensationEncryptionConverter.class)
     @Column(name = "compensation_enc")
-    private byte[] compensationEnc;
+    private Compensation compensation;
 
     /** [{language, level}], at most 20, validated by the service. */
     @JdbcTypeCode(SqlTypes.JSON)
@@ -275,12 +272,12 @@ public class Person extends AuditableEntity {
         this.mobility = mobility;
     }
 
-    public byte[] getCompensationEnc() {
-        return compensationEnc;
+    public Compensation getCompensation() {
+        return compensation;
     }
 
-    public void setCompensationEnc(byte[] compensationEnc) {
-        this.compensationEnc = compensationEnc;
+    public void setCompensation(Compensation compensation) {
+        this.compensation = compensation;
     }
 
     public List<Map<String, Object>> getLanguages() {

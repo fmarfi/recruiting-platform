@@ -5,7 +5,6 @@ import com.recruiting.platform.contracts.ApiException;
 import com.recruiting.platform.contracts.ConsentStatus;
 import com.recruiting.platform.contracts.ConsentStatusChanged;
 import com.recruiting.platform.contracts.ErrorCode;
-import com.recruiting.platform.contracts.PersonMerged;
 import com.recruiting.platform.contracts.RetentionBasis;
 import com.recruiting.platform.contracts.RetentionStatus;
 import com.recruiting.platform.pipeline.PipelinePersonApi;
@@ -90,11 +89,10 @@ public class PersonMergeService {
         Set<String> take = takeFromMerged == null ? Set.of() : new LinkedHashSet<>(takeFromMerged);
 
         accountsApi.mergeProfile(survivorId, mergedId, take, version, actor); // 1
-        pipelineApi.movePerson(mergedId, survivorId); // 2
+        pipelineApi.mergePerson(survivorId, mergedId); // 2
         mergeConsent(survivorId, mergedId, actor); // 3
-        accountsApi.completeMerge(survivorId, mergedId, take, actor); // 4
-        events.publishEvent(new PersonMerged(UUID.randomUUID(), clock.instant(), actor, survivorId, mergedId));
-        return accountsApi.survivorView(survivorId);
+        accountsApi.finish(survivorId, mergedId, take, actor); // 4, also publishes PersonMerged
+        return people.find(survivorId).orElseThrow(() -> notFound(survivorId));
     }
 
     /** Step 3: consent records, requests and DSRs move; status = latest decision of the two; retention recomputed. */

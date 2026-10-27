@@ -1,5 +1,6 @@
 // Network list (A-12): who do we know and who should I contact? Smart lists, DataGrid (columns, sort, density, saved views, CSV) and bulk consent requests.
-import { Alert, Badge, Button, Chip, CloseButton, Container, Group, Pagination, SegmentedControl, Select, Stack, Text, TextInput, Title } from '@mantine/core';
+import { AppPagination } from '../../shell/components/AppPagination';
+import { Alert, Badge, Button, Card, Chip, CloseButton, Container, Group, SegmentedControl, Select, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -103,8 +104,9 @@ export function NetworkList() {
         </Group>
       </Group>
       <PresetsBar current={f} onApply={(v) => set({ ...DEFAULT_FILTERS, ...v })} />
+      <Card withBorder padding="md" mb="md" component="section" aria-label={t('network.filtersTitle')}>
       <Group mb="sm" align="flex-end">
-        <TextInput label={t('network.search')} value={f.q} onChange={(e) => change({ q: e.currentTarget.value })} />
+        <TextInput label={t('network.search')} style={{ flex: '1 1 220px' }} value={f.q} onChange={(e) => change({ q: e.currentTarget.value })} />
         <SegmentedControl
           value={f.mine ? 'me' : 'all'}
           onChange={(v) => change({ mine: v === 'me' })}
@@ -129,7 +131,8 @@ export function NetworkList() {
         />
       </Group>
       <Chip.Group multiple value={f.types} onChange={(v) => change({ types: v as Schemas['PersonType'][] })}>
-        <Group gap="xs" mb="sm" style={{ overflowX: 'auto' }} wrap="nowrap">
+        <Group gap="xs" mb="sm" style={{ overflowX: 'auto' }} wrap="nowrap" role="group" aria-label={t('network.fields.type')}>
+          <Text size="xs" c="dimmed" fw={600} tt="uppercase" w={112} style={{ flex: 'none' }}>{t('network.fields.type')}</Text>
           {PERSON_TYPES.map((x) => (
             <Chip key={x} value={x} size="sm">
               {t(`network.types.${x}`)}
@@ -138,6 +141,7 @@ export function NetworkList() {
         </Group>
       </Chip.Group>
       <PoolFilters f={f} onChange={change} />
+      </Card>
       {(f.city || f.company) && (
         <Group gap="xs" mb="sm" data-testid="pending-chips">
           {(['city', 'company'] as const).map(
@@ -215,7 +219,7 @@ export function NetworkList() {
             />
           }
         />
-        {(res.data?.page.totalPages ?? 0) > 1 && <Pagination total={res.data!.page.totalPages} value={page + 1} onChange={(p) => set(f, p - 1)} />}
+        {(res.data?.page.totalPages ?? 0) > 1 && <AppPagination total={res.data!.page.totalPages} value={page + 1} onChange={(p) => set(f, p - 1)} />}
       </Stack>
       <NewPersonDialog opened={newOpen} onClose={() => setNewOpen(false)} onCreated={res.reload} />
     </Container>
