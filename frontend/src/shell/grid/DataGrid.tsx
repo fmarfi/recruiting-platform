@@ -68,11 +68,11 @@ export function DataGrid<T>(p: DataGridProps<T>) {
   const groups = p.groupBy ? p.groupBy(rows) : [{ key: '', label: '', rows }];
 
   const toolbar = (
-    <Group justify="space-between" gap="xs" wrap="wrap">
-      <Group gap="xs">{p.toolbar}</Group>
+    <Group justify="space-between" gap="sm" wrap="wrap">
+      <Group gap="sm">{p.toolbar}</Group>
       <Group gap="xs">
         <SegmentedControl
-          size="xs"
+          size="sm"
           aria-label={t('grid.density')}
           value={density}
           onChange={(v) => {
@@ -85,7 +85,7 @@ export function DataGrid<T>(p: DataGridProps<T>) {
           ]}
         />
         {p.exportName && (
-          <Button variant="default" size="xs" onClick={exportCsv} disabled={rows.length === 0}>
+          <Button variant="default" size="sm" onClick={exportCsv} disabled={rows.length === 0}>
             {t('grid.exportCsv')}
           </Button>
         )}
@@ -119,7 +119,7 @@ export function DataGrid<T>(p: DataGridProps<T>) {
         {rows.map((r) => {
           const id = p.rowId(r);
           return (
-            <Card key={id} withBorder padding="sm">
+            <Card key={id} withBorder padding="md">
               <Group wrap="nowrap" align="flex-start">
                 {p.selectable && <Checkbox checked={selected.has(id)} onChange={() => setSelected(toggleId(selected, id))} aria-label={t('grid.selectRow')} />}
                 <Box style={{ flex: 1, minWidth: 0 }}>
@@ -144,7 +144,7 @@ export function DataGrid<T>(p: DataGridProps<T>) {
     );
   } else {
     body = (
-      <Table highlightOnHover withTableBorder stickyHeader stickyHeaderOffset={p.stickyOffset ?? 56} verticalSpacing={density === 'compact' ? 4 : 'sm'} aria-busy={!!p.loading} style={{ opacity: p.loading ? 0.6 : 1 }}>
+      <Table highlightOnHover withTableBorder stickyHeader stickyHeaderOffset={p.stickyOffset ?? 56} verticalSpacing={density === 'compact' ? 6 : 14} aria-busy={!!p.loading} style={{ opacity: p.loading ? 0.6 : 1 }}>
         <Table.Thead>
           <Table.Tr>
             {p.selectable && (
@@ -156,7 +156,7 @@ export function DataGrid<T>(p: DataGridProps<T>) {
               const field = c.sortKey ?? c.id;
               const active = p.sort?.field === field;
               return (
-                <Table.Th key={c.id} style={{ minWidth: c.minWidth }} aria-sort={c.sortable ? (active ? (p.sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}>
+                <Table.Th key={c.id} style={{ minWidth: c.minWidth, textAlign: c.numeric ? 'right' : undefined }} aria-sort={c.sortable ? (active ? (p.sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}>
                   {c.sortable && p.onSort ? (
                     <UnstyledButton fw={600} fz="inherit" onClick={() => p.onSort!(nextSort(p.sort ?? null, field, c.firstSortDir))} aria-label={t('grid.sortBy', { col: c.header })}>
                       {c.header} {active ? (p.sort!.dir === 'asc' ? '\u25B2' : '\u25BC') : ''}
@@ -188,7 +188,7 @@ export function DataGrid<T>(p: DataGridProps<T>) {
                     </Table.Td>
                   )}
                   {cols.visible.map((c) => (
-                    <Table.Td key={c.id}>{cellValue(c, r)}</Table.Td>
+                    <Table.Td key={c.id} style={c.numeric ? { textAlign: 'right', fontVariantNumeric: 'tabular-nums' } : undefined}>{cellValue(c, r)}</Table.Td>
                   ))}
                 </Table.Tr>
               );
@@ -200,7 +200,7 @@ export function DataGrid<T>(p: DataGridProps<T>) {
   }
 
   return (
-    <Stack gap="xs">
+    <Stack gap="sm">
       {toolbar}
       {bulk}
       {body}
