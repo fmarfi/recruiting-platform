@@ -20,3 +20,7 @@ frontend/coverage/
 # Claude Code orchestration files (kept local, not published)
 CLAUDE.md
 .claude/
+
+# graphify (local code graph)
+graphify-out/
+.graphifyignore
