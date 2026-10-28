@@ -1,4 +1,4 @@
-import { Anchor, Group, Text } from '@mantine/core';
+﻿import { Anchor, Group, Text } from '@mantine/core';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -32,7 +32,7 @@ export function useAccountColumns(): ColumnDef<Account>[] {
       { id: 'city', header: t('accounts.city'), accessor: (a) => a.city },
       { id: 'owner', header: t('accounts.owner'), accessor: (a) => a.owner.name },
       { id: 'status', header: t('accounts.status'), sortable: true, accessor: (a) => a.status, cell: (a) => <StatusBadge kind="account" value={a.status} size="sm" /> },
-      { id: 'openJobCount', header: t('accounts.jobs'), sortable: true, firstSortDir: 'desc', accessor: (a) => a.openJobCount },
+      { id: 'openJobCount', header: t('accounts.jobs'), numeric: true, sortable: true, firstSortDir: 'desc', accessor: (a) => a.openJobCount },
       {
         id: 'lastActivityAt',
         header: t('accounts.lastActivity'),
