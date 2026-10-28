@@ -31,6 +31,8 @@ export interface ColumnDef<T> {
   minWidth?: number;
   /** Columns that cannot be hidden in the chooser (e.g. the name). */
   locked?: boolean;
+  /** Right-aligned, tabular figures. */
+  numeric?: boolean;
 }
 
 /** A named, saved screen configuration. `filters` is opaque to the grid; the screen owns its shape. */

@@ -7,7 +7,7 @@ export function ToneBadge({ tone, label, size = 'md' }: { tone: string; label: s
     <span
       className={`tone-badge tone-${t}`}
       data-tone={t}
-      style={{ height: `var(--badge-${size}-height)`, padding: `0 var(--badge-${size}-px)`, fontSize: `var(--badge-${size}-font)`, whiteSpace: 'nowrap' }}
+      style={{ minHeight: `var(--badge-${size}-height)`, padding: `2px var(--badge-${size}-px)`, fontSize: `var(--badge-${size}-font)`, whiteSpace: 'normal', maxWidth: '100%' }}
     >
       <span aria-hidden style={{ width: 'var(--badge-dot)', height: 'var(--badge-dot)', borderRadius: '50%', background: `var(--tone-${t}-dot)` }} />
       {label}
