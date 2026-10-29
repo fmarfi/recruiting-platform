@@ -32,7 +32,8 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
     async (status, reason) => {
       const previous = a.status;
       const r = await api.PATCH('/accounts/{id}/status', { ...statusPath, body: { status: status as Account['status'], reason, version: a.version } });
-      if (!r.error && r.data)
+      const back = ref.def('account', status)?.next.find((n) => n.to === previous);
+      if (!r.error && r.data && back && !back.reasonRequired)
         showUndo({
           message: t('accounts.edit.statusChanged', { status: ref.label('account', status) }),
           onUndo: async () => {
@@ -46,10 +47,12 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
     onChanged,
     t('shell.saveError'),
   );
+  const renamed = useRef(a.version);
   const rename = async (name: string, expect: number) => {
     const r = await api.PATCH('/accounts/{id}', { ...statusPath, body: { name: name.trim(), version: expect } });
     if (r.error) throw r.error;
     version.current = r.data!.version;
+    renamed.current = r.data!.version;
     onChanged();
   };
   return (
@@ -67,14 +70,14 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
                 </Title>
               )}
               onSave={(v) => rename(v, version.current)}
-              onUndo={(prev) => rename(prev, version.current)}
+              onUndo={(prev) => rename(prev, renamed.current)}
             />
             <StatusMenu kind="account" value={a.status} onMove={change.move} />
           </Group>
+          <Button variant="subtle" onClick={onEdit}>
+            {t('accounts.edit.action')}
+          </Button>
           <Group visibleFrom="sm">
-            <Button variant="subtle" onClick={onEdit}>
-              {t('accounts.edit.action')}
-            </Button>
             <Button onClick={onLog}>
               {t('accounts.logActivity')}
             </Button>

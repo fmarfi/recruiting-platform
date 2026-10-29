@@ -31,6 +31,7 @@ describe('AccountEditDrawer', () => {
   });
 
   it('shows every writable field and saves only the changed ones, then undo restores the old value', async () => {
+    GET.mockImplementation((path: string) => Promise.resolve(path === '/users' ? { data: { content: [{ id: 'u1', name: 'Deniz' }] } } : { data: { ...(account as object), name: 'Acme Foods', version: 4 } }));
     PATCH.mockResolvedValueOnce({ data: { ...(account as object), name: 'Acme Foods', version: 4 } }).mockResolvedValueOnce({ data: { version: 5 } });
     const { onSaved, onClose } = setup();
     for (const l of [/Client name/, /Sector/, /City/, /Website/, /Notes/, /Owner/]) expect(screen.getByLabelText(l)).toBeInTheDocument();
@@ -43,6 +44,21 @@ describe('AccountEditDrawer', () => {
     fireEvent.click(screen.getByRole('button', { name: /Undo/ }));
     await act(async () => {});
     expect(PATCH).toHaveBeenLastCalledWith('/accounts/{id}', { params: { path: { id: 'a1' } }, body: { name: 'Acme', version: 4 } });
+  });
+
+  it('opens the compare dialog on a version conflict and re-saves on top of the new version', async () => {
+    GET.mockImplementation((path: string) => Promise.resolve(path === '/users' ? { data: { content: [{ id: 'u1', name: 'Deniz' }] } } : { data: { ...(account as object), name: 'Acme Theirs', version: 9 } }));
+    PATCH.mockResolvedValueOnce({ error: { code: 'VERSION_CONFLICT' }, response: { status: 409 } }).mockResolvedValueOnce({ data: { version: 10 } });
+    const { onSaved } = setup();
+    type(/Client name/, 'Acme Mine');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await act(async () => {});
+    expect(screen.getByRole('dialog', { name: 'Compare and save' })).toBeInTheDocument();
+    expect(screen.getByText('Acme Theirs')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep my changes and save' }));
+    await act(async () => {});
+    expect(PATCH).toHaveBeenLastCalledWith('/accounts/{id}', { params: { path: { id: 'a1' } }, body: { name: 'Acme Mine', version: 9 } });
+    expect(onSaved).toHaveBeenCalled();
   });
 
   it('shows the API field error next to the field and keeps the drawer open', async () => {

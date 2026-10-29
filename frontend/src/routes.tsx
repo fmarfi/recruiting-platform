@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AccountPage } from './accounts/detail/AccountPage';
 import { AccountsList } from './accounts/list/AccountsList';
 import { SettingsPage } from './settings/SettingsPage';
@@ -17,6 +17,13 @@ import { CvIntakePage } from './network/intake/CvIntakePage';
 import { DuplicatesPage } from './network/duplicates/DuplicatesPage';
 import { NetworkList } from './network/list/NetworkList';
 import { PersonPage } from './network/person/PersonPage';
+
+/** Old path to new path, keeping the id and the query string (filters). */
+export function RedirectTo({ base }: { base: string }) {
+  const { id } = useParams();
+  const { search } = useLocation();
+  return <Navigate to={`${base}${id ? `/${id}` : ''}${search}`} replace />;
+}
 
 export function AppRoutes() {
   const { i18n } = useTranslation();
@@ -41,14 +48,22 @@ export function AppRoutes() {
             }
           >
             <Route path="/" element={<MyDay />} />
-            <Route path="/accounts" element={<AccountsList />} />
-            <Route path="/accounts/:id" element={<AccountPage />} />
-            <Route path="/job-orders" element={<JobOrdersList />} />
-            <Route path="/job-orders/:id" element={<JobOrderPage />} />
-            <Route path="/network" element={<NetworkList />} />
-            <Route path="/network/cv-intake" element={<CvIntakePage />} />
-            <Route path="/network/duplicates" element={<DuplicatesPage />} />
-            <Route path="/people/:id" element={<PersonPage />} />
+            <Route path="/clients" element={<AccountsList />} />
+            <Route path="/clients/:id" element={<AccountPage />} />
+            <Route path="/searches" element={<JobOrdersList />} />
+            <Route path="/searches/:id" element={<JobOrderPage />} />
+            <Route path="/candidates" element={<NetworkList />} />
+            <Route path="/candidates/cv-intake" element={<CvIntakePage />} />
+            <Route path="/candidates/duplicates" element={<DuplicatesPage />} />
+            <Route path="/candidates/:id" element={<PersonPage />} />
+            <Route path="/accounts" element={<RedirectTo base="/clients" />} />
+            <Route path="/accounts/:id" element={<RedirectTo base="/clients" />} />
+            <Route path="/job-orders" element={<RedirectTo base="/searches" />} />
+            <Route path="/job-orders/:id" element={<RedirectTo base="/searches" />} />
+            <Route path="/network" element={<RedirectTo base="/candidates" />} />
+            <Route path="/network/cv-intake" element={<RedirectTo base="/candidates/cv-intake" />} />
+            <Route path="/network/duplicates" element={<RedirectTo base="/candidates/duplicates" />} />
+            <Route path="/people/:id" element={<RedirectTo base="/candidates" />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/settings" element={<Navigate to="/settings/users" replace />} />
             <Route path="/settings/:section" element={<SettingsPage />} />

@@ -16,6 +16,8 @@ export interface PersonForm extends Record<string, string> {
   sourceChannel: string; noticePeriodDays: string; mobility: string;
   employments: string; languages: string; educations: string;
   compBase: string; compVariable: string; compExpected: string; compCurrency: string; compPeriod: string; compBasis: string; compBenefits: string;
+  /** Not editable; carried so editing compensation keeps the date the candidate gave the figures. */
+  compUpdatedOn: string;
 }
 
 const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
@@ -28,7 +30,7 @@ export const personForm = (p: Person): PersonForm => ({
   sourceChannel: str(p.sourceChannel), noticePeriodDays: str(p.noticePeriodDays), mobility: str(p.mobility),
   employments: rowsJson(p.employments), languages: rowsJson(p.languages), educations: rowsJson(p.educations),
   compBase: str(p.compensation?.currentBase), compVariable: str(p.compensation?.currentVariable), compExpected: str(p.compensation?.expected),
-  compCurrency: p.compensation?.currency ?? 'TRY', compPeriod: p.compensation?.period ?? 'ANNUAL', compBasis: p.compensation?.basis ?? 'GROSS', compBenefits: str(p.compensation?.benefits),
+  compCurrency: p.compensation?.currency ?? 'TRY', compPeriod: p.compensation?.period ?? 'ANNUAL', compBasis: p.compensation?.basis ?? 'GROSS', compBenefits: str(p.compensation?.benefits), compUpdatedOn: str(p.compensation?.updatedOn),
 });
 
 const NULLABLE = new Set(['title', 'company', 'email', 'phone', 'city', 'linkedinUrl', 'howWeKnow', 'notes', 'sourceChannel', 'mobility']);
@@ -39,7 +41,7 @@ export function personBody(v: PersonForm, keys: string[], cols: { emp: Column[];
   for (const k of keys) {
     if (COMP.includes(k)) {
       const empty = !v.compBase.trim() && !v.compVariable.trim() && !v.compExpected.trim() && !v.compBenefits.trim();
-      body.compensation = empty ? null : { currentBase: num(v.compBase), currentVariable: num(v.compVariable), expected: num(v.compExpected), currency: v.compCurrency.trim().toUpperCase(), period: v.compPeriod, basis: v.compBasis, benefits: orNull(v.compBenefits) };
+      body.compensation = empty ? null : { currentBase: num(v.compBase), currentVariable: num(v.compVariable), expected: num(v.compExpected), currency: v.compCurrency.trim().toUpperCase(), period: v.compPeriod, basis: v.compBasis, benefits: orNull(v.compBenefits), updatedOn: orNull(v.compUpdatedOn) };
     } else if (k === 'noticePeriodDays') body[k] = num(v[k]);
     else if (k === 'employments') body[k] = cleanRows(v[k], cols.emp);
     else if (k === 'languages') body[k] = cleanRows(v[k], cols.lang).map((r) => ({ ...r, language: String(r.language ?? '').toLowerCase() }));
@@ -118,7 +120,7 @@ export function PersonEditDrawer({ person: p, opened, onClose, onSaved }: Props)
       sourceChannel: t('network.profile.source'), noticePeriodDays: t('network.profile.notice'), mobility: t('network.profile.mobility'),
       employments: t('network.career'), languages: t('network.profile.languages'), educations: t('network.profile.education'),
       compBase: t('network.profile.base'), compVariable: t('network.profile.variable'), compExpected: t('network.profile.expected'), compCurrency: t('network.edit.currency'),
-      compPeriod: t('network.edit.period'), compBasis: t('network.edit.basis'), compBenefits: t('network.edit.benefits'),
+      compPeriod: t('network.edit.period'), compBasis: t('network.edit.basis'), compBenefits: t('network.edit.benefits'), compUpdatedOn: '',
     },
     message: t('network.edit.saved', { name: p.name }),
     onSaved,

@@ -5,9 +5,9 @@
     "contactRole": "Role",
     "contactPrimary": "Primary contact",
     "pickPerson": "Person",
-    "newJob": "New job",
+    "newJob": "New search",
     "newProposal": "New proposal",
-    "jobTitle": "Job title",
+    "jobTitle": "Search title",
     "location": "Location",
     "openings": "Openings",
     "proposalTitle": "Proposal title",
@@ -37,14 +37,14 @@
     "sector": "Sector",
     "reason": "Reason",
     "reasonTitle": "Reason for moving to {{status}}",
-    "openJobsBlock": "This client still has open job orders.",
+    "openJobsBlock": "This client still has open searches.",
     "clientSince": "client since {{date}}",
     "closedBanner": "This client is closed.",
     "ownerIs": "owner {{name}}",
     "backToList": "Back to clients",
     "notFound": "Client not found.",
     "tab": {
-      "jobs": "Job orders",
+      "jobs": "Searches",
       "contacts": "Contacts",
       "relationships": "Relationships",
       "proposals": "Proposals",
@@ -80,18 +80,18 @@
       "avgDays": "Avg. days open",
       "candidates": "Candidates",
       "nextAction": "Next action",
-      "openJobs": "Open jobs"
+      "openJobs": "Open searches"
     },
     "setNextAction": "Set next action",
-    "emptyJobs": "No job orders yet",
-    "emptyJobsHint": "Job orders for this client appear here.",
+    "emptyJobs": "No searches yet",
+    "emptyJobsHint": "Searches for this client appear here.",
     "emptyProposals": "No proposals yet",
     "emptyProposalsHint": "Proposals for this client appear here.",
     "kind": {
       "ACCOUNT_STATUS": "Status",
       "ACTIVITY": "Activity",
       "PROPOSAL": "Proposal",
-      "JOB_ORDER": "Job order",
+      "JOB_ORDER": "Search",
       "CONTACT": "Contact",
       "CANDIDATE": "Candidate"
     },
@@ -101,7 +101,7 @@
     "tl": {
       "ACCOUNT_STATUS": "Status changed to {{to}}",
       "PROPOSAL": "Proposal moved to {{to}}",
-      "JOB_ORDER": "Job order: {{title}}",
+      "JOB_ORDER": "Search: {{title}}",
       "CANDIDATE": "Candidate: {{name}}"
     },
     "clear": "Clear filters",
@@ -113,8 +113,8 @@
     "import": "Import CSV",
     "openedOn": "Client since",
     "website": "Website",
-    "jobs": "Jobs",
-    "jobsCount": "{{n}} open jobs",
+    "jobs": "Searches",
+    "jobsCount": "{{n}} open searches",
     "lastActivity": "Last activity",
     "owner": "Owner",
     "status": "Status",
@@ -166,7 +166,7 @@
     "endContactBody": "{{name}} stays in the history, but is no longer listed as an active contact. You can add them again later.",
     "endContactFailed": "Could not end this contact. Try again.",
     "loadErrorTitle": "This client could not be loaded",
-    "emptyJobsAction": "Add the first job order for this client.",
+    "emptyJobsAction": "Add the first search for this client.",
     "relationshipsEmpty": "Add a contact to see relationship coverage.",
     "edit": {
       "title": "Edit {{name}}",
@@ -182,7 +182,8 @@
       "nameRequired": "Enter a client name.",
       "fixFields": "Some fields need attention. Check the highlighted fields.",
       "saved": "{{name}} updated",
-      "statusChanged": "Status changed to {{status}}"
+      "statusChanged": "Status changed to {{status}}",
+      "tagsFailed": "Saved, but the tags could not be changed. Try the tags again."
     }
   }
 }

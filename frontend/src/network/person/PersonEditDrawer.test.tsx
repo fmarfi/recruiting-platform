@@ -36,7 +36,9 @@ describe('PersonEditDrawer', () => {
   });
 
   it('saves changed fields, adds a tag through a bulk action, and undo reverts both', async () => {
-    PATCH.mockResolvedValueOnce({ data: { ...(person() as object), version: 3 } }).mockResolvedValueOnce({ data: { version: 4 } });
+    // Each tag call bumps the version, so the undo must read it again: the person is at version 5 by then.
+    GET.mockImplementation((path: string) => Promise.resolve(path === '/users' ? { data: { content: [{ id: 'u1', name: 'Deniz' }] } } : { data: { ...(person() as object), phone: '+90 555 000 00 00', version: 5 } }));
+    PATCH.mockResolvedValueOnce({ data: { ...(person() as object), version: 3 } }).mockResolvedValueOnce({ data: { version: 6 } });
     const { onSaved } = setup();
     type(/^Phone/, '+90 555 000 00 00');
     const tags = screen.getByLabelText(/Tags/);
@@ -49,7 +51,7 @@ describe('PersonEditDrawer', () => {
     expect(onSaved).toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Undo/ }));
     await act(async () => {});
-    expect(PATCH).toHaveBeenLastCalledWith('/people/{id}', { params: { path: { id: 'p1' } }, body: { phone: null, version: 3 } });
+    expect(PATCH).toHaveBeenLastCalledWith('/people/{id}', { params: { path: { id: 'p1' } }, body: { phone: null, version: 5 } });
     expect(POST).toHaveBeenLastCalledWith('/bulk-actions', { body: { entity: 'PEOPLE', ids: ['p1'], action: 'REMOVE_TAG', params: { tag: 'finance' } } });
   });
 

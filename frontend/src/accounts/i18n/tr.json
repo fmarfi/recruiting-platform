@@ -5,9 +5,9 @@
     "contactRole": "Rol",
     "contactPrimary": "Birincil kişi",
     "pickPerson": "Kişi",
-    "newJob": "Yeni pozisyon",
+    "newJob": "Yeni arama",
     "newProposal": "Yeni teklif",
-    "jobTitle": "Pozisyon adı",
+    "jobTitle": "Arama adı",
     "location": "Konum",
     "openings": "Açık kadro",
     "proposalTitle": "Teklif başlığı",
@@ -37,14 +37,14 @@
     "sector": "Sektör",
     "reason": "Neden",
     "reasonTitle": "{{status}} durumuna geçiş nedeni",
-    "openJobsBlock": "Bu müşterinin hâlâ açık pozisyonları var.",
+    "openJobsBlock": "Bu müşterinin hâlâ açık aramaları var.",
     "clientSince": "{{date}} tarihinden beri müşteri",
     "closedBanner": "Bu müşteri kapatıldı.",
     "ownerIs": "sorumlu {{name}}",
     "backToList": "Müşterilere dön",
     "notFound": "Müşteri bulunamadı.",
     "tab": {
-      "jobs": "Pozisyonlar",
+      "jobs": "Aramalar",
       "contacts": "Kişiler",
       "relationships": "İlişkiler",
       "proposals": "Teklifler",
@@ -80,18 +80,18 @@
       "avgDays": "Ort. açık gün",
       "candidates": "Adaylar",
       "nextAction": "Sıradaki iş",
-      "openJobs": "Açık pozisyonlar"
+      "openJobs": "Açık aramalar"
     },
     "setNextAction": "Sıradaki işi belirle",
-    "emptyJobs": "Henüz pozisyon yok",
-    "emptyJobsHint": "Bu müşterinin pozisyonları burada görünür.",
+    "emptyJobs": "Henüz arama yok",
+    "emptyJobsHint": "Bu müşterinin aramaları burada görünür.",
     "emptyProposals": "Henüz teklif yok",
     "emptyProposalsHint": "Bu müşterinin teklifleri burada görünür.",
     "kind": {
       "ACCOUNT_STATUS": "Durum",
       "ACTIVITY": "Hareket",
       "PROPOSAL": "Teklif",
-      "JOB_ORDER": "Pozisyon",
+      "JOB_ORDER": "Arama",
       "CONTACT": "Kişi",
       "CANDIDATE": "Aday"
     },
@@ -101,7 +101,7 @@
     "tl": {
       "ACCOUNT_STATUS": "Durum {{to}} oldu",
       "PROPOSAL": "Teklif {{to}} durumuna geçti",
-      "JOB_ORDER": "Pozisyon: {{title}}",
+      "JOB_ORDER": "Arama: {{title}}",
       "CANDIDATE": "Aday: {{name}}"
     },
     "clear": "Filtreleri temizle",
@@ -113,8 +113,8 @@
     "import": "CSV içe aktar",
     "openedOn": "Müşteri tarihi",
     "website": "Web sitesi",
-    "jobs": "Pozisyonlar",
-    "jobsCount": "{{n}} açık pozisyon",
+    "jobs": "Aramalar",
+    "jobsCount": "{{n}} açık arama",
     "lastActivity": "Son hareket",
     "owner": "Sorumlu",
     "status": "Durum",
@@ -158,7 +158,7 @@
       "about": "Kişi bilgisi",
       "what": "Ne",
       "when": "Ne zaman ve nerede",
-      "role": "Pozisyon",
+      "role": "Arama",
       "proposal": "Teklif",
       "fees": "Ücretler"
     },
@@ -166,7 +166,7 @@
     "endContactBody": "{{name}} geçmişte kalır, ancak artık aktif kişi olarak listelenmez. Daha sonra yeniden ekleyebilirsiniz.",
     "endContactFailed": "Kişi sonlandırılamadı. Tekrar deneyin.",
     "loadErrorTitle": "Bu müşteri yüklenemedi",
-    "emptyJobsAction": "Bu müşteri için ilk iş emrini ekleyin.",
+    "emptyJobsAction": "Bu müşteri için ilk aramayı ekleyin.",
     "relationshipsEmpty": "İlişki kapsamını görmek için bir kişi ekleyin.",
     "edit": {
       "title": "{{name}} düzenle",
@@ -182,7 +182,8 @@
       "nameRequired": "Müşteri adını girin.",
       "fixFields": "Bazı alanlar düzeltilmeli. İşaretli alanları kontrol edin.",
       "saved": "{{name}} güncellendi",
-      "statusChanged": "Durum {{status}} olarak değiştirildi"
+      "statusChanged": "Durum {{status}} olarak değiştirildi",
+      "tagsFailed": "Kaydedildi, ancak etiketler değiştirilemedi. Etiketleri tekrar deneyin."
     }
   }
 }

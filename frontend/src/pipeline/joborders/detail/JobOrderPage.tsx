@@ -14,7 +14,7 @@ import { ErrorBanner } from '../../../shell/components/ErrorBanner';
 import { Highlights } from '../../../shell/components/Highlights';
 import { SkeletonRows } from '../../../shell/components/SkeletonRows';
 import { Alert } from '@mantine/core';
-import { HistoryPanel, UndoToastProvider } from '../../../shell/edit';
+import { HistoryPanel } from '../../../shell/edit';
 import { AddCandidateDialog } from './AddCandidateDialog';
 import { JobOrderEditDrawer } from './JobOrderEditDrawer';
 import { JobStatusMenu } from './JobStatusMenu';
@@ -77,7 +77,6 @@ export function JobOrderPage() {
   const rejectedCount = moves.apps.filter((a) => a.stage === 'REJECTED').length;
 
   return (
-    <UndoToastProvider>
     <Container maw="var(--content-max-width)" fluid>
       <Group gap="xs" mb="xs">
         <Anchor component={Link} to={`/accounts/${j.account.id}`} size="sm">
@@ -221,6 +220,5 @@ export function JobOrderPage() {
         }}
       />
     </Container>
-    </UndoToastProvider>
   );
 }

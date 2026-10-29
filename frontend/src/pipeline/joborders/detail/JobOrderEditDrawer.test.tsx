@@ -31,6 +31,7 @@ describe('JobOrderEditDrawer', () => {
   });
 
   it('edits description and fee terms, then undo sends the old values back', async () => {
+    GET.mockImplementation((path: string) => Promise.resolve(path === '/users' ? { data: { content: [{ id: 'u1', name: 'Deniz' }] } } : { data: { ...(job as object), description: 'Lead finance team', feeTerms: '33% retained', version: 8 } }));
     PATCH.mockResolvedValueOnce({ data: { ...(job as object), version: 8 } }).mockResolvedValueOnce({ data: { version: 9 } });
     const { onSaved } = setup();
     type(/Description/, 'Lead finance team');
