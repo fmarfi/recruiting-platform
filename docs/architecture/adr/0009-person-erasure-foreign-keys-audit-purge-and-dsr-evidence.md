@@ -34,6 +34,15 @@
 - Ops must provision and back up `PRIVACY_HMAC_KEY` separately from the database. If the key is lost, DSR e-mails can no longer be matched. The records themselves stay valid.
 - security-privacy implements the order (authoritative version: `contracts/schema.md`, "Anonymisation and deletion"): **step 0 (since contract 1.2.0, ADR 0011): collect the person-id set (the person plus every `person_merge.merged_id`) and the file storage keys, before anything is deleted, because the DELETE cascade removes those rows** → minimise DSRs → `PersonDataApi.anonymise` or `delete` → `PersonAnonymised(deleted)` listeners scrub → `_aud` purge over the collected id set → delete file bytes after commit.
 
+## Amendment for contract 1.3.0 (ADR 0013, 2026-10-29)
+
+- **Rule 1 extended.** New person FKs cascade: `client_feedback`, `candidate_evaluation`, `interview_note`, `candidate_reference`, `placement`. Rows that point at an `application` but are not person rows set null on delete (`candidate_evaluation`, `interview_note`); `client_feedback` and `placement` cascade with their application. `PersonDeleteIT` gets the new tables.
+- **Rule 2 still holds.** Merged accounts are archived (`archive_reason = MERGED`), never deleted, so FKs to `account` stay `NO ACTION`.
+- **Archive is not erasure.** Archiving a person only hides them from lists; consent, retention and DSR handling run as before. `archive_note` is personal data and is nulled on anonymisation.
+- **Anonymise (live rows).** `person`: `skills = '{}'`, `function_area`, `seniority`, `archive_note` null. `pipeline` listener: application `rationale` → `[removed]`, `rating` null; evaluations, interview notes and references of the person are deleted through JPA (they assess the person or hold a referee's data and have no use once the person is anonymous); client feedback keeps round, date, outcome and decline code and scrubs its free text; placements keep dates, status and fee as commercial evidence (tax retention VWC) and null the encrypted pay and status reason; every client report PDF that includes the person is deleted (row and bytes), in ANONYMISE and DELETE mode.
+- **Rule 3 extended.** `_aud` purge by `person_id IN :p` also on `client_feedback_aud`, `candidate_evaluation_aud`, `interview_note_aud`, `candidate_reference_aud`, `placement_aud`, with the placeholders listed in `schema.md`. Person-free tables (brief, criteria, team, target companies, agreements, fee items, tag definitions) need no purge; `conflict_check` and `export_job` are built so that they never hold person names or free-text filters.
+- **Person merge** moves the new person rows to the survivor and rewrites `client_report.person_ids`, so the erasure of the survivor reaches them.
+
 ## Alternatives considered
 
 - **Relax `ck_activity_target` and keep SET NULL.** This leaves orphan notes that hold personal data and no owner to scrub them. Rejected.

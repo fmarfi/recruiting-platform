@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Recruiting Platform API
-  version: 1.2.0
+  version: 1.3.0
   summary: Phase 1 (non-AI) REST contract — CRM, candidate pool, CV files, KVKK consent engine and audit.
   description: |
     Contract owned by the architect (Wave 0). Backends implement it, frontends build against the
@@ -56,6 +56,24 @@ info:
       consent renewal (`purpose`, reminders, tracked `openedAt`), retention basis `FROM_LAST_CONSENT`.
       Talent pools are tags plus shared saved views (`tag` filter). New response fields are optional, so
       1.1.x clients and servers stay valid.
+    - 1.3.0 (additive; ADR 0013): archive and restore for accounts, job orders and people
+      (`archived` list filter, 409 `ARCHIVED`) and the audited account merge; account profile fields
+      (legal and billing data, group parent, size, HQ country, confidentiality level); tag management
+      (`/tags`, talent pool flag); longlist/shortlist (derived `list`, `rank`, `rating`, `rationale`,
+      outreach status, ranking, client feedback; shortlist entry needs rating and rationale); candidate
+      evaluations, interview notes and references; search brief, criteria, team and target companies;
+      fee agreements with fee schedule items, placements with guarantee, conflict checks; pool filters
+      (skill, function, seniority, language, notice, mobility, salary, hasCv); import column mapping and
+      rollback; audited list exports with approval (`/exports`); client report PDFs (`/job-orders/{id}/reports`).
+      Every new response field is optional and the `archived` filter defaults to the 1.2 result, so 1.2
+      clients stay valid. Behaviour changes for 1.2 callers: moving into a client-facing stage from the
+      longlist now needs `rating` and `rationale`.
+      Review round (still 1.3.0): organisation identity on `account` (roles, aliases, normalised name,
+      employment and off-limits links; `Account.sector` may be null for non-client organisations and
+      `GET /accounts` defaults to CLIENT/PROSPECT); application `closeReason`, outreach SCREENED;
+      activity outcome, direction, attendees, duration, source and external message id; brief team size
+      (band encrypted at rest); agreement signed file, guarantee start basis, VAT per fee item. Cut from
+      1.3: proposal archive/restore, proposal exports and `proposalId` on conflict checks.
   contact:
     name: architect agent
   license:
@@ -125,6 +143,22 @@ tags:
     description: Which client accounts saw a person, and warnings before re-presenting (since 1.2.0, B-05, ADR 0011). Module `pipeline` (backend-pipeline).
   - name: Off-limits
     description: Companies the firm must not recruit from, enforced when adding to a pipeline (since 1.2.0, ADR 0011). Module `accounts` (backend-accounts); guard in `pipeline`.
+  - name: Archive
+    description: Soft delete with restore for accounts, job orders, proposals and people, and the audited account merge (since 1.3.0, ADR 0013). Accounts and people in `accounts` (backend-accounts); job orders and proposals in `pipeline` (backend-pipeline).
+  - name: Tags
+    description: Tag management — rename, merge, delete, colour; talent pools are tags flagged as pools (since 1.3.0, ADR 0013). Module `accounts` (backend-accounts); pipeline tables follow through `TagChanged`.
+  - name: Longlist and shortlist
+    description: Rank, rating, rationale, outreach status and client feedback per application (since 1.3.0, SX-013/014/019). Module `pipeline` (backend-pipeline).
+  - name: Evaluation
+    description: Candidate evaluations with scorecards, interview notes and references (since 1.3.0, SX-008/009/010). Module `pipeline` (backend-pipeline).
+  - name: Search brief
+    description: Brief, criteria, team and target companies of a job order (since 1.3.0, SX-001/003). Module `pipeline` (backend-pipeline).
+  - name: Commercial
+    description: Fee agreements with fee schedule items, placements with guarantee, conflict checks (since 1.3.0, PB-007/008/009/011/018, CO-020/021). Module `pipeline` (backend-pipeline).
+  - name: Exports
+    description: Server-side list exports with approval and audit (since 1.3.0, CO-013). Module `security` (security-privacy) with `ExportSource` beans in `accounts` and `pipeline`.
+  - name: Client reports
+    description: Shortlist, progress and candidate-profile PDFs with blind option (since 1.3.0, SX-021/022, PB-021). Module `pipeline` (backend-pipeline); sharing guard by `privacy`.
 paths:
   /auth/login:
     post:
@@ -419,6 +453,25 @@ paths:
           in: query
           schema: { type: string }
         - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/Archived'
+        - name: parentAccountId
+          in: query
+          description: Since 1.3.0. Direct children of this account (group view).
+          schema: { $ref: '#/components/schemas/Id' }
+        - name: role
+          in: query
+          description: |
+            Since 1.3.0 (R63). Organisations with any of these roles (repeat the parameter). Omitted =
+            CLIENT or PROSPECT, which is the 1.2 client list (every 1.2 row is backfilled into one of
+            them). Creating a job order for an organisation adds CLIENT to it (accounts, on
+            `JobOrderCreated`), so an organisation with a search always shows in the default list; CLIENT
+            cannot be removed while it has open job orders (409). The organisation picker (employment, targets, off-limits) sends all four. Since 1.3.0
+            `q` also matches `aliases` (normalised, ADR 0013).
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/OrganisationRole' }
+          style: form
+          explode: true
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -440,6 +493,8 @@ paths:
       tags: [Accounts]
       operationId: createAccount
       summary: Add a client account (status LEAD)
+      description: |
+        Since 1.3.0 (R63) an account is an organisation with roles; default roles [PROSPECT]. See `AccountCreateRequest` for `sector` and the 409 `DUPLICATE` name rule.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
       requestBody:
@@ -707,6 +762,75 @@ paths:
           in: query
           description: '`true`: only people who may be shared with a client (consent GIVEN, not anonymised); `false`: only the others. Since 1.2.0.'
           schema: { type: boolean }
+        - $ref: '#/components/parameters/Archived'
+        - name: skill
+          in: query
+          description: Since 1.3.0. Has at least one of these skills (lower-case match on `skills`).
+          schema:
+            type: array
+            maxItems: 20
+            items: { $ref: '#/components/schemas/Tag' }
+          style: form
+          explode: true
+        - name: functionArea
+          in: query
+          description: Since 1.3.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/JobFunction' }
+          style: form
+          explode: true
+        - name: seniority
+          in: query
+          description: Since 1.3.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/Seniority' }
+          style: form
+          explode: true
+        - name: language
+          in: query
+          description: Since 1.3.0. Speaks all of these languages (ISO 639-1), any level.
+          schema:
+            type: array
+            maxItems: 5
+            items: { type: string, pattern: '^[a-z]{2}$' }
+          style: form
+          explode: true
+        - name: noticeMaxDays
+          in: query
+          description: Since 1.3.0. Notice period at most this many days (unknown notice does not match).
+          schema: { type: integer, minimum: 0, maximum: 365 }
+        - name: mobility
+          in: query
+          description: Since 1.3.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/Mobility' }
+          style: form
+          explode: true
+        - name: salaryMin
+          in: query
+          description: |
+            Since 1.3.0. Expected pay (`compensation.expected`, per year: MONTHLY × 12) at least this
+            amount in `salaryCurrency`. Compensation is encrypted, so the service decrypts and filters
+            after the SQL filters, over at most 5,000 rows (else 400 `VALIDATION_FAILED`, code `TOO_BROAD`:
+            narrow the other filters). No currency conversion: people with another currency or no
+            compensation never match. Only people whose compensation the caller may read are matched
+            (MANAGER/ADMIN: all; others: people they own), so the filter reveals nothing new.
+          schema: { type: number, minimum: 0 }
+        - name: salaryMax
+          in: query
+          description: Since 1.3.0. Expected pay at most this amount; same rules as `salaryMin`.
+          schema: { type: number, minimum: 0 }
+        - name: salaryCurrency
+          in: query
+          description: Since 1.3.0. Required with `salaryMin` or `salaryMax` (400).
+          schema: { type: string, pattern: '^[A-Z]{3}$' }
+        - name: hasCv
+          in: query
+          description: 'Since 1.3.0. `true`: has a current CV whose text is searchable (`textStatus` DONE); `false`: no CV or not searchable (the "not searchable" count of SX-026).'
+          schema: { type: boolean }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -941,6 +1065,14 @@ paths:
                   type: string
                   contentMediaType: application/octet-stream
                   description: .csv or .xlsx
+                mapping:
+                  type: string
+                  contentMediaType: application/json
+                  description: |
+                    Since 1.3.0 (CO-014). Optional JSON object from a column header in the file to a template
+                    column of the kind, e.g. `{"Firma Adı":"name","Şehir":"city"}`; unmapped headers are
+                    ignored, a header mapped to an unknown column gives 400. Without it the headers must match
+                    the template (1.2 behaviour). Stored with the job as `ImportJob.mapping`.
             encoding:
               file:
                 contentType: text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
@@ -1099,6 +1231,7 @@ paths:
           description: '`true` = not FILLED or CANCELLED; `false` = FILLED or CANCELLED.'
           schema: { type: boolean }
         - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/Archived'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -1223,6 +1356,10 @@ paths:
             items: { $ref: '#/components/schemas/PipelineStage' }
           style: form
           explode: true
+        - name: list
+          in: query
+          description: Since 1.3.0. Only applications on this list (derived from the stage, see `CandidateList`), ordered by `rank`.
+          schema: { $ref: '#/components/schemas/CandidateList' }
       responses:
         '200':
           description: Applications
@@ -1307,6 +1444,28 @@ paths:
               schema: { $ref: '#/components/schemas/Application' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Longlist and shortlist]
+      operationId: updateApplication
+      summary: Change rating, rationale or outreach status (not the stage, not the rank)
+      description: Since 1.3.0. On the shortlist the rationale cannot be shortened below 20 characters or cleared, and the rating cannot be cleared (409 `TRANSITION_GUARD_FAILED` with `errors`). Envers keeps the history.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
     delete:
       tags: [Pipeline]
       operationId: removeApplication
@@ -1349,6 +1508,18 @@ paths:
           cover applications, and any later bulk stage move must apply the same guards per record.
         - **Warnings.** The response may carry `warnings` (non-blocking), e.g. the person was already
           presented to this account for another job order.
+
+        Since 1.3.0 (ADR 0013, SX-014):
+        - **Shortlist entry.** A move from the longlist (SOURCED, SCREENED) into a client-facing stage
+          puts the person on the SHORTLIST and needs `rating` (1-5) and a `rationale` of at least 20
+          characters, either already on the application or sent in this request. Missing values give
+          409 `TRANSITION_GUARD_FAILED` with `errors` (`field` rating or rationale, `code` REQUIRED or
+          SIZE). Checked after the sharing guard, before the off-limits guard.
+        - **Rank.** Changing list appends the application at the end of the new list and closes the gap
+          in the old one; REJECTED and PLACED clear `rank` (PLACED keeps its rank on the shortlist report
+          history only). Warning `SHORTLIST_LONG` when the shortlist then has more than 7 people.
+        - Archived job orders and archived people reject stage moves with 409 `ARCHIVED`.
+        Since 1.3.0 (R65) a move to REJECTED stores `closeReason` (default OTHER); a move to SCREENED sets `outreachStatus` SCREENED. Archived job order or person: 409 `ARCHIVED`. Prefer `POST /applications/{id}/placement` for OFFER → PLACED (this endpoint creates no placement).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1523,6 +1694,22 @@ paths:
           in: query
           description: Logged by this user.
           schema: { $ref: '#/components/schemas/Id' }
+        - name: outcome
+          in: query
+          description: Since 1.3.0 (R70).
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ActivityOutcome' }
+          style: form
+          explode: true
+        - name: source
+          in: query
+          description: Since 1.3.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ActivitySource' }
+          style: form
+          explode: true
         - name: from
           in: query
           schema: { type: string, format: date-time }
@@ -1544,7 +1731,7 @@ paths:
       tags: [Activities]
       operationId: logActivity
       summary: Quick add a call, visit, meeting, e-mail or note (UX-06)
-      description: At least one of `accountId` and `personId`. Updates the account's last activity and, except for NOTE, the person's last contact date.
+      description: At least one of `accountId` and `personId`. Updates the account's last activity and, except for NOTE, the last contact date of the person and (since 1.3.0) of every attendee. Since 1.3.0 a duplicate `externalMessageId` gives 409 `DUPLICATE` with `existingId`; `personId` filters on `GET /activities` also match attendees.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1561,6 +1748,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /activities/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -2919,8 +3107,10 @@ paths:
       summary: Mark a client account or another company as off-limits
       description: |
         Exactly one of `accountId` (a client in the CRM) or `companyName` (a company that is not an
-        account). The guard compares the person's current company with the account name or
-        `companyName` (accent- and case-insensitive, trimmed). An active rule for the same account or
+        account). Since 1.3.0 (R63) the guard first matches the person's current employments by
+        `organisationId` (the rule's account, and its subsidiaries when `includeSubsidiaries`), then falls
+        back to the normalised company text against `companyName` or the account's name and aliases
+        (`schema.md`, "Off-limits match"). An active rule for the same account or
         company gives 409 `DUPLICATE` with `existingId`. **ASSUMPTION:** MANAGER/ADMIN only.
       x-roles: [MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
@@ -3018,6 +3208,1588 @@ paths:
                 items: { $ref: '#/components/schemas/ShareCheckResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  # ---------- 1.3.0: archive, restore, merge (ADR 0013) ----------
+  /accounts/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: archiveAccount
+      summary: Archive an account (soft delete; restorable)
+      description: |
+        Sets `archivedAt`, `archivedBy`, `archiveReason` and `archiveNote` (Envers revision, timeline
+        entry ARCHIVE, `ArchiveStateChanged`). The account leaves every list, search, picker and the
+        command bar unless `archived=true` is asked for; `GET /accounts/{id}` still returns it.
+        Guard: no job order of the account may be open and not archived (409 `TRANSITION_GUARD_FAILED`
+        with the job orders as `blockingItems`). `MERGED` is not allowed here (use merge; 400).
+        Archiving an archived account returns it unchanged. Archived records reject every change
+        except restore with 409 `ARCHIVED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ArchiveRequest' }
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: restoreAccount
+      summary: Restore an archived account
+      description: Clears the archive fields (Envers, timeline ARCHIVE, `ArchiveStateChanged(archived=false)`). A MERGED account cannot be restored (409 `STATE_CONFLICT`). Restoring a record that is not archived returns it unchanged.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RestoreRequest' }
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/{id}/merge:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: mergeAccounts
+      summary: Merge another account into this one (the survivor); audited, not reversible
+      description: |
+        One transaction, orchestrated by `accounts` (ADR 0013):
+        1. accounts: fill empty survivor fields from the merged account (fields in `takeFromMerged`
+           overwrite), union the tags (at most 20, else 409 `STATE_CONFLICT`), move contacts (a person
+           who is an active contact of both keeps the survivor's row; the merged one is ended; the
+           survivor's primary contact wins), off-limits rules, child accounts (`parentAccountId`) and
+           the `account_open_job` projection.
+        2. pipeline (`AccountMergeParticipant`): move job orders, proposals, activities, next actions,
+           timeline entries, candidate exposures, agreements, placements, conflict checks and target
+           companies that point at the merged account.
+        3. accounts: archive the merged account with reason `MERGED` and `mergedInto` = survivor,
+           write `account_merge` (counts only), publish `AccountMerged`; timeline entry MERGE.
+        Errors: same id, either account archived, or the merged account is the survivor's parent or
+        child chain → 409 `STATE_CONFLICT`; survivor `version` mismatch → 409 `VERSION_CONFLICT`.
+        Since R63: the survivor gets the union of both role sets and aliases (the merged name becomes an alias, at most 20), and `person_employment.organisation_id` moves to the survivor (accounts, same transaction).
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts (orchestration); pipeline step by backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountMergeRequest' }
+      responses:
+        '200':
+          description: Merged
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountMergeResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: archiveJobOrder
+      summary: Archive a job order (soft delete; restorable)
+      description: |
+        Guard: no active application (stage not PLACED or REJECTED) — 409 `TRANSITION_GUARD_FAILED` with
+        the applications as `blockingItems` (type APPLICATION). The status is kept; while archived the
+        job order counts as not open (`account_open_job.open = false`). Timeline ARCHIVE,
+        `ArchiveStateChanged`. Archived job orders reject changes, new applications and stage moves with
+        409 `ARCHIVED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ArchiveRequest' }
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrder' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: restoreJobOrder
+      summary: Restore an archived job order
+      description: Fails with 409 `ARCHIVED` while its account is archived (restore the account first).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RestoreRequest' }
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrder' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: archivePerson
+      summary: Archive a person (hide from the pool; not an erasure)
+      description: |
+        Hides the person from `GET /people`, search, candidate suggestions and pickers. Archiving is
+        **not** anonymisation or deletion: consent, retention clock and DSR rules run unchanged (ADR 0009
+        stays the only erasure path). Guard: no active application (409 `TRANSITION_GUARD_FAILED`, type
+        APPLICATION). An archived person cannot be added to a job order (409 `ARCHIVED`). `archiveNote`
+        is personal data (scrubbed on anonymisation).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ArchiveRequest' }
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: restorePerson
+      summary: Restore an archived person
+      description: An anonymised person cannot be restored to the pool (409 `STATE_CONFLICT`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RestoreRequest' }
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  # ---------- 1.3.0: tag management (ADR 0013) ----------
+  /tags:
+    get:
+      tags: [Tags]
+      operationId: listTags
+      summary: Every tag in use or defined, with colour, pool flag and usage counts
+      description: |
+        Union of the distinct values in the `tags` arrays of accounts, people, job orders and proposals (archived records included in the counts) with the `tag_definition` rows. Tags without a definition have colour GREY and `defined=false`. Default sort `name,asc`.
+        Sortable: `name`, `total`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - name: entity
+          in: query
+          description: Only tags used on this entity.
+          schema: { $ref: '#/components/schemas/ListEntity' }
+        - name: talentPool
+          in: query
+          description: '`true`: only talent pools.'
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of tags
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagSummaryPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /tags/{tag}:
+    parameters:
+      - $ref: '#/components/parameters/TagPath'
+    put:
+      tags: [Tags]
+      operationId: defineTag
+      summary: Create or change a tag's definition (colour, description, talent pool flag)
+      description: Creates the `tag_definition` row when missing (the tag need not be in use yet). Does not touch any record.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TagDefinitionRequest' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagSummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Tags]
+      operationId: deleteTag
+      summary: Remove the tag from every record and delete its definition
+      description: Set-based rewrite of the `tags` arrays (no Envers revision per record, `version` bumped; ADR 0013), `tag_definition` deleted (Envers), `TagChanged(DELETED)` published so pipeline rewrites job orders and proposals. Shared saved views that filter on the tag keep the filter and return no rows. Unknown tag → 404.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      responses:
+        '200':
+          description: Deleted; records changed in accounts (pipeline follows asynchronously)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagChangeResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /tags/{tag}/rename:
+    parameters:
+      - $ref: '#/components/parameters/TagPath'
+    post:
+      tags: [Tags]
+      operationId: renameTag
+      summary: Rename a tag on every record
+      description: The new name must not be in use (409 `DUPLICATE`; merge instead). Moves the definition, rewrites the arrays like delete, publishes `TagChanged(RENAMED)`. Shared saved views with a `tag` filter on the old name are rewritten too.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TagRenameRequest' }
+      responses:
+        '200':
+          description: Renamed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagChangeResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /tags/{tag}/merge:
+    parameters:
+      - $ref: '#/components/parameters/TagPath'
+    post:
+      tags: [Tags]
+      operationId: mergeTag
+      summary: Merge this tag into another one on every record
+      description: Replaces the path tag by `into` (no duplicates in an array; the count never grows, so the 20-tag limit holds), deletes the path tag's definition (the target keeps its own), rewrites saved views, publishes `TagChanged(MERGED)`. `into` equal to the path tag → 400.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TagMergeRequest' }
+      responses:
+        '200':
+          description: Merged
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagChangeResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  # ---------- 1.3.0: longlist and shortlist (ADR 0013) ----------
+  /job-orders/{id}/ranking:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    put:
+      tags: [Longlist and shortlist]
+      operationId: rankJobOrderList
+      summary: Set the order of one list (keyboard reordering, Alt+Up/Down)
+      description: |
+        `applicationIds` must be exactly the active applications currently on `list` for this job order
+        (PLACED ones are on the shortlist but never ranked), in the new order (else 409 `STATE_CONFLICT`, reload and retry). Ranks become 1..n (unique, gapless). The
+        service locks the job order row for every rank change, so concurrent reorders serialise. Envers
+        records each changed application.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RankingRequest' }
+      responses:
+        '200':
+          description: The list in its new order
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Application' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /applications/{id}/client-feedback:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Longlist and shortlist]
+      operationId: listClientFeedback
+      summary: Client feedback rounds for one shortlisted candidate, newest first
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Feedback rounds
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClientFeedback' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Longlist and shortlist]
+      operationId: recordClientFeedback
+      summary: Record one round of client feedback (SX-019)
+      description: |
+        Only for applications on the SHORTLIST (409 `STATE_CONFLICT` otherwise). `round` defaults to the
+        last round + 1. DECLINE needs `declineReason` (400 `REASON_REQUIRED`) and, in the same
+        transaction, moves the application to REJECTED with reason `Client declined: <reason>` (the
+        normal stage-move rules, event and timeline apply). `recordedBy` is the current user ("entered on
+        the client's behalf").
+        Since R65 the DECLINE move sets `closeReason` CLIENT_DECLINED on the application.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientFeedbackCreateRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientFeedback' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /client-feedback/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Longlist and shortlist]
+      operationId: updateClientFeedback
+      summary: Correct a feedback round (the outcome cannot change; record a new round instead)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientFeedbackUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientFeedback' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Longlist and shortlist]
+      operationId: deleteClientFeedback
+      summary: Delete a round entered by mistake (Envers keeps the history; does not undo a stage move)
+      description: |
+        409 `ARCHIVED` when the job order or the person is archived (ADR 0013).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  # ---------- 1.3.0: candidate evaluation (ADR 0013) ----------
+  /people/{id}/evaluations:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Evaluation]
+      operationId: listEvaluations
+      summary: Evaluations of a person, newest first (Evaluations tab)
+      description: |
+        Writes one access-log VIEW row per returned evaluation (entity EVALUATION), because evaluations carry `privateNotes` and assessments (NFR-05).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+      responses:
+        '200':
+          description: Evaluations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Evaluation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Evaluation]
+      operationId: createEvaluation
+      summary: Evaluate a person, for one search or in general (SX-008)
+      description: |
+        One evaluation per person and job order (409 `DUPLICATE` with `existingId`); `jobOrderId` null =
+        a general evaluation (any number). Recommendation SHORTLIST needs `overallRating`, `summary` and
+        `concerns` (400 `VALIDATION_FAILED`) and consent GIVEN (409 `CONSENT_REQUIRED`); REJECT needs
+        `recommendationReason` (400 `REASON_REQUIRED`). `scores` refer to the job order's criteria
+        (unknown or removed criterion → 400). The evaluation does not move the stage.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EvaluationCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /evaluations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Evaluation]
+      operationId: getEvaluation
+      summary: One evaluation
+      description: |
+        Writes one access-log VIEW row (entity EVALUATION).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Evaluation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Evaluation]
+      operationId: updateEvaluation
+      summary: Change an evaluation (same rules as create; `scores` replace the whole list)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EvaluationUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Evaluation]
+      operationId: deleteEvaluation
+      summary: Delete an evaluation (Envers keeps the history until the person is anonymised)
+      description: |
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/interview-notes:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Evaluation]
+      operationId: listInterviewNotes
+      summary: Interview notes of a person, newest first
+      description: |
+        Writes one access-log VIEW row per returned note (entity INTERVIEW_NOTE).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+      responses:
+        '200':
+          description: Notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/InterviewNote' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Evaluation]
+      operationId: createInterviewNote
+      summary: Add interview notes (SX-009; template headings Career, Motivation, Fit, Concerns are client-side)
+      description: |
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InterviewNoteRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InterviewNote' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /interview-notes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Evaluation]
+      operationId: updateInterviewNote
+      summary: Change interview notes
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InterviewNoteUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InterviewNote' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Evaluation]
+      operationId: deleteInterviewNote
+      summary: Delete interview notes
+      description: |
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/references:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Evaluation]
+      operationId: listReferences
+      summary: Reference checks of a person
+      description: |
+        Writes one access-log VIEW row per returned reference (entity CANDIDATE_REFERENCE); referee details are third-party data.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+      responses:
+        '200':
+          description: References
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CandidateReference' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Evaluation]
+      operationId: createReference
+      summary: Add a reference check
+      description: |
+        The referee's name and contact details are a third person's data (ADR 0013); they are deleted with the candidate's anonymisation and never put into reports (only status and summary).
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CandidateReferenceRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateReference' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /references/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Evaluation]
+      operationId: updateReference
+      summary: Change a reference check
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CandidateReferenceUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateReference' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Evaluation]
+      operationId: deleteReference
+      summary: Delete a reference check
+      description: |
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  # ---------- 1.3.0: search brief and research (ADR 0013) ----------
+  /job-orders/{id}/brief:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Search brief]
+      operationId: getSearchBrief
+      summary: The brief of a job order (Brief tab, printable)
+      description: Always 200; a job order without a saved brief returns empty fields, `briefVersion` 0 and `version` null. `offLimitsRules` are the rules in force today (all companies, plus those of the job order's account), read-only, for the Research tab.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Brief
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchBrief' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Search brief]
+      operationId: saveSearchBrief
+      summary: Save the whole brief (create or replace)
+      description: |
+        Criteria: items with an `id` are updated, items without one are created, criteria not in the list
+        are marked removed (`removedAt`; kept because evaluations score them, SX-017). `briefVersion` goes
+        up by one when the criteria, compensation band or timeline change (the history is in Envers).
+        `compMin <= compMax` and `compCurrency` required with either (400). Missing fields never block a
+        stage or status change (SX-001: warning only, shown by the UI from `missingFields`). Archived job
+        order → 409 `ARCHIVED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SearchBriefRequest' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchBrief' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/team:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Search brief]
+      operationId: getSearchTeam
+      summary: The named team of a job order (the owner is always LEAD)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Team
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SearchTeamMember' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Search brief]
+      operationId: saveSearchTeam
+      summary: Replace the team (at most 10; inactive users → 400)
+      description: The owner is added as LEAD when missing. Envers records the change. The team will drive RESTRICTED/CONFIDENTIAL visibility in a later contract.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              maxItems: 10
+              items: { $ref: '#/components/schemas/SearchTeamMemberRequest' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SearchTeamMember' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/target-companies:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Search brief]
+      operationId: listTargetCompanies
+      summary: Target companies of a search (Research tab, SX-003), tier then name
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/TargetCompanyStatus' }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Targets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TargetCompany' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Search brief]
+      operationId: addTargetCompany
+      summary: Add a target company (an account or a company name)
+      description: |
+        Exactly one of `accountId` and `companyName` (400). The same company twice → 409 `DUPLICATE` (name match accent- and case-insensitive, trimmed). A company matching an active off-limits rule is added with `offLimits` true (the off-limits guard applies when it is set to APPROACHED). At most 300 per search.
+        With `accountId`, publishes `TargetCompanyAdded` (accounts sets the TARGET role). Since R63 a `companyName` that matches exactly one organisation (`OrganisationApi.match`, name or alias) is stored as that `accountId`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TargetCompanyCreateRequest' }
+      responses:
+        '201':
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TargetCompany' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /target-companies/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Search brief]
+      operationId: updateTargetCompany
+      summary: Change tier, status, rationale, owner or notes
+      description: Setting status APPROACHED on an off-limits company gives 409 `OFF_LIMITS` (rules in `blockingItems`) unless a MANAGER/ADMIN sends `offLimitsOverrideReason` (403 for consultants; stored and audited), like the pipeline guard.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TargetCompanyUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TargetCompany' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Search brief]
+      operationId: deleteTargetCompany
+      summary: Remove a target company (prefer status CLOSED once approached)
+      description: |
+        409 `ARCHIVED` when the job order is archived (ADR 0013).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  # ---------- 1.3.0: commercial (ADR 0013) ----------
+  /agreements:
+    get:
+      tags: [Commercial]
+      operationId: listAgreements
+      summary: Fee agreements (terms of business per account, engagement letters per search)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/AgreementStatus' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of agreements
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgreementPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Commercial]
+      operationId: createAgreement
+      summary: Record a fee agreement with its fee schedule (PB-007/008/009)
+      description: |
+        `jobOrderId` null = the account's framework terms (kind TERMS_OF_BUSINESS); set = the engagement
+        for that search (ENGAGEMENT_LETTER; its schedule items are the ones that become due and are
+        invoiced). Rules (400 `VALIDATION_FAILED`): FLAT_FEE needs `flatFeeAmount`; percent models need
+        `feePercent` (0-100) and at least one `feeBasis` component; `feeMinimum <= feeCap`; each schedule
+        item has exactly one of `percent` and `amount`; DATE_OFFSET items need `offsetDays`; for
+        RETAINED_THIRDS the item percents sum to 100. `billingAccountId` defaults to the account (a group
+        parent may pay). The job order must belong to the account (400). Archived account or job order →
+        409 `ARCHIVED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgreementCreateRequest' }
+      responses:
+        '201':
+          description: Created (status DRAFT unless sent)
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agreement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /agreements/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Commercial]
+      operationId: getAgreement
+      summary: One agreement with its fee schedule
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Agreement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agreement' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Commercial]
+      operationId: updateAgreement
+      summary: Change terms, status or the fee schedule
+      description: |
+        `scheduleItems` replaces the whole schedule (items with `id` updated, new ones created, missing
+        ones deleted) and is allowed only while every item is NOT_DUE (409 `STATE_CONFLICT`). Status is a
+        plain field (no transition table): SIGNED needs `signedOn` (400) and makes SIGNING items DUE.
+        Commercial terms of a SIGNED agreement change only by MANAGER/ADMIN (403), or better by an
+        AMENDMENT agreement.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgreementUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agreement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Commercial]
+      operationId: deleteAgreement
+      summary: Delete a DRAFT agreement (others → 409 `STATE_CONFLICT`; set TERMINATED instead)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /agreements/{id}/signed-file:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    put:
+      tags: [Commercial]
+      operationId: uploadAgreementSignedFile
+      summary: Upload or replace the signed copy of an agreement (R67)
+      description: |
+        PDF only, max 20 MB (detected from the bytes; else 415 `UNSUPPORTED_MEDIA_TYPE`). Stored in the
+        `FileStore` under `agreement/<agreementId>/<signedFileId>`; a replaced file's bytes are deleted
+        after the commit (Envers keeps the old id and name). Does not change `status` (set SIGNED with
+        `signedOn` as before). The PDF holds the signatory's name and signature (business contact data,
+        see `contracts/personal-data.md`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/pdf
+                  description: The signed PDF; its name is kept as `signedFile.fileName`.
+                version: { $ref: '#/components/schemas/Version' }
+      responses:
+        '200':
+          description: Stored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agreement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+    get:
+      tags: [Commercial]
+      operationId: downloadAgreementSignedFile
+      summary: Download the signed copy
+      description: Access-log DOWNLOAD row (entity AGREEMENT). Served as an attachment with `X-Content-Type-Options nosniff`. 404 when no file was uploaded.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: PDF bytes
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename*=UTF-8''<fileName>
+          content:
+            application/pdf:
+              schema: { type: string, contentMediaType: application/pdf }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /fee-schedule-items:
+    get:
+      tags: [Commercial]
+      operationId: listFeeScheduleItems
+      summary: Instalments across agreements, e.g. "Invoice ready" (`invoiceState=DUE`, CO-020)
+      description: Only items of engagement agreements (with a job order); framework items are templates.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - name: invoiceState
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/InvoiceState' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - name: dueBefore
+          in: query
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of items
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeeScheduleItemPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /fee-schedule-items/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Commercial]
+      operationId: recordInvoice
+      summary: Record the invoice state of an instalment (finance; no invoice is issued by the platform)
+      description: |
+        Allowed moves: NOT_DUE → DUE (manual, e.g. EXPENSES), DUE → INVOICED (needs `einvoiceRef`,
+        `invoicedOn`, `invoicedAmount`), INVOICED → PAID (needs `paidOn`), any unpaid → CANCELLED (needs
+        `reason`). Others → 409 `ILLEGAL_TRANSITION`. Automatic NOT_DUE → DUE moves are done by pipeline
+        (see `FeeTrigger`).
+      x-roles: [MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeeScheduleItemUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeeScheduleItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /applications/{id}/placement:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Commercial]
+      operationId: placeCandidate
+      summary: Place the candidate — creates the placement and moves the application to PLACED (SX-020, CO-021)
+      description: |
+        One transaction: guard and move OFFER → PLACED exactly like `PATCH /applications/{id}/stage`
+        (409 `ILLEGAL_TRANSITION` from another stage, sharing guard), then the placement row. An application
+        has at most one placement (409 `DUPLICATE`). The agreement is the job order's engagement letter,
+        else the account's SIGNED terms of business. `feeAmount` is computed (`feePercent` × the
+        `feeBasis` components of `compensation`, clamped to `feeMinimum`/`feeCap`; or `flatFeeAmount`);
+        sending `feeAmount` overrides it and is MANAGER/ADMIN only (403); with no agreement `feeAmount` is
+        required (400). `guaranteeEndOn` = `startDate` + the agreement's `guaranteeMonths` (override
+        allowed; since R67 the agreement's `guaranteeStartBasis` picks `startDate` or `offerAcceptedOn`). Makes OFFER_ACCEPTED items DUE, publishes `PlacementCreated` (accounts adds a
+        GUARANTEE_PERIOD off-limits rule on the client until `guaranteeEndOn`), timeline PLACEMENT.
+        Moving to PLACED through the stage endpoint still works (1.2 clients) but creates no placement.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlacementCreateRequest' }
+      responses:
+        '201':
+          description: Placed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Placement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /placements:
+    get:
+      tags: [Commercial]
+      operationId: listPlacements
+      summary: Placements list and guarantee tracker
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - $ref: '#/components/parameters/PersonIdQuery'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/PlacementStatus' }
+          style: form
+          explode: true
+        - name: guaranteeEndsBefore
+          in: query
+          description: Guarantee ends on or before this date (the 30-day alert list).
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of placements (compensation never in lists)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlacementPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /placements/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Commercial]
+      operationId: getPlacement
+      summary: One placement
+      description: '`compensation` only for MANAGER/ADMIN and the job order owner or team; others get null and `compensationRestricted: true`. A read with compensation writes an access-log VIEW row (entity PLACEMENT).'
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Placement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Placement' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Commercial]
+      operationId: updatePlacement
+      summary: Record a start-date change, a departure, a replacement search or a cancellation
+      description: |
+        `leftOn` within the guarantee sets status LEFT_IN_GUARANTEE (and creates a next action for the job
+        order owner); `replacementJobOrderId` (a job order of the same account, fee 0 by convention) sets
+        REPLACED; CANCELLED (candidate withdrew after accepting) needs `reason`. `feeAmount` and
+        `guaranteeEndOn` are MANAGER/ADMIN only (403).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlacementUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Placement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /conflict-checks/preview:
+    post:
+      tags: [Commercial]
+      operationId: previewConflictCheck
+      summary: Run the pre-engagement conflict check without recording it (PB-018)
+      description: |
+        Hits for an account (its whole group: parent chain and children) or a company name: CURRENT_CLIENT
+        (ACTIVE account in the group), GUARANTEE_PERIOD (a placement whose guarantee runs, at a group
+        company), OFF_LIMITS_RULE (an active rule on the company), PLACED_CANDIDATE (a person we placed
+        works there now; counted, never named), COMPETING_SEARCH (an open job order at another client with
+        the same `functionArea` and `seniorityLevel` in its brief).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConflictCheckRequest' }
+      responses:
+        '200':
+          description: Hits
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ConflictHit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /conflict-checks:
+    get:
+      tags: [Commercial]
+      operationId: listConflictChecks
+      summary: Recorded conflict checks, newest first
+      description: |
+        Sortable: `checkedAt` (default `checkedAt,desc`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of checks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConflictCheckPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Commercial]
+      operationId: recordConflictCheck
+      summary: Run the check again and record it with a decision (append-only log)
+      description: |
+        The server recomputes the hits (never trusts the client). CLEAR is allowed only without hits (409
+        `STATE_CONFLICT`); PROCEED with hits is an override: MANAGER/ADMIN only (403) with
+        `overrideReason` (400 `REASON_REQUIRED`), shown on the record (PB-019); BLOCKED needs no reason.
+        Never blocks a proposal or job order by itself in 1.3 (the account's `missingForActive` lists
+        `conflictCheck` until one is recorded).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConflictCheckRecordRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConflictCheck' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  # ---------- 1.3.0: import rollback, exports, client reports (ADR 0013) ----------
+  /imports/{id}/rollback:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Import]
+      operationId: rollbackImport
+      summary: Undo a completed import within 30 days (CO-014)
+      description: |
+        Archives every account and person the import created (reason IMPORT_ROLLBACK; records listed in
+        `import_job_record`) and ends every contact it created. Records changed since the import stay
+        archived too; records that are now on a job order, have activities or are anonymised are skipped
+        and counted in `skipped` (the user decides by hand). Status ROLLED_BACK. Not COMPLETED or past
+        `rollbackUntil` → 409 `STATE_CONFLICT`.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportRollbackRequest' }
+      responses:
+        '200':
+          description: Rolled back
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportRollbackResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /exports:
+    get:
+      tags: [Exports]
+      operationId: listExports
+      summary: My exports; for MANAGER/ADMIN every export (approval queue with `status=PENDING_APPROVAL`)
+      description: |
+        Sortable: `requestedAt` (default `requestedAt,desc`), `status`, `rowCount`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ExportStatus' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of exports, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJobPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Exports]
+      operationId: requestExport
+      summary: Export a list view as CSV, with audit and approval (CO-013)
+      description: |
+        `filters` and `columns` are a `ViewDefinition` of the entity (same validation). The server counts
+        the rows: up to the approval threshold (default 25 people or accounts, setting
+        `app.exports.approval-threshold`; job orders have none) or when the caller is
+        MANAGER/ADMIN, the file is built at once (READY); otherwise PENDING_APPROVAL until a manager
+        approves. `includeCompensation` is MANAGER/ADMIN only (403) and PEOPLE only. Every export writes
+        an access-log EXPORT row per exported person (entity PERSON) and one EXPORT row for the job
+        (entity EXPORT_JOB) with filter keys, row count, columns and purpose. The CSV starts with a
+        watermark line (user, date, purpose) and expires 24 hours after it is ready. Exports of a client
+        report or a person's KVKK export are not done here. `entity` PROPOSALS gives 400
+        `VALIDATION_FAILED` (proposal exports are cut from 1.3; R7/R75 move proposals to opportunities).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy (job, approval, audit); `ExportSource` beans in accounts (PEOPLE, ACCOUNTS) and pipeline (JOB_ORDERS)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExportRequest' }
+      responses:
+        '201':
+          description: READY or PENDING_APPROVAL
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /exports/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Exports]
+      operationId: approveExport
+      summary: Approve a pending export (the file is built with the filters as they match now)
+      description: Not PENDING_APPROVAL → 409 `STATE_CONFLICT`. A manager cannot approve their own request (403).
+      x-roles: [MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExportDecisionRequest' }
+      responses:
+        '200':
+          description: READY
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /exports/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Exports]
+      operationId: rejectExport
+      summary: Reject a pending export (reason required)
+      x-roles: [MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExportDecisionRequest' }
+      responses:
+        '200':
+          description: REJECTED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /exports/{id}/content:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Exports]
+      operationId: downloadExport
+      summary: Download a READY export (requester only)
+      description: Other users → 404. EXPIRED or past `expiresAt` → 410 `GONE` (the bytes are deleted by a nightly job). Each download writes an access-log DOWNLOAD row (entity EXPORT_JOB).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      responses:
+        '200':
+          description: CSV (UTF-8 with BOM for Excel)
+          content:
+            text/csv:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '410': { $ref: '#/components/responses/Gone' }
+  /job-orders/{id}/reports:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Client reports]
+      operationId: listClientReports
+      summary: Generated client reports of a search, newest first
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClientReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Client reports]
+      operationId: generateClientReport
+      summary: Generate a branded PDF (shortlist, progress or candidate profile; SX-021/022, PB-021)
+      description: |
+        SHORTLIST: the shortlist in rank order (or `personIds`, which must be on it), with evaluation blocks
+        allowed by `reportBlocks`/`internalOnly`, interview notes marked `includeInReport`, reference status
+        and summary. PROGRESS: counts (targets researched and approached, longlist and shortlist sizes,
+        client feedback, next steps) and no candidate names. CANDIDATE_PROFILE: one person (`personIds`
+        with one id). People without valid consent are left out and listed in `excluded` (sharing guard
+        via `ShareGuard`; never overridable); private notes and referee details never appear.
+        `blind=true` replaces name, employer, photo, contact data, links and exact dates with an alias
+        ("Candidate A") and returns `blindWarnings` where free text still contains the person's name or
+        employer (advisory; the consultant checks). The file is stored (version per job order and kind) and
+        downloaded with `GET /client-reports/{id}/content`. Generating is not sending: exposure is recorded
+        by `POST /client-reports/{id}/sent`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline (report service); sharing guard by security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientReportRequest' }
+      responses:
+        '201':
+          description: Generated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /client-reports/{id}/content:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Client reports]
+      operationId: downloadClientReport
+      summary: Download the PDF (access-log DOWNLOAD, entity CLIENT_REPORT)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: PDF
+          content:
+            application/pdf:
+              schema: { type: string, contentMediaType: application/pdf }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/Gone' }
+  /client-reports/{id}/sent:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Client reports]
+      operationId: markClientReportSent
+      summary: Mark the report as sent to the client
+      description: |
+        Re-checks consent for every included person (409 `CONSENT_REQUIRED` if one lost it since
+        generation: generate again). Writes one `candidate_exposure` row per included person (channel
+        REPORT) and, for the first SHORTLIST report of the search, fires SHORTLIST_DELIVERED fee items.
+        Sending twice returns the report unchanged.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientReportSentRequest' }
+      responses:
+        '200':
+          description: Marked sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -3081,6 +4853,17 @@ components:
       name: jobOrderId
       in: query
       schema: { $ref: '#/components/schemas/Id' }
+    TagPath:
+      name: tag
+      in: path
+      required: true
+      description: The tag, URL-encoded; matched lower-case.
+      schema: { $ref: '#/components/schemas/Tag' }
+    Archived:
+      name: archived
+      in: query
+      description: 'Since 1.3.0 (ADR 0013). Omitted or `false`: only records that are not archived (the 1.2 behaviour, because nothing was archived before); `true`: only archived records (the "Archived" view).'
+      schema: { type: boolean, default: false }
   responses:
     BadRequest:
       description: Validation failed (`VALIDATION_FAILED`) or a reason is missing (`REASON_REQUIRED`)
@@ -3190,7 +4973,7 @@ components:
                     title: Chief Financial Officer
                     type: JOB_ORDER
     Gone:
-      description: The consent link has expired (`GONE`)
+      description: The resource has expired or was removed for good (`GONE`), e.g. an expired consent link, an expired export file, or a client report deleted by an erasure
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/ProblemDetail' }
@@ -3352,13 +5135,13 @@ components:
       enum: [ACCOUNTS, CONTACTS, PEOPLE]
     ImportStatus:
       type: string
-      enum: [VALIDATED, IMPORTING, COMPLETED, FAILED, DISCARDED]
+      enum: [VALIDATED, IMPORTING, COMPLETED, FAILED, DISCARDED, ROLLED_BACK]
     TimelineKind:
       type: string
-      enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE]
+      enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE, ARCHIVE, MERGE, PLACEMENT]
     EntityType:
       type: string
-      enum: [ACCOUNT, PERSON, CONTACT, NETWORK_LINK, JOB_ORDER, APPLICATION, PROPOSAL, ACTIVITY, NEXT_ACTION, USER, CONSENT_RECORD, CONSENT_REQUEST, PRIVACY_NOTICE, DATA_SUBJECT_REQUEST, IMPORT_JOB, PERSON_FILE, CV_INTAKE_ITEM, OFF_LIMITS_RULE]
+      enum: [ACCOUNT, PERSON, CONTACT, NETWORK_LINK, JOB_ORDER, APPLICATION, PROPOSAL, ACTIVITY, NEXT_ACTION, USER, CONSENT_RECORD, CONSENT_REQUEST, PRIVACY_NOTICE, DATA_SUBJECT_REQUEST, IMPORT_JOB, PERSON_FILE, CV_INTAKE_ITEM, OFF_LIMITS_RULE, TAG, EVALUATION, INTERVIEW_NOTE, CANDIDATE_REFERENCE, CLIENT_FEEDBACK, TARGET_COMPANY, AGREEMENT, FEE_SCHEDULE_ITEM, PLACEMENT, CONFLICT_CHECK, EXPORT_JOB, CLIENT_REPORT]
     AccessAction:
       type: string
       enum: [VIEW, EXPORT, DOWNLOAD]
@@ -3376,7 +5159,7 @@ components:
       enum: [NEUTRAL, INFO, PROGRESS, GOOD, WARN, BAD, MUTED]
     ErrorCode:
       type: string
-      enum: [VALIDATION_FAILED, REASON_REQUIRED, UNAUTHENTICATED, BAD_CREDENTIALS, FORBIDDEN, NOT_FOUND, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, VERSION_CONFLICT, DUPLICATE, STATE_CONFLICT, CONSENT_REQUIRED, OFF_LIMITS, GONE, PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE, TOO_MANY_REQUESTS, INTERNAL_ERROR]
+      enum: [VALIDATION_FAILED, REASON_REQUIRED, UNAUTHENTICATED, BAD_CREDENTIALS, FORBIDDEN, NOT_FOUND, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, VERSION_CONFLICT, DUPLICATE, STATE_CONFLICT, CONSENT_REQUIRED, OFF_LIMITS, ARCHIVED, GONE, PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE, TOO_MANY_REQUESTS, INTERNAL_ERROR]
     # ---------- auth and users ----------
     LoginRequest:
       type: object
@@ -3522,7 +5305,18 @@ components:
       properties:
         id: { $ref: '#/components/schemas/Id' }
         name: { type: string, examples: [Örnek Gıda A.Ş.] }
-        sector: { type: string, examples: [FMCG] }
+        sector: { type: [string, 'null'], description: 'Null only for organisations that are neither CLIENT nor PROSPECT (since 1.3.0, R63).', examples: [FMCG] }
+        roles:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          description: Since 1.3.0 (R63). The organisation's roles; `status` is the client lifecycle and matters for CLIENT and PROSPECT.
+          items: { $ref: '#/components/schemas/OrganisationRole' }
+        aliases:
+          type: array
+          description: Since 1.3.0 (R63). Former names, brands, abbreviations; matched like the name.
+          items: { type: string }
+        normalizedName: { type: string, description: 'Since 1.3.0 (R63). Read-only; lower case, accents and legal forms removed (`schema.md`). Unique among non-archived organisations.', examples: [ornek gida] }
         city: { type: [string, 'null'], examples: [İstanbul] }
         website: { type: [string, 'null'], format: uri }
         notes: { type: [string, 'null'] }
@@ -3535,6 +5329,39 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        archive:
+          oneOf: [{ $ref: '#/components/schemas/ArchiveInfo' }, { type: 'null' }]
+          description: Since 1.3.0. Null while not archived.
+        legalName: { type: [string, 'null'], description: 'Since 1.3.0. Registered name (ticari unvan), used on invoices.', examples: [Örnek Gıda Sanayi ve Ticaret A.Ş.] }
+        taxId: { type: [string, 'null'], description: 'Since 1.3.0. VKN, TCKN or a foreign tax id as entered; no format check in 1.3.' }
+        taxOffice: { type: [string, 'null'], examples: [Boğaziçi Kurumlar] }
+        mersisNo: { type: [string, 'null'] }
+        einvoiceStatus: { $ref: '#/components/schemas/EInvoiceStatus' }
+        einvoiceAlias: { type: [string, 'null'] }
+        billingAddress: { type: [string, 'null'] }
+        billingEmails:
+          type: array
+          items: { type: string, format: email }
+        billingCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        vatExempt: { type: boolean }
+        withholdingApplies: { type: boolean }
+        parentAccount:
+          oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }]
+          description: Since 1.3.0. Group parent; the group is this account, its parent chain and children.
+        groupName: { type: [string, 'null'], description: Group name when the parent is not in the CRM., examples: [Marmara Holding] }
+        employeeBand:
+          oneOf: [{ $ref: '#/components/schemas/EmployeeBand' }, { type: 'null' }]
+        hqCountry: { type: [string, 'null'], pattern: '^[A-Z]{2}$', description: 'ISO 3166-1 alpha-2; `city` is the HQ city.', examples: [TR] }
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
+        preferredLanguage:
+          oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }]
+        missingForActive:
+          type: array
+          description: |
+            Since 1.3.0. Profile fields still empty that an active client needs (PB-014, CO-019):
+            `legalName`, `taxId`, `taxOffice`, `billingAddress`, `billingEmails`, `signedAgreement`,
+            `conflictCheck`. Informational in 1.3 (no status guard yet, ADR 0013).
+          items: { type: string }
     AccountPage:
       type: object
       required: [content, page]
@@ -3545,26 +5372,99 @@ components:
         page: { $ref: '#/components/schemas/PageMeta' }
     AccountCreateRequest:
       type: object
-      required: [name, sector]
+      required: [name]
+      description: |
+        `sector` is required (400) unless `roles` holds only TARGET and/or EMPLOYER (since 1.3.0, R63).
+        A name or alias whose normalised form matches a non-archived organisation's name or alias gives
+        409 `DUPLICATE` with `existingId`.
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
-        sector: { type: string, minLength: 1, maxLength: 100 }
+        sector: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        roles:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          description: Since 1.3.0. Default [PROSPECT].
+          items: { $ref: '#/components/schemas/OrganisationRole' }
+        aliases:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 200 }
         city: { type: [string, 'null'], maxLength: 100 }
         website: { type: [string, 'null'], format: uri, maxLength: 300 }
         notes: { type: [string, 'null'], maxLength: 4000 }
         ownerId:
           $ref: '#/components/schemas/Id'
           description: Defaults to the current user.
+        legalName: { type: [string, 'null'], maxLength: 300 }
+        taxId: { type: [string, 'null'], maxLength: 20, description: Plain string; no check-digit validation in 1.3 (VWC). }
+        taxOffice: { type: [string, 'null'], maxLength: 100 }
+        mersisNo: { type: [string, 'null'], maxLength: 16 }
+        einvoiceStatus: { $ref: '#/components/schemas/EInvoiceStatus' }
+        einvoiceAlias: { type: [string, 'null'], maxLength: 100 }
+        billingAddress: { type: [string, 'null'], maxLength: 500 }
+        billingEmails:
+          type: array
+          maxItems: 5
+          items: { type: string, format: email, maxLength: 254 }
+        billingCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        vatExempt: { type: boolean, description: Default false. }
+        withholdingApplies: { type: boolean, description: Default false. }
+        parentAccountId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: No cycles and a chain of at most 5 (400 `VALIDATION_FAILED`, field `parentAccountId`); not an archived account (409 `ARCHIVED`).
+        groupName: { type: [string, 'null'], maxLength: 200 }
+        employeeBand:
+          oneOf: [{ $ref: '#/components/schemas/EmployeeBand' }, { type: 'null' }]
+        hqCountry: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
+        preferredLanguage:
+          oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }]
     AccountUpdateRequest:
       type: object
+      description: Since 1.3.0 also takes the profile fields, `roles` and `aliases` of `AccountCreateRequest` (same rules; `aliases` replaces the whole list). CLIENT is also set by the server when the status becomes ACTIVE or when a job order is created for the organisation, TARGET when it becomes a target company, EMPLOYER on an employment link. Removing CLIENT while the organisation has open job orders gives 409 `TRANSITION_GUARD_FAILED` with the job orders as `blockingItems`; removing the other roles is always allowed.
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
-        sector: { type: string, minLength: 1, maxLength: 100 }
+        sector: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        roles:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          items: { $ref: '#/components/schemas/OrganisationRole' }
+        aliases:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 200 }
         city: { type: [string, 'null'], maxLength: 100 }
         website: { type: [string, 'null'], format: uri, maxLength: 300 }
         notes: { type: [string, 'null'], maxLength: 4000 }
         ownerId: { $ref: '#/components/schemas/Id' }
         version: { $ref: '#/components/schemas/Version' }
+        legalName: { type: [string, 'null'], maxLength: 300 }
+        taxId: { type: [string, 'null'], maxLength: 20 }
+        taxOffice: { type: [string, 'null'], maxLength: 100 }
+        mersisNo: { type: [string, 'null'], maxLength: 16 }
+        einvoiceStatus: { $ref: '#/components/schemas/EInvoiceStatus' }
+        einvoiceAlias: { type: [string, 'null'], maxLength: 100 }
+        billingAddress: { type: [string, 'null'], maxLength: 500 }
+        billingEmails:
+          type: array
+          maxItems: 5
+          items: { type: string, format: email, maxLength: 254 }
+        billingCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        vatExempt: { type: boolean }
+        withholdingApplies: { type: boolean }
+        parentAccountId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        groupName: { type: [string, 'null'], maxLength: 200 }
+        employeeBand:
+          oneOf: [{ $ref: '#/components/schemas/EmployeeBand' }, { type: 'null' }]
+        hqCountry: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
+        preferredLanguage:
+          oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }]
     AccountStatusChangeRequest:
       type: object
       required: [status]
@@ -3612,6 +5512,19 @@ components:
           type: [string, 'null']
           maxLength: 300
           description: Since 1.2.0. Only with the `cv` filter — a short excerpt of the current CV around the match (`ts_headline`), match marked with `«` and `»`.
+        archive:
+          oneOf: [{ $ref: '#/components/schemas/ArchiveInfo' }, { type: 'null' }]
+          description: Since 1.3.0. Null while not archived.
+        skills:
+          type: array
+          description: Since 1.3.0. Lower-case skill keywords (same rules as tags, at most 30).
+          items: { $ref: '#/components/schemas/Tag' }
+        functionArea:
+          oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }]
+          description: Since 1.3.0.
+        seniority:
+          oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }]
+          description: Since 1.3.0.
     PersonSummaryPage:
       type: object
       required: [content, page]
@@ -3624,10 +5537,17 @@ components:
       type: object
       required: [company]
       properties:
-        company: { type: string, maxLength: 200, examples: [Marmara Holding] }
+        company: { type: string, maxLength: 200, description: 'Free text, the fallback when no organisation is linked; when `organisationId` is set the server stores the organisation''s name here.', examples: [Marmara Holding] }
         title: { type: [string, 'null'], maxLength: 200, examples: [Finance Director] }
         startDate: { type: [string, 'null'], format: date }
         endDate: { type: [string, 'null'], format: date, description: '`null` = current' }
+        organisationId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: Since 1.3.0 (R63). The employer organisation (an account); sets its EMPLOYER role. Unknown id → 400.
+        organisation:
+          oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }]
+          readOnly: true
+          description: Since 1.3.0. Response only.
     Person:
       allOf:
         - $ref: '#/components/schemas/PersonSummary'
@@ -3668,6 +5588,13 @@ components:
         noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365 }
         mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
         compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        skills:
+          type: array
+          maxItems: 30
+          description: Since 1.3.0. Replaces the whole list when sent; trimmed and lower-cased.
+          items: { $ref: '#/components/schemas/Tag' }
+        functionArea: { oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }] }
+        seniority: { oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }] }
         languages:
           type: array
           maxItems: 20
@@ -3700,6 +5627,13 @@ components:
         noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365 }
         mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
         compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        skills:
+          type: array
+          maxItems: 30
+          description: Since 1.3.0. Replaces the whole list when sent; trimmed and lower-cased.
+          items: { $ref: '#/components/schemas/Tag' }
+        functionArea: { oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }] }
+        seniority: { oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }] }
         languages:
           type: array
           maxItems: 20
@@ -3815,6 +5749,15 @@ components:
         createdAt: { type: string, format: date-time }
         createdBy: { $ref: '#/components/schemas/UserRef' }
         completedAt: { type: [string, 'null'], format: date-time }
+        mapping:
+          type: [object, 'null']
+          description: Since 1.3.0. The column mapping sent with the upload.
+          additionalProperties: { type: string }
+        rollbackUntil:
+          type: [string, 'null']
+          format: date-time
+          description: Since 1.3.0. COMPLETED imports can be rolled back until `completedAt` + 30 days.
+        rolledBackAt: { type: [string, 'null'], format: date-time, description: Since 1.3.0. }
     ImportJobPage:
       type: object
       required: [content, page]
@@ -3881,6 +5824,12 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        archive:
+          oneOf: [{ $ref: '#/components/schemas/ArchiveInfo' }, { type: 'null' }]
+          description: Since 1.3.0. Null while not archived.
+        confidentialityLevel:
+          $ref: '#/components/schemas/ConfidentialityLevel'
+          description: Since 1.3.0. Stored and shown as a badge; list visibility rules follow in a later contract (ADR 0013).
     JobOrderPage:
       type: object
       required: [content, page]
@@ -3904,9 +5853,13 @@ components:
         ownerId:
           $ref: '#/components/schemas/Id'
           description: Defaults to the current user.
+        confidentialityLevel:
+          $ref: '#/components/schemas/ConfidentialityLevel'
+          description: Since 1.3.0. Defaults to the account's level.
     JobOrderUpdateRequest:
       type: object
       properties:
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
         title: { type: string, minLength: 1, maxLength: 200 }
         location: { type: [string, 'null'], maxLength: 200 }
         seniority: { type: [string, 'null'], maxLength: 100 }
@@ -3933,6 +5886,9 @@ components:
         person: { $ref: '#/components/schemas/PersonSummary' }
         stage: { $ref: '#/components/schemas/PipelineStage' }
         rejectionReason: { type: [string, 'null'], description: Set while the stage is REJECTED. }
+        closeReason:
+          oneOf: [{ $ref: '#/components/schemas/CloseReason' }, { type: 'null' }]
+          description: Since 1.3.0 (R65). Set while the stage is REJECTED (1.2 rejections are backfilled as OTHER).
         stageChangedAt: { type: string, format: date-time }
         addedAt: { type: string, format: date-time }
         addedBy: { $ref: '#/components/schemas/UserRef' }
@@ -3944,6 +5900,24 @@ components:
           type: array
           description: Since 1.2.0. Only in the responses of `POST /job-orders/{id}/applications` and `PATCH /applications/{id}/stage`; non-blocking.
           items: { $ref: '#/components/schemas/PipelineWarning' }
+        list:
+          oneOf: [{ $ref: '#/components/schemas/CandidateList' }, { type: 'null' }]
+          description: Since 1.3.0. Derived from `stage` (`PipelineStage.candidateList()`); null when REJECTED.
+        rank:
+          type: [integer, 'null']
+          minimum: 1
+          description: |
+            Since 1.3.0. Position on its list, unique and gapless per job order and list among the **ranked** applications:
+            the active ones (`PipelineStage.isActive()`). PLACED applications are on the SHORTLIST (`list` = SHORTLIST)
+            but unranked (`rank` null) and are listed after the ranked ones; REJECTED ones are on no list.
+        rating: { type: [integer, 'null'], minimum: 1, maximum: 5, description: 'Since 1.3.0. 1 reject, 3 maybe, 5 outstanding.' }
+        rationale: { type: [string, 'null'], maxLength: 2000, description: Since 1.3.0. Why this person is on the list; internal unless put in a report. }
+        outreachStatus:
+          $ref: '#/components/schemas/OutreachStatus'
+          description: Since 1.3.0. Longlist call status (SX-013); default TO_CALL.
+        latestClientFeedback:
+          oneOf: [{ $ref: '#/components/schemas/ClientFeedback' }, { type: 'null' }]
+          description: Since 1.3.0. The newest feedback round, if any.
     ApplicationCreateRequest:
       type: object
       required: [personId]
@@ -3958,6 +5932,9 @@ components:
       properties:
         stage: { $ref: '#/components/schemas/PipelineStage' }
         reason: { $ref: '#/components/schemas/Reason' }
+        closeReason:
+          $ref: '#/components/schemas/CloseReason'
+          description: Since 1.3.0 (R65). Only with `stage` REJECTED (400 otherwise); default OTHER. `reason` stays required for REJECTED.
         version: { $ref: '#/components/schemas/Version' }
         offLimitsOverrideReason:
           $ref: '#/components/schemas/Reason'
@@ -3967,6 +5944,15 @@ components:
             audited by Envers). Only lifts the off-limits check on the first move into a client-facing
             stage (e.g. a rule created after the person was added); ignored when the application already
             has an override. It never lifts `CONSENT_REQUIRED`, which cannot be overridden.
+        rating:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 5
+          description: Since 1.3.0. Saved on the application with the move (needed to enter the shortlist).
+        rationale:
+          type: [string, 'null']
+          maxLength: 2000
+          description: Since 1.3.0. Saved with the move; at least 20 characters to enter the shortlist.
     Proposal:
       type: object
       required: [id, account, title, status, statusChangedAt, owner, createdAt, updatedAt, version]
@@ -4035,6 +6021,21 @@ components:
         user: { $ref: '#/components/schemas/UserRef' }
         createdAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        outcome:
+          oneOf: [{ $ref: '#/components/schemas/ActivityOutcome' }, { type: 'null' }]
+          description: Since 1.3.0 (R70).
+        direction:
+          oneOf: [{ $ref: '#/components/schemas/ActivityDirection' }, { type: 'null' }]
+          description: Since 1.3.0. Null for NOTE.
+        attendees:
+          type: array
+          description: Since 1.3.0. Other people present (not the main `person`).
+          items: { $ref: '#/components/schemas/PersonRef' }
+        durationMin: { type: [integer, 'null'], minimum: 0, maximum: 1440, description: Since 1.3.0. }
+        source:
+          $ref: '#/components/schemas/ActivitySource'
+          description: Since 1.3.0. MANUAL for 1.2 rows.
+        externalMessageId: { type: [string, 'null'], description: 'Since 1.3.0. E-mail `Message-ID` when `source` is EMAIL.' }
     ActivityPage:
       type: object
       required: [content, page]
@@ -4054,13 +6055,43 @@ components:
         accountId: { $ref: '#/components/schemas/Id' }
         personId: { $ref: '#/components/schemas/Id' }
         jobOrderId: { $ref: '#/components/schemas/Id' }
+        outcome: { $ref: '#/components/schemas/ActivityOutcome' }
+        direction:
+          $ref: '#/components/schemas/ActivityDirection'
+          description: Since 1.3.0. Not with NOTE (400).
+        attendeePersonIds:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          description: Since 1.3.0 (R70). Other people present; not `personId`, not anonymised people (400).
+          items: { $ref: '#/components/schemas/Id' }
+        durationMin: { type: integer, minimum: 0, maximum: 1440 }
+        source:
+          $ref: '#/components/schemas/ActivitySource'
+          description: Since 1.3.0. Default MANUAL.
+        externalMessageId:
+          type: string
+          minLength: 1
+          maxLength: 300
+          description: Since 1.3.0. Only with `source` EMAIL (400 otherwise). Unique; a second activity with the same id gives 409 `DUPLICATE` with `existingId` (idempotent capture).
     ActivityUpdateRequest:
       type: object
+      description: Since 1.3.0 `attendeePersonIds` replaces the whole attendee list; `source` and `externalMessageId` cannot change.
       properties:
         type: { $ref: '#/components/schemas/ActivityType' }
         note: { type: string, minLength: 1, maxLength: 4000 }
         occurredAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        outcome:
+          oneOf: [{ $ref: '#/components/schemas/ActivityOutcome' }, { type: 'null' }]
+        direction:
+          oneOf: [{ $ref: '#/components/schemas/ActivityDirection' }, { type: 'null' }]
+        attendeePersonIds:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Id' }
+        durationMin: { type: [integer, 'null'], minimum: 0, maximum: 1440 }
     NextAction:
       type: object
       required: [id, title, dueOn, owner, done, overdue, createdAt, version]
@@ -4550,9 +6581,11 @@ components:
         that endpoint's query parameters except `page`, `size` and `sort`:
         - PEOPLE: `q`, `type`, `ownerId`, `consentStatus`, `lastContactBefore`, `lastContactAfter`, `city`,
           `company` (since 1.1.1), `tag`, `sourceChannel`, `cv`, `shareable` (since 1.2.0). A saved search
-          is a PEOPLE view; a talent pool is a tag plus a SHARED view with `tag` (ADR 0011).
-        - ACCOUNTS: `q`, `status`, `sector`, `ownerId`
-        - JOB_ORDERS: `q`, `accountId`, `status`, `open`, `ownerId`
+          is a PEOPLE view; a talent pool is a tag plus a SHARED view with `tag` (ADR 0011). Since 1.3.0
+          also `archived`, `skill`, `functionArea`, `seniority`, `language`, `noticeMaxDays`, `mobility`,
+          `hasCv`; the salary filters are never stored in SHARED views (they would expose pay ranges).
+        - ACCOUNTS: `q`, `status`, `sector`, `ownerId`; since 1.3.0 `archived`, `parentAccountId`
+        - JOB_ORDERS: `q`, `accountId`, `status`, `open`, `ownerId`; since 1.3.0 `archived`
         - PROPOSALS: `accountId`, `status`, `ownerId`
         Values are validated like the query parameters (enum names, UUIDs, dates). `ownerId` may also be
         `"me"`, which the client replaces with the current user's id when it runs the view (so one shared
@@ -4854,7 +6887,7 @@ components:
       enum: [CLIENT_AGREEMENT, GUARANTEE_PERIOD, CLIENT_REQUEST, OTHER]
     PipelineWarningCode:
       type: string
-      enum: [PREVIOUSLY_PRESENTED_TO_ACCOUNT, ACTIVE_IN_OTHER_PROCESS]
+      enum: [PREVIOUSLY_PRESENTED_TO_ACCOUNT, ACTIVE_IN_OTHER_PROCESS, SHORTLIST_LONG]
     Compensation:
       type: object
       description: |
@@ -4897,6 +6930,13 @@ components:
         noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365, examples: [60] }
         mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
         compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        skills:
+          type: array
+          maxItems: 30
+          description: Since 1.3.0. Replaces the whole list when sent; trimmed and lower-cased.
+          items: { $ref: '#/components/schemas/Tag' }
+        functionArea: { oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }] }
+        seniority: { oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }] }
         languages:
           type: array
           maxItems: 20
@@ -5102,6 +7142,7 @@ components:
         id: { $ref: '#/components/schemas/Id' }
         account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
         companyName: { type: [string, 'null'], description: Set when the company is not an account., examples: [Anadolu Lojistik] }
+        includeSubsidiaries: { type: boolean, description: 'Since 1.3.0 (R63). The rule also covers every organisation below `account` in the group tree. Always false for a `companyName` rule.' }
         reason: { $ref: '#/components/schemas/OffLimitsReason' }
         note: { type: [string, 'null'], description: No personal data., examples: [Retained search agreement until end of 2027] }
         startsOn: { type: string, format: date }
@@ -5125,6 +7166,7 @@ components:
       properties:
         accountId: { $ref: '#/components/schemas/Id' }
         companyName: { type: string, minLength: 1, maxLength: 200 }
+        includeSubsidiaries: { type: boolean, description: 'Since 1.3.0. Default false; true with `companyName` gives 400.' }
         reason: { $ref: '#/components/schemas/OffLimitsReason' }
         note: { type: [string, 'null'], maxLength: 500 }
         startsOn: { type: string, format: date, description: Defaults to today. }
@@ -5134,6 +7176,7 @@ components:
       minProperties: 1
       properties:
         reason: { $ref: '#/components/schemas/OffLimitsReason' }
+        includeSubsidiaries: { type: boolean, description: Since 1.3.0; account rules only (400 otherwise). }
         note: { type: [string, 'null'], maxLength: 500 }
         startsOn: { type: string, format: date }
         endsOn: { type: [string, 'null'], format: date }
@@ -5157,3 +7200,1063 @@ components:
         reason:
           oneOf: [{ $ref: '#/components/schemas/ShareBlockReason' }, { type: 'null' }]
           description: Null when shareable.
+    # ---------- 1.3.0: archive and merge (ADR 0013) ----------
+    ArchiveReason:
+      type: string
+      description: '`contracts/enums/ArchiveReason.java`. MERGED and IMPORT_ROLLBACK are set by the server only.'
+      enum: [DUPLICATE, CREATED_BY_MISTAKE, NO_LONGER_RELEVANT, MERGED, IMPORT_ROLLBACK, OTHER]
+    ArchiveInfo:
+      type: object
+      required: [archivedAt, archivedBy, reason]
+      properties:
+        archivedAt: { type: string, format: date-time }
+        archivedBy: { $ref: '#/components/schemas/UserRef' }
+        reason: { $ref: '#/components/schemas/ArchiveReason' }
+        note: { type: [string, 'null'], maxLength: 500 }
+        mergedInto:
+          oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }]
+          description: Accounts only; set when `reason` is MERGED.
+    ArchiveRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          $ref: '#/components/schemas/ArchiveReason'
+          description: MERGED and IMPORT_ROLLBACK give 400 `VALIDATION_FAILED`.
+        note: { type: [string, 'null'], maxLength: 500, description: Required when `reason` is OTHER (400). }
+        version: { $ref: '#/components/schemas/Version' }
+    RestoreRequest:
+      type: object
+      properties:
+        version: { $ref: '#/components/schemas/Version' }
+    AccountMergeRequest:
+      type: object
+      required: [mergedId, version]
+      properties:
+        mergedId:
+          $ref: '#/components/schemas/Id'
+          description: The account to merge into the path account.
+        takeFromMerged:
+          type: array
+          description: Survivor fields to overwrite with the merged account's value (others are kept; empty ones are filled).
+          uniqueItems: true
+          items:
+            type: string
+            enum: [sector, city, website, notes, ownerId, legalName, taxId, taxOffice, mersisNo, billingAddress, billingEmails, parentAccountId, employeeBand]
+        version:
+          $ref: '#/components/schemas/Version'
+          description: The survivor's version (required, 409 on mismatch).
+    AccountMergeResult:
+      type: object
+      required: [survivor, mergedId, moved]
+      properties:
+        survivor: { $ref: '#/components/schemas/Account' }
+        mergedId: { $ref: '#/components/schemas/Id' }
+        moved:
+          type: object
+          description: Moved row counts per kind, e.g. contacts, jobOrders, proposals, activities, nextActions, offLimitsRules, agreements, placements.
+          additionalProperties: { type: integer, minimum: 0 }
+          examples: [{ contacts: 3, jobOrders: 2, activities: 14 }]
+    # ---------- 1.3.0: account profile ----------
+    OrganisationRole:
+      type: string
+      description: '`contracts/enums/OrganisationRole.java` (R63, since 1.3.0).'
+      enum: [CLIENT, PROSPECT, TARGET, EMPLOYER]
+    ConfidentialityLevel:
+      type: string
+      description: '`contracts/enums/ConfidentialityLevel.java`; default NORMAL. RESTRICTED = named team; CONFIDENTIAL = hidden from non-team users (rule in a later contract, ADR 0013).'
+      enum: [NORMAL, RESTRICTED, CONFIDENTIAL]
+    EInvoiceStatus:
+      type: string
+      description: '`contracts/enums/EInvoiceStatus.java`; default UNKNOWN.'
+      enum: [UNKNOWN, E_FATURA, E_ARSIV]
+    EmployeeBand:
+      type: string
+      enum: [B1_50, B51_250, B251_1000, B1001_5000, B5000_PLUS]
+    # ---------- 1.3.0: candidate search ----------
+    JobFunction:
+      type: string
+      description: '`contracts/enums/JobFunction.java`.'
+      enum: [GENERAL_MANAGEMENT, FINANCE, HR, SALES, MARKETING, OPERATIONS, SUPPLY_CHAIN, PROCUREMENT, ENGINEERING, IT, RND, LEGAL, OTHER]
+    Seniority:
+      type: string
+      description: '`contracts/enums/Seniority.java`, highest first.'
+      enum: [BOARD, C_LEVEL, VP_DIRECTOR, HEAD, MANAGER, SPECIALIST]
+    # ---------- 1.3.0: tags ----------
+    TagColour:
+      type: string
+      description: '`contracts/enums/TagColour.java`; the frontend maps each to a design token.'
+      enum: [GREY, BLUE, GREEN, AMBER, RED, PURPLE, TEAL]
+    TagChangeKind:
+      type: string
+      enum: [RENAMED, MERGED, DELETED]
+    TagSummary:
+      type: object
+      required: [name, colour, talentPool, defined, counts, total]
+      properties:
+        name: { $ref: '#/components/schemas/Tag' }
+        colour: { $ref: '#/components/schemas/TagColour' }
+        description: { type: [string, 'null'] }
+        talentPool: { type: boolean, description: 'A talent pool is a tag with this flag; open it with `GET /people?tag=<name>`.' }
+        defined: { type: boolean, description: A `tag_definition` row exists. }
+        counts:
+          type: object
+          description: Records carrying the tag per entity (all four keys always present).
+          required: [PEOPLE, ACCOUNTS, JOB_ORDERS, PROPOSALS]
+          properties:
+            PEOPLE: { type: integer, minimum: 0 }
+            ACCOUNTS: { type: integer, minimum: 0 }
+            JOB_ORDERS: { type: integer, minimum: 0 }
+            PROPOSALS: { type: integer, minimum: 0 }
+        total: { type: integer, minimum: 0 }
+    TagSummaryPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/TagSummary' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    TagDefinitionRequest:
+      type: object
+      properties:
+        colour: { $ref: '#/components/schemas/TagColour' }
+        description: { type: [string, 'null'], maxLength: 200 }
+        talentPool: { type: boolean }
+    TagRenameRequest:
+      type: object
+      required: [newName]
+      properties:
+        newName: { $ref: '#/components/schemas/Tag' }
+    TagMergeRequest:
+      type: object
+      required: [into]
+      properties:
+        into: { $ref: '#/components/schemas/Tag' }
+    TagChangeResult:
+      type: object
+      required: [change, tag, updated]
+      properties:
+        change: { $ref: '#/components/schemas/TagChangeKind' }
+        tag: { $ref: '#/components/schemas/Tag' }
+        newTag:
+          oneOf: [{ $ref: '#/components/schemas/Tag' }, { type: 'null' }]
+          description: RENAMED and MERGED.
+        updated:
+          type: object
+          description: Records rewritten synchronously (PEOPLE, ACCOUNTS, views); JOB_ORDERS and PROPOSALS follow through `TagChanged` within seconds.
+          additionalProperties: { type: integer, minimum: 0 }
+    # ---------- 1.3.0: longlist and shortlist ----------
+    CandidateList:
+      type: string
+      description: '`contracts/enums/CandidateList.java`; derived from the stage: SOURCED, SCREENED = LONGLIST; PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED = SHORTLIST.'
+      enum: [LONGLIST, SHORTLIST]
+    OutreachStatus:
+      type: string
+      description: '`contracts/enums/OutreachStatus.java`; not a lifecycle. A move to stage SCREENED sets SCREENED.'
+      enum: [TO_CALL, CALLED, INTERESTED, NOT_INTERESTED, NOT_NOW, SCREENED]
+    CloseReason:
+      type: string
+      description: '`contracts/enums/CloseReason.java` (R65). Coded reason on every move to REJECTED; internal only.'
+      enum: [CLIENT_DECLINED, CANDIDATE_WITHDREW, NOT_INTERESTED, NOT_QUALIFIED, COMPENSATION_MISMATCH, OFF_LIMITS, NO_RESPONSE, HIRED_ELSEWHERE, SEARCH_CLOSED, OTHER]
+    ActivityOutcome:
+      type: string
+      description: '`contracts/enums/ActivityOutcome.java` (R70).'
+      enum: [CONNECTED, NO_ANSWER, LEFT_MESSAGE, CALLBACK_REQUESTED, INTERESTED, NOT_INTERESTED, MEETING_BOOKED, WRONG_CONTACT, COMPLETED]
+    ActivityDirection:
+      type: string
+      description: '`contracts/enums/ActivityDirection.java` (R70). Null for NOTE.'
+      enum: [INBOUND, OUTBOUND]
+    ActivitySource:
+      type: string
+      description: '`contracts/enums/ActivitySource.java` (R70).'
+      enum: [MANUAL, EMAIL, CALL_SHEET]
+    ClientFeedbackOutcome:
+      type: string
+      enum: [ADVANCE, HOLD, DECLINE]
+    DeclineReason:
+      type: string
+      enum: [EXPERIENCE, COMPENSATION, CULTURE_FIT, LOCATION, TIMING, OTHER_CANDIDATE, OTHER]
+    ApplicationUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        rating: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        rationale: { type: [string, 'null'], maxLength: 2000 }
+        outreachStatus: { $ref: '#/components/schemas/OutreachStatus' }
+        version: { $ref: '#/components/schemas/Version' }
+    RankingRequest:
+      type: object
+      required: [list, applicationIds]
+      properties:
+        list: { $ref: '#/components/schemas/CandidateList' }
+        applicationIds:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          description: Exactly the **active** applications of the job order on this list (PLACED and REJECTED excluded), first = rank 1. A missing, extra, PLACED or REJECTED id gives 409 `STATE_CONFLICT` (stale view; reload).
+          items: { $ref: '#/components/schemas/Id' }
+    ClientFeedback:
+      type: object
+      required: [id, applicationId, round, feedbackOn, outcome, recordedBy, recordedAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        applicationId: { $ref: '#/components/schemas/Id' }
+        round: { type: integer, minimum: 1 }
+        feedbackOn: { type: string, format: date }
+        participants: { type: [string, 'null'], description: 'Roles of the client people present, not names (UI hint; third-party data, see `contracts/personal-data.md`).', examples: ['CFO, HR director'] }
+        outcome: { $ref: '#/components/schemas/ClientFeedbackOutcome' }
+        declineReason:
+          oneOf: [{ $ref: '#/components/schemas/DeclineReason' }, { type: 'null' }]
+        reasonText: { type: [string, 'null'] }
+        candidateFeedback: { type: [string, 'null'], description: What to relay to the candidate. }
+        recordedBy: { $ref: '#/components/schemas/UserRef' }
+        recordedAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    ClientFeedbackCreateRequest:
+      type: object
+      required: [feedbackOn, outcome]
+      properties:
+        round: { type: integer, minimum: 1, maximum: 20 }
+        feedbackOn: { type: string, format: date }
+        participants: { type: [string, 'null'], maxLength: 500 }
+        outcome: { $ref: '#/components/schemas/ClientFeedbackOutcome' }
+        declineReason:
+          oneOf: [{ $ref: '#/components/schemas/DeclineReason' }, { type: 'null' }]
+        reasonText: { type: [string, 'null'], maxLength: 1000, description: Required when `declineReason` is OTHER. }
+        candidateFeedback: { type: [string, 'null'], maxLength: 2000 }
+    ClientFeedbackUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        feedbackOn: { type: string, format: date }
+        participants: { type: [string, 'null'], maxLength: 500 }
+        declineReason:
+          oneOf: [{ $ref: '#/components/schemas/DeclineReason' }, { type: 'null' }]
+        reasonText: { type: [string, 'null'], maxLength: 1000 }
+        candidateFeedback: { type: [string, 'null'], maxLength: 2000 }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- 1.3.0: evaluation ----------
+    InterviewType:
+      type: string
+      enum: [PHONE, VIDEO, IN_PERSON]
+    Recommendation:
+      type: string
+      enum: [SHORTLIST, HOLD, REJECT]
+    MotivationTag:
+      type: string
+      enum: [GROWTH, PAY, STABILITY, RELOCATION, PUSH_FACTOR]
+    EvaluationBlock:
+      type: string
+      description: Blocks that may go into a client report; private notes never do.
+      enum: [SUMMARY, ACHIEVEMENTS, MOTIVATION, CONCERNS, CRITERIA, REFERENCES]
+    ReferenceStatus:
+      type: string
+      enum: [TO_REQUEST, REQUESTED, RECEIVED, DECLINED]
+    CriterionScore:
+      type: object
+      required: [criterionId, score]
+      properties:
+        criterionId: { $ref: '#/components/schemas/Id' }
+        criterionText: { type: string, readOnly: true, description: In responses only (the criterion as it is now). }
+        score: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: [string, 'null'], maxLength: 500 }
+    EvaluationFields:
+      type: object
+      properties:
+        evaluatedOn: { type: string, format: date, description: Defaults to today. }
+        interviewType: { $ref: '#/components/schemas/InterviewType' }
+        overallRating: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        recommendation: { $ref: '#/components/schemas/Recommendation' }
+        recommendationReason: { type: [string, 'null'], maxLength: 500 }
+        summary: { type: [string, 'null'], maxLength: 600 }
+        keyAchievements:
+          type: array
+          maxItems: 5
+          items: { type: string, minLength: 1, maxLength: 200 }
+        motivation: { type: [string, 'null'], maxLength: 400 }
+        motivationTags:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/MotivationTag' }
+        concerns: { type: [string, 'null'], maxLength: 400 }
+        otherProcesses: { type: [string, 'null'], maxLength: 1000, description: Competing offers or processes. }
+        scores:
+          type: array
+          maxItems: 30
+          description: One per brief criterion (SX-017); replaces the whole list when sent.
+          items: { $ref: '#/components/schemas/CriterionScore' }
+        privateNotes: { type: [string, 'null'], maxLength: 4000, description: Never in reports. }
+        internalOnly: { type: boolean, description: When true no block of this evaluation goes into a report. }
+        reportBlocks:
+          type: array
+          uniqueItems: true
+          description: Default SUMMARY, ACHIEVEMENTS, MOTIVATION, CONCERNS.
+          items: { $ref: '#/components/schemas/EvaluationBlock' }
+    Evaluation:
+      allOf:
+        - $ref: '#/components/schemas/EvaluationFields'
+        - type: object
+          required: [id, person, evaluator, evaluatedOn, interviewType, recommendation, createdAt, updatedAt, version]
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            person: { $ref: '#/components/schemas/PersonRef' }
+            jobOrder:
+              oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+            applicationId:
+              oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+              description: Set by the server when the person is on the job order.
+            evaluator: { $ref: '#/components/schemas/UserRef' }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            version: { $ref: '#/components/schemas/Version' }
+    EvaluationCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/EvaluationFields'
+        - type: object
+          required: [interviewType, recommendation]
+          properties:
+            jobOrderId:
+              oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+            evaluatorId:
+              $ref: '#/components/schemas/Id'
+              description: Defaults to the current user.
+    EvaluationUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/EvaluationFields'
+        - type: object
+          properties:
+            version: { $ref: '#/components/schemas/Version' }
+    InterviewNote:
+      type: object
+      required: [id, person, interviewer, heldOn, interviewType, body, includeInReport, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        person: { $ref: '#/components/schemas/PersonRef' }
+        jobOrder:
+          oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+        interviewer: { $ref: '#/components/schemas/UserRef' }
+        heldOn: { type: string, format: date }
+        interviewType: { $ref: '#/components/schemas/InterviewType' }
+        body: { type: string }
+        includeInReport: { type: boolean, description: Default false; notes reach a report only when true (SX-009). }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    InterviewNoteRequest:
+      type: object
+      required: [interviewType, body]
+      properties:
+        jobOrderId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        interviewerId: { $ref: '#/components/schemas/Id' }
+        heldOn: { type: string, format: date, description: Defaults to today. }
+        interviewType: { $ref: '#/components/schemas/InterviewType' }
+        body: { type: string, minLength: 1, maxLength: 20000 }
+        includeInReport: { type: boolean, description: Default false. }
+    InterviewNoteUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        heldOn: { type: string, format: date }
+        interviewType: { $ref: '#/components/schemas/InterviewType' }
+        body: { type: string, minLength: 1, maxLength: 20000 }
+        includeInReport: { type: boolean }
+        version: { $ref: '#/components/schemas/Version' }
+    CandidateReference:
+      type: object
+      required: [id, person, refereeName, status, includeInReport, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        person: { $ref: '#/components/schemas/PersonRef' }
+        jobOrder:
+          oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+        refereeName: { type: string }
+        refereeRelationship: { type: [string, 'null'], examples: [Former line manager] }
+        refereeCompany: { type: [string, 'null'] }
+        refereeEmail: { type: [string, 'null'], format: email }
+        refereePhone: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ReferenceStatus' }
+        summary: { type: [string, 'null'] }
+        checkedOn: { type: [string, 'null'], format: date }
+        checkedBy:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+        includeInReport: { type: boolean, description: 'Only status and summary go into a report, never the referee details.' }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    CandidateReferenceRequest:
+      type: object
+      required: [refereeName]
+      properties:
+        jobOrderId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        refereeName: { type: string, minLength: 1, maxLength: 200 }
+        refereeRelationship: { type: [string, 'null'], maxLength: 200 }
+        refereeCompany: { type: [string, 'null'], maxLength: 200 }
+        refereeEmail: { type: [string, 'null'], format: email, maxLength: 254 }
+        refereePhone: { type: [string, 'null'], maxLength: 50 }
+        status: { $ref: '#/components/schemas/ReferenceStatus' }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        checkedOn: { type: [string, 'null'], format: date }
+        includeInReport: { type: boolean, description: Default false. }
+    CandidateReferenceUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/CandidateReferenceRequest'
+        - type: object
+          properties:
+            version: { $ref: '#/components/schemas/Version' }
+    # ---------- 1.3.0: search brief ----------
+    CriterionKind:
+      type: string
+      enum: [MUST_HAVE, NICE_TO_HAVE]
+    SearchTeamRole:
+      type: string
+      enum: [LEAD, CONSULTANT, RESEARCHER]
+    TargetTier:
+      type: string
+      enum: [A, B, C]
+    TargetCompanyStatus:
+      type: string
+      description: EXCLUDED = the client asked not to approach this company for this search.
+      enum: [TO_MAP, MAPPED, APPROACHED, CLOSED, EXCLUDED]
+    SearchCriterion:
+      type: object
+      required: [id, kind, text, sortOrder]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        kind: { $ref: '#/components/schemas/CriterionKind' }
+        text: { type: string, examples: ['IFRS reporting in a listed company'] }
+        sortOrder: { type: integer, minimum: 0 }
+        removedAt: { type: [string, 'null'], format: date-time, description: Only in `removedCriteria`. }
+    SearchCriterionRequest:
+      type: object
+      required: [kind, text]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+          description: Omit for a new criterion.
+        kind: { $ref: '#/components/schemas/CriterionKind' }
+        text: { type: string, minLength: 1, maxLength: 300 }
+    SearchBriefFields:
+      type: object
+      properties:
+        reportingLine: { type: [string, 'null'], maxLength: 200, examples: [Reports to the CEO] }
+        purpose: { type: [string, 'null'], maxLength: 4000, description: Why the role exists and what success looks like. }
+        idealProfile: { type: [string, 'null'], maxLength: 4000 }
+        seniorityLevel:
+          oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }]
+        functionArea:
+          oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }]
+        teamSize: { type: [integer, 'null'], minimum: 0, maximum: 100000, description: 'Since R73. People in the team the hire will lead (0 = individual contributor).' }
+        compMin: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$', description: 'Decimal as string. Since R73 the band (`compMin`, `compMax`, `compCurrency`, `compPeriod`, `compBonusNote`) is stored encrypted as one value (`search_brief.comp_band_enc`, like person compensation); read access is unchanged.' }
+        compMax: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$' }
+        compCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        compPeriod:
+          oneOf: [{ $ref: '#/components/schemas/CompensationPeriod' }, { type: 'null' }]
+        compBonusNote: { type: [string, 'null'], maxLength: 300, examples: ['Target bonus 30%, car'] }
+        languages:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/LanguageSkill' }
+        kickoffOn: { type: [string, 'null'], format: date }
+        longlistDueOn: { type: [string, 'null'], format: date }
+        shortlistDueOn: { type: [string, 'null'], format: date }
+        targetStartOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+    SearchBrief:
+      allOf:
+        - $ref: '#/components/schemas/SearchBriefFields'
+        - type: object
+          required: [jobOrderId, briefVersion, criteria, removedCriteria, team, offLimitsRules, missingFields]
+          properties:
+            jobOrderId: { $ref: '#/components/schemas/Id' }
+            briefVersion: { type: integer, minimum: 0 }
+            criteria:
+              type: array
+              description: Current criteria, MUST_HAVE first, then by `sortOrder`.
+              items: { $ref: '#/components/schemas/SearchCriterion' }
+            removedCriteria:
+              type: array
+              description: Criteria removed from the brief; old evaluation scores still point at them.
+              items: { $ref: '#/components/schemas/SearchCriterion' }
+            team:
+              type: array
+              items: { $ref: '#/components/schemas/SearchTeamMember' }
+            offLimitsRules:
+              type: array
+              items: { $ref: '#/components/schemas/OffLimitsRule' }
+            missingFields:
+              type: array
+              description: 'Brief fields still empty that SX-001 expects (e.g. `purpose`, `compMin`, `shortlistDueOn`, `criteria`); a warning only.'
+              items: { type: string }
+            updatedAt: { type: [string, 'null'], format: date-time }
+            updatedBy:
+              oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+            version:
+              oneOf: [{ $ref: '#/components/schemas/Version' }, { type: 'null' }]
+              description: Null until the brief is first saved.
+    SearchBriefRequest:
+      allOf:
+        - $ref: '#/components/schemas/SearchBriefFields'
+        - type: object
+          required: [criteria]
+          properties:
+            criteria:
+              type: array
+              maxItems: 30
+              items: { $ref: '#/components/schemas/SearchCriterionRequest' }
+            version: { $ref: '#/components/schemas/Version' }
+    SearchTeamMember:
+      type: object
+      required: [user, role]
+      properties:
+        user: { $ref: '#/components/schemas/UserRef' }
+        role: { $ref: '#/components/schemas/SearchTeamRole' }
+    SearchTeamMemberRequest:
+      type: object
+      required: [userId, role]
+      properties:
+        userId: { $ref: '#/components/schemas/Id' }
+        role: { $ref: '#/components/schemas/SearchTeamRole' }
+    TargetCompany:
+      type: object
+      required: [id, jobOrderId, account, companyName, tier, status, offLimits, owner, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        jobOrderId: { $ref: '#/components/schemas/Id' }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+        companyName: { type: [string, 'null'], description: Set when the company is not an account. }
+        sector: { type: [string, 'null'] }
+        tier: { $ref: '#/components/schemas/TargetTier' }
+        status: { $ref: '#/components/schemas/TargetCompanyStatus' }
+        rationale: { type: [string, 'null'] }
+        source: { type: [string, 'null'], examples: [Client list] }
+        notes: { type: [string, 'null'] }
+        offLimits: { type: boolean, description: Matches an active off-limits rule today. }
+        offLimitsOverrideReason: { type: [string, 'null'] }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    TargetCompanyCreateRequest:
+      type: object
+      required: [tier]
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        companyName: { type: string, minLength: 1, maxLength: 200 }
+        sector: { type: [string, 'null'], maxLength: 100 }
+        tier: { $ref: '#/components/schemas/TargetTier' }
+        status:
+          $ref: '#/components/schemas/TargetCompanyStatus'
+          description: Defaults to TO_MAP; APPROACHED runs the off-limits guard.
+        rationale: { type: [string, 'null'], maxLength: 1000 }
+        source: { type: [string, 'null'], maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        ownerId: { $ref: '#/components/schemas/Id' }
+    TargetCompanyUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        sector: { type: [string, 'null'], maxLength: 100 }
+        tier: { $ref: '#/components/schemas/TargetTier' }
+        status: { $ref: '#/components/schemas/TargetCompanyStatus' }
+        rationale: { type: [string, 'null'], maxLength: 1000 }
+        source: { type: [string, 'null'], maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        ownerId: { $ref: '#/components/schemas/Id' }
+        offLimitsOverrideReason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- 1.3.0: commercial ----------
+    Money:
+      type: string
+      pattern: '^\d+(\.\d{1,2})?$'
+      description: Decimal amount as string (no rounding).
+      examples: ['450000.00']
+    AgreementKind:
+      type: string
+      enum: [TERMS_OF_BUSINESS, ENGAGEMENT_LETTER, AMENDMENT]
+    AgreementStatus:
+      type: string
+      enum: [DRAFT, SENT, SIGNED, EXPIRED, TERMINATED]
+    FeeModel:
+      type: string
+      description: 'PB-008: retained in thirds, retained with custom instalments, percent of first-year cash (success), flat fee, hybrid (retainer + success).'
+      enum: [RETAINED_THIRDS, RETAINED_CUSTOM, PERCENT_FIRST_YEAR_CASH, FLAT_FEE, HYBRID]
+    FeeBasisComponent:
+      type: string
+      description: Cash components the percent fee is computed on (PB-008 toggles).
+      enum: [BASE, TARGET_BONUS, PAID_BONUS, ALLOWANCES, SIGN_ON, CAR, OTHER_CASH]
+    Exclusivity:
+      type: string
+      enum: [EXCLUSIVE, NON_EXCLUSIVE]
+    FeeTrigger:
+      type: string
+      description: |
+        When an instalment becomes DUE (PB-009, CO-020): SIGNING (agreement SIGNED), DATE_OFFSET
+        (`signedOn` + `offsetDays`, nightly), SHORTLIST_DELIVERED (first move of the job order into a
+        client-facing stage, or a SHORTLIST report marked sent), OFFER_ACCEPTED (placement created),
+        START_DATE (placement `startDate` reached, nightly), EXPENSES (manual), ABORT (job order CANCELLED).
+      enum: [SIGNING, DATE_OFFSET, SHORTLIST_DELIVERED, OFFER_ACCEPTED, START_DATE, EXPENSES, ABORT]
+    InvoiceState:
+      type: string
+      enum: [NOT_DUE, DUE, INVOICED, PAID, CANCELLED]
+    GuaranteeStartBasis:
+      type: string
+      description: '`contracts/enums/GuaranteeStartBasis.java` (R67). The date the guarantee months count from.'
+      enum: [START_DATE, OFFER_ACCEPTED]
+    PlacementStatus:
+      type: string
+      enum: [ACTIVE, LEFT_IN_GUARANTEE, GUARANTEE_ENDED, REPLACED, CANCELLED]
+    ConflictHitKind:
+      type: string
+      enum: [CURRENT_CLIENT, GUARANTEE_PERIOD, OFF_LIMITS_RULE, PLACED_CANDIDATE, COMPETING_SEARCH]
+    ConflictDecision:
+      type: string
+      enum: [CLEAR, PROCEED, BLOCKED]
+    FeeScheduleItemFields:
+      type: object
+      properties:
+        label: { type: string, minLength: 1, maxLength: 200, examples: [Retainer 1/3] }
+        trigger: { $ref: '#/components/schemas/FeeTrigger' }
+        offsetDays: { type: [integer, 'null'], minimum: 0, maximum: 730 }
+        percent: { type: [string, 'null'], pattern: '^\d{1,3}(\.\d{1,2})?$', description: 'Percent of the fee (estimated fee before placement, placement fee after).' }
+        amount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        dueDays: { type: integer, minimum: 0, maximum: 180, description: Payment term in days after the trigger (default 30). }
+        vatApplies: { type: boolean, description: 'Since R67. VAT (KDV) is added to this item; default `not account.vatExempt`. Amounts are always net.' }
+    FeeScheduleItem:
+      allOf:
+        - $ref: '#/components/schemas/FeeScheduleItemFields'
+        - type: object
+          required: [id, agreementId, seq, label, trigger, dueDays, invoiceState, version]
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            agreementId: { $ref: '#/components/schemas/Id' }
+            account: { $ref: '#/components/schemas/AccountRef' }
+            jobOrder:
+              oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+            seq: { type: integer, minimum: 1 }
+            computedAmount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }], description: '`amount`, or `percent` of the current fee; null when not computable yet.' }
+            currency: { type: string, pattern: '^[A-Z]{3}$' }
+            invoiceState: { $ref: '#/components/schemas/InvoiceState' }
+            triggeredAt: { type: [string, 'null'], format: date-time }
+            dueOn: { type: [string, 'null'], format: date }
+            einvoiceRef: { type: [string, 'null'], description: e-Fatura or e-Arşiv reference. }
+            invoicedOn: { type: [string, 'null'], format: date }
+            invoicedAmount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+            paidOn: { type: [string, 'null'], format: date }
+            stateReason: { type: [string, 'null'] }
+            version: { $ref: '#/components/schemas/Version' }
+    FeeScheduleItemPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/FeeScheduleItem' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    FeeScheduleItemRequest:
+      allOf:
+        - $ref: '#/components/schemas/FeeScheduleItemFields'
+        - type: object
+          required: [label, trigger]
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+              description: Omit for a new item.
+    FeeScheduleItemUpdateRequest:
+      type: object
+      required: [invoiceState]
+      properties:
+        invoiceState: { $ref: '#/components/schemas/InvoiceState' }
+        einvoiceRef: { type: [string, 'null'], maxLength: 100 }
+        invoicedOn: { type: [string, 'null'], format: date }
+        invoicedAmount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        paidOn: { type: [string, 'null'], format: date }
+        reason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    AgreementFields:
+      type: object
+      properties:
+        status: { $ref: '#/components/schemas/AgreementStatus' }
+        title: { type: [string, 'null'], maxLength: 200 }
+        signedOn: { type: [string, 'null'], format: date }
+        validFrom: { type: [string, 'null'], format: date }
+        validUntil: { type: [string, 'null'], format: date }
+        language: { oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }] }
+        governingLaw: { type: [string, 'null'], maxLength: 100, examples: [Turkish law, Istanbul courts] }
+        exclusivity: { oneOf: [{ $ref: '#/components/schemas/Exclusivity' }, { type: 'null' }] }
+        feeModel: { $ref: '#/components/schemas/FeeModel' }
+        feePercent: { type: [string, 'null'], pattern: '^\d{1,3}(\.\d{1,2})?$', examples: ['33.33'] }
+        feeBasis:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/FeeBasisComponent' }
+        flatFeeAmount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        estimatedFee: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }], description: Basis for percent instalments before a placement exists (retainers). }
+        feeMinimum: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        feeCap: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        currency: { type: string, pattern: '^[A-Z]{3}$', examples: [TRY] }
+        paymentTermsDays: { type: integer, minimum: 0, maximum: 180, description: Default 30. }
+        guaranteeMonths: { type: integer, minimum: 0, maximum: 36, description: Default 6. }
+        guaranteeStartBasis:
+          $ref: '#/components/schemas/GuaranteeStartBasis'
+          description: Since R67. Default START_DATE; a placement's `guaranteeEndOn` = that date + `guaranteeMonths`.
+        guaranteeTerms: { type: [string, 'null'], maxLength: 2000, description: 'Triggers, exclusions, client obligations (PB-011).' }
+        expensePolicy: { type: [string, 'null'], maxLength: 1000 }
+        offLimitsMonths: { type: [integer, 'null'], minimum: 0, maximum: 60, description: Non-solicitation term after the engagement. }
+        confidentialityTerms: { type: [string, 'null'], maxLength: 2000 }
+        signatoryContactId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: An active contact of the account (400 otherwise).
+        billingAccountId:
+          $ref: '#/components/schemas/Id'
+          description: The account invoiced (billing entity); defaults to the account.
+        notes: { type: [string, 'null'], maxLength: 4000 }
+    Agreement:
+      allOf:
+        - $ref: '#/components/schemas/AgreementFields'
+        - type: object
+          required: [id, account, kind, status, feeModel, currency, paymentTermsDays, guaranteeMonths, billingAccount, scheduleItems, createdAt, updatedAt, version]
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            account: { $ref: '#/components/schemas/AccountRef' }
+            jobOrder:
+              oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+            kind: { $ref: '#/components/schemas/AgreementKind' }
+            billingAccount: { $ref: '#/components/schemas/AccountRef' }
+            signedFile:
+              description: Since R67. Set by `PUT /agreements/{id}/signed-file`.
+              oneOf:
+                - type: object
+                  required: [id, fileName, sizeBytes, uploadedAt, uploadedBy]
+                  properties:
+                    id: { $ref: '#/components/schemas/Id' }
+                    fileName: { type: string }
+                    sizeBytes: { type: integer, minimum: 1 }
+                    uploadedAt: { type: string, format: date-time }
+                    uploadedBy: { $ref: '#/components/schemas/UserRef' }
+                - type: 'null'
+            signatory:
+              oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }]
+              description: Null when not set or when the signatory's contact was removed by a person deletion (`on delete set null`).
+            scheduleItems:
+              type: array
+              items: { $ref: '#/components/schemas/FeeScheduleItem' }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            version: { $ref: '#/components/schemas/Version' }
+    AgreementPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Agreement' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    AgreementCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/AgreementFields'
+        - type: object
+          required: [accountId, kind, feeModel, currency]
+          properties:
+            accountId: { $ref: '#/components/schemas/Id' }
+            jobOrderId:
+              oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+            kind: { $ref: '#/components/schemas/AgreementKind' }
+            scheduleItems:
+              type: array
+              maxItems: 20
+              items: { $ref: '#/components/schemas/FeeScheduleItemRequest' }
+    AgreementUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/AgreementFields'
+        - type: object
+          properties:
+            scheduleItems:
+              type: array
+              maxItems: 20
+              items: { $ref: '#/components/schemas/FeeScheduleItemRequest' }
+            version: { $ref: '#/components/schemas/Version' }
+    PlacementCompensation:
+      type: object
+      description: Encrypted as one value (like `Compensation`, ADR 0011/0013). Amounts per year.
+      required: [currency]
+      properties:
+        base: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        bonus: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }], description: Target or guaranteed first-year bonus. }
+        allowances: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        signOn: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        otherCash: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        firstYearCash: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }], description: Sum of the above when not given. }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+    Placement:
+      type: object
+      required: [id, applicationId, jobOrder, account, person, status, startDate, feeAmount, feeCurrency, guaranteeEndOn, compensationRestricted, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        applicationId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: Null after the person was deleted (ADR 0009); the placement stays as commercial evidence.
+        jobOrder: { $ref: '#/components/schemas/JobOrderRef' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        person:
+          oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }]
+          description: Null after the person was deleted (then `compensation` and `statusReason` are null too). An anonymised person shows as `Anonymised person`.
+        agreementId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        status: { $ref: '#/components/schemas/PlacementStatus' }
+        offerAcceptedOn: { type: [string, 'null'], format: date }
+        startDate: { type: string, format: date }
+        compensation:
+          oneOf: [{ $ref: '#/components/schemas/PlacementCompensation' }, { type: 'null' }]
+          description: Null in lists and for users without access.
+        compensationRestricted: { type: boolean }
+        feeAmount: { $ref: '#/components/schemas/Money' }
+        feeCurrency: { type: string, pattern: '^[A-Z]{3}$' }
+        feeOverridden: { type: boolean, description: True when a manager set the fee instead of the computed one. }
+        guaranteeEndOn: { type: string, format: date }
+        leftOn: { type: [string, 'null'], format: date }
+        replacementJobOrder:
+          oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+        statusReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    PlacementPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Placement' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    PlacementCreateRequest:
+      type: object
+      required: [startDate, compensation]
+      properties:
+        offerAcceptedOn: { type: string, format: date, description: Defaults to today. }
+        startDate: { type: string, format: date }
+        compensation: { $ref: '#/components/schemas/PlacementCompensation' }
+        feeAmount:
+          oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }]
+          description: Override of the computed fee; MANAGER/ADMIN only.
+        guaranteeEndOn: { type: [string, 'null'], format: date, description: Override; MANAGER/ADMIN only. }
+        version:
+          $ref: '#/components/schemas/Version'
+          description: The application's version.
+    PlacementUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        startDate: { type: string, format: date }
+        compensation: { $ref: '#/components/schemas/PlacementCompensation' }
+        feeAmount: { $ref: '#/components/schemas/Money' }
+        guaranteeEndOn: { type: string, format: date }
+        leftOn: { type: [string, 'null'], format: date }
+        replacementJobOrderId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        status:
+          $ref: '#/components/schemas/PlacementStatus'
+          description: Only CANCELLED or GUARANTEE_ENDED may be set by hand; the others follow from the fields.
+        reason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    ConflictCheckRequest:
+      type: object
+      description: Exactly one of `accountId` and `companyName` (400).
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        companyName: { type: string, minLength: 1, maxLength: 200 }
+        jobOrderId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: The search being considered (also gives function and seniority for COMPETING_SEARCH).
+    ConflictHit:
+      type: object
+      required: [kind, refType, refId, title]
+      properties:
+        kind: { $ref: '#/components/schemas/ConflictHitKind' }
+        refType: { $ref: '#/components/schemas/EntityType' }
+        refId: { $ref: '#/components/schemas/Id' }
+        title:
+          type: [string, 'null']
+          description: Account, job order or rule title; always null for PLACED_CANDIDATE (no person names in the log).
+        until: { type: [string, 'null'], format: date, description: End of the guarantee or rule. }
+    ConflictCheckRecordRequest:
+      allOf:
+        - $ref: '#/components/schemas/ConflictCheckRequest'
+        - type: object
+          required: [decision]
+          properties:
+            decision: { $ref: '#/components/schemas/ConflictDecision' }
+            overrideReason: { $ref: '#/components/schemas/Reason' }
+    ConflictCheck:
+      type: object
+      required: [id, decision, hits, checkedBy, checkedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+        companyName: { type: [string, 'null'] }
+        jobOrderId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
+        hits:
+          type: array
+          items: { $ref: '#/components/schemas/ConflictHit' }
+        decision: { $ref: '#/components/schemas/ConflictDecision' }
+        overrideReason: { type: [string, 'null'] }
+        checkedBy: { $ref: '#/components/schemas/UserRef' }
+        checkedAt: { type: string, format: date-time }
+    ConflictCheckPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ConflictCheck' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    # ---------- 1.3.0: import rollback, exports, client reports ----------
+    ImportRollbackRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { $ref: '#/components/schemas/Reason' }
+    ImportRollbackResult:
+      type: object
+      required: [import, archived, ended, skipped]
+      properties:
+        import: { $ref: '#/components/schemas/ImportJob' }
+        archived:
+          type: object
+          description: Archived records per entity (ACCOUNTS, PEOPLE).
+          additionalProperties: { type: integer, minimum: 0 }
+        ended: { type: integer, minimum: 0, description: Contacts ended. }
+        skipped:
+          type: array
+          description: Records left as they are, with the reason code.
+          items:
+            type: object
+            required: [entityType, id, code]
+            properties:
+              entityType: { $ref: '#/components/schemas/EntityType' }
+              id: { $ref: '#/components/schemas/Id' }
+              code: { type: string, enum: [IN_PIPELINE, HAS_ACTIVITY, ANONYMISED, ALREADY_ARCHIVED] }
+    ExportStatus:
+      type: string
+      description: '`contracts/enums/ExportStatus.java`.'
+      enum: [PENDING_APPROVAL, READY, REJECTED, EXPIRED, FAILED]
+    ExportRequest:
+      type: object
+      required: [entity, filters, columns, purpose]
+      properties:
+        entity:
+          $ref: '#/components/schemas/ListEntity'
+          description: PEOPLE, ACCOUNTS or JOB_ORDERS; PROPOSALS gives 400 in 1.3.
+        filters:
+          type: object
+          maxProperties: 20
+          description: Filter keys of the entity, as in `ViewDefinition.filters`.
+          additionalProperties: { $ref: '#/components/schemas/FilterValue' }
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { type: string, pattern: '^[A-Za-z][A-Za-z0-9.]{0,99}$' }
+        sort:
+          type: array
+          maxItems: 5
+          items: { type: string, pattern: '^[A-Za-z]+(,(asc|desc))?$' }
+        purpose: { type: string, minLength: 3, maxLength: 300, examples: [Client longlist review] }
+        includeCompensation: { type: boolean, description: Default false. }
+    ExportDecisionRequest:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/Reason'
+          description: Required to reject.
+    ExportJob:
+      type: object
+      required: [id, entity, status, rowCount, columns, purpose, includeCompensation, requestedBy, requestedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        entity: { $ref: '#/components/schemas/ListEntity' }
+        status: { $ref: '#/components/schemas/ExportStatus' }
+        filterKeys:
+          type: array
+          description: The filter keys used (values are kept, except free text `q` and `cv`, which are stored only as present).
+          items: { type: string }
+        filters:
+          type: object
+          description: Filters without free text.
+          additionalProperties: { $ref: '#/components/schemas/FilterValue' }
+        rowCount: { type: integer, minimum: 0 }
+        columns:
+          type: array
+          items: { type: string }
+        purpose: { type: string }
+        includeCompensation: { type: boolean }
+        requestedBy: { $ref: '#/components/schemas/UserRef' }
+        requestedAt: { type: string, format: date-time }
+        decidedBy:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionReason: { type: [string, 'null'] }
+        readyAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+    ExportJobPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ExportJob' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    ReportKind:
+      type: string
+      description: '`contracts/enums/ReportKind.java`.'
+      enum: [SHORTLIST, PROGRESS, CANDIDATE_PROFILE]
+    ClientReportRequest:
+      type: object
+      required: [kind]
+      properties:
+        kind: { $ref: '#/components/schemas/ReportKind' }
+        language:
+          $ref: '#/components/schemas/Language'
+          description: Defaults to the account's preferred language, else TR.
+        blind: { type: boolean, description: Default false. }
+        personIds:
+          type: array
+          maxItems: 30
+          uniqueItems: true
+          description: SHORTLIST (subset, report order follows rank) and CANDIDATE_PROFILE (exactly one).
+          items: { $ref: '#/components/schemas/Id' }
+        periodFrom: { type: string, format: date, description: PROGRESS only; defaults to 14 days ago. }
+        coverNote: { type: [string, 'null'], maxLength: 2000 }
+    ClientReport:
+      type: object
+      required: [id, jobOrderId, kind, version, language, blind, personCount, excluded, generatedBy, generatedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        jobOrderId: { $ref: '#/components/schemas/Id' }
+        kind: { $ref: '#/components/schemas/ReportKind' }
+        version: { type: integer, minimum: 1 }
+        language: { $ref: '#/components/schemas/Language' }
+        blind: { type: boolean }
+        personCount: { type: integer, minimum: 0 }
+        excluded:
+          type: array
+          description: People left out because they may not be shared (only in the generate response; empty when read later).
+          items: { $ref: '#/components/schemas/ShareCheckResult' }
+        blindWarnings:
+          type: array
+          description: Blind only; free-text fields that still contain a name or employer.
+          items:
+            type: object
+            required: [personId, field]
+            properties:
+              personId: { $ref: '#/components/schemas/Id' }
+              field: { type: string, examples: [summary] }
+        sizeBytes: { type: integer, minimum: 0 }
+        generatedBy: { $ref: '#/components/schemas/UserRef' }
+        generatedAt: { type: string, format: date-time }
+        sentOn: { type: [string, 'null'], format: date }
+        sentBy:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+    ClientReportSentRequest:
+      type: object
+      properties:
+        sentOn: { type: string, format: date, description: Defaults to today. }
