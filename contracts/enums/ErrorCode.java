@@ -38,6 +38,11 @@ public enum ErrorCode {
      * {@code blockingItems} lists the matching rules with their {@link OffLimitsReason}.
      */
     OFF_LIMITS(409),
+    /**
+     * The record is archived (since 1.3.0, ADR 0013): restore it before changing it, or pick a
+     * record that is not archived (e.g. adding an archived person to a job order).
+     */
+    ARCHIVED(409),
     /** A one-time link (consent token) has expired. */
     GONE(410),
     /** Upload too large. */

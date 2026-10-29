@@ -125,6 +125,22 @@ tags:
     description: Which client accounts saw a person, and warnings before re-presenting (since 1.2.0, B-05, ADR 0011). Module `pipeline` (backend-pipeline).
   - name: Off-limits
     description: Companies the firm must not recruit from, enforced when adding to a pipeline (since 1.2.0, ADR 0011). Module `accounts` (backend-accounts); guard in `pipeline`.
+  - name: Archive
+    description: Soft delete with restore for accounts, job orders, proposals and people, and the audited account merge (since 1.3.0, ADR 0013). Accounts and people in `accounts` (backend-accounts); job orders and proposals in `pipeline` (backend-pipeline).
+  - name: Tags
+    description: Tag management — rename, merge, delete, colour; talent pools are tags flagged as pools (since 1.3.0, ADR 0013). Module `accounts` (backend-accounts); pipeline tables follow through `TagChanged`.
+  - name: Longlist and shortlist
+    description: Rank, rating, rationale, outreach status and client feedback per application (since 1.3.0, SX-013/014/019). Module `pipeline` (backend-pipeline).
+  - name: Evaluation
+    description: Candidate evaluations with scorecards, interview notes and references (since 1.3.0, SX-008/009/010). Module `pipeline` (backend-pipeline).
+  - name: Search brief
+    description: Brief, criteria, team and target companies of a job order (since 1.3.0, SX-001/003). Module `pipeline` (backend-pipeline).
+  - name: Commercial
+    description: Fee agreements with fee schedule items, placements with guarantee, conflict checks (since 1.3.0, PB-007/008/009/011/018, CO-020/021). Module `pipeline` (backend-pipeline).
+  - name: Exports
+    description: Server-side list exports with approval and audit (since 1.3.0, CO-013). Module `security` (security-privacy) with `ExportSource` beans in `accounts` and `pipeline`.
+  - name: Client reports
+    description: Shortlist, progress and candidate-profile PDFs with blind option (since 1.3.0, SX-021/022, PB-021). Module `pipeline` (backend-pipeline); sharing guard by `privacy`.
 paths:
   /auth/login:
     post:
@@ -419,6 +435,11 @@ paths:
           in: query
           schema: { type: string }
         - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/Archived'
+        - name: parentAccountId
+          in: query
+          description: Since 1.3.0. Direct children of this account (group view).
+          schema: { $ref: '#/components/schemas/Id' }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -707,6 +728,7 @@ paths:
           in: query
           description: '`true`: only people who may be shared with a client (consent GIVEN, not anonymised); `false`: only the others. Since 1.2.0.'
           schema: { type: boolean }
+        - $ref: '#/components/parameters/Archived'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -1099,6 +1121,7 @@ paths:
           description: '`true` = not FILLED or CANCELLED; `false` = FILLED or CANCELLED.'
           schema: { type: boolean }
         - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/Archived'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -1403,6 +1426,7 @@ paths:
           style: form
           explode: true
         - $ref: '#/components/parameters/OwnerId'
+        - $ref: '#/components/parameters/Archived'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - $ref: '#/components/parameters/Sort'
@@ -3018,6 +3042,254 @@ paths:
                 items: { $ref: '#/components/schemas/ShareCheckResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  # ---------- 1.3.0: archive, restore, merge (ADR 0013) ----------
+  /accounts/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: archiveAccount
+      summary: Archive an account (soft delete; restorable)
+      description: |
+        Sets `archivedAt`, `archivedBy`, `archiveReason` and `archiveNote` (Envers revision, timeline
+        entry ARCHIVE, `ArchiveStateChanged`). The account leaves every list, search, picker and the
+        command bar unless `archived=true` is asked for; `GET /accounts/{id}` still returns it.
+        Guard: no job order of the account may be open and not archived (409 `TRANSITION_GUARD_FAILED`
+        with the job orders as `blockingItems`). `MERGED` is not allowed here (use merge; 400).
+        Archiving an archived account returns it unchanged. Archived records reject every change
+        except restore with 409 `ARCHIVED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ArchiveRequest' }
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: restoreAccount
+      summary: Restore an archived account
+      description: Clears the archive fields (Envers, timeline ARCHIVE, `ArchiveStateChanged(archived=false)`). A MERGED account cannot be restored (409 `STATE_CONFLICT`). Restoring a record that is not archived returns it unchanged.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RestoreRequest' }
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /accounts/{id}/merge:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: mergeAccounts
+      summary: Merge another account into this one (the survivor); audited, not reversible
+      description: |
+        One transaction, orchestrated by `accounts` (ADR 0013):
+        1. accounts: fill empty survivor fields from the merged account (fields in `takeFromMerged`
+           overwrite), union the tags (at most 20, else 409 `STATE_CONFLICT`), move contacts (a person
+           who is an active contact of both keeps the survivor's row; the merged one is ended; the
+           survivor's primary contact wins), off-limits rules, child accounts (`parentAccountId`) and
+           the `account_open_job` projection.
+        2. pipeline (`AccountMergeParticipant`): move job orders, proposals, activities, next actions,
+           timeline entries, candidate exposures, agreements, placements, conflict checks and target
+           companies that point at the merged account.
+        3. accounts: archive the merged account with reason `MERGED` and `mergedInto` = survivor,
+           write `account_merge` (counts only), publish `AccountMerged`; timeline entry MERGE.
+        Errors: same id, either account archived, or the merged account is the survivor's parent or
+        child chain → 409 `STATE_CONFLICT`; survivor `version` mismatch → 409 `VERSION_CONFLICT`.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts (orchestration); pipeline step by backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountMergeRequest' }
+      responses:
+        '200':
+          description: Merged
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountMergeResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: archiveJobOrder
+      summary: Archive a job order (soft delete; restorable)
+      description: |
+        Guard: no active application (stage not PLACED or REJECTED) — 409 `TRANSITION_GUARD_FAILED` with
+        the applications as `blockingItems` (type APPLICATION). The status is kept; while archived the
+        job order counts as not open (`account_open_job.open = false`). Timeline ARCHIVE,
+        `ArchiveStateChanged`. Archived job orders reject changes, new applications and stage moves with
+        409 `ARCHIVED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ArchiveRequest' }
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrder' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: restoreJobOrder
+      summary: Restore an archived job order
+      description: Fails with 409 `ARCHIVED` while its account is archived (restore the account first).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RestoreRequest' }
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobOrder' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /proposals/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: archiveProposal
+      summary: Archive a proposal in any status (soft delete; restorable)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ArchiveRequest' }
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /proposals/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: restoreProposal
+      summary: Restore an archived proposal
+      description: Fails with 409 `ARCHIVED` while its account is archived.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RestoreRequest' }
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: archivePerson
+      summary: Archive a person (hide from the pool; not an erasure)
+      description: |
+        Hides the person from `GET /people`, search, candidate suggestions and pickers. Archiving is
+        **not** anonymisation or deletion: consent, retention clock and DSR rules run unchanged (ADR 0009
+        stays the only erasure path). Guard: no active application (409 `TRANSITION_GUARD_FAILED`, type
+        APPLICATION). An archived person cannot be added to a job order (409 `ARCHIVED`). `archiveNote`
+        is personal data (scrubbed on anonymisation).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ArchiveRequest' }
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /people/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Archive]
+      operationId: restorePerson
+      summary: Restore an archived person
+      description: An anonymised person cannot be restored to the pool (409 `STATE_CONFLICT`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RestoreRequest' }
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -3081,6 +3353,11 @@ components:
       name: jobOrderId
       in: query
       schema: { $ref: '#/components/schemas/Id' }
+    Archived:
+      name: archived
+      in: query
+      description: 'Since 1.3.0 (ADR 0013). Omitted or `false`: only records that are not archived (the 1.2 behaviour, because nothing was archived before); `true`: only archived records (the "Archived" view).'
+      schema: { type: boolean, default: false }
   responses:
     BadRequest:
       description: Validation failed (`VALIDATION_FAILED`) or a reason is missing (`REASON_REQUIRED`)
@@ -3355,10 +3632,10 @@ components:
       enum: [VALIDATED, IMPORTING, COMPLETED, FAILED, DISCARDED]
     TimelineKind:
       type: string
-      enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE]
+      enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE, ARCHIVE, MERGE, PLACEMENT]
     EntityType:
       type: string
-      enum: [ACCOUNT, PERSON, CONTACT, NETWORK_LINK, JOB_ORDER, APPLICATION, PROPOSAL, ACTIVITY, NEXT_ACTION, USER, CONSENT_RECORD, CONSENT_REQUEST, PRIVACY_NOTICE, DATA_SUBJECT_REQUEST, IMPORT_JOB, PERSON_FILE, CV_INTAKE_ITEM, OFF_LIMITS_RULE]
+      enum: [ACCOUNT, PERSON, CONTACT, NETWORK_LINK, JOB_ORDER, APPLICATION, PROPOSAL, ACTIVITY, NEXT_ACTION, USER, CONSENT_RECORD, CONSENT_REQUEST, PRIVACY_NOTICE, DATA_SUBJECT_REQUEST, IMPORT_JOB, PERSON_FILE, CV_INTAKE_ITEM, OFF_LIMITS_RULE, TAG, EVALUATION, INTERVIEW_NOTE, CANDIDATE_REFERENCE, CLIENT_FEEDBACK, TARGET_COMPANY, AGREEMENT, FEE_SCHEDULE_ITEM, PLACEMENT, CONFLICT_CHECK, EXPORT_JOB, CLIENT_REPORT]
     AccessAction:
       type: string
       enum: [VIEW, EXPORT, DOWNLOAD]
@@ -3376,7 +3653,7 @@ components:
       enum: [NEUTRAL, INFO, PROGRESS, GOOD, WARN, BAD, MUTED]
     ErrorCode:
       type: string
-      enum: [VALIDATION_FAILED, REASON_REQUIRED, UNAUTHENTICATED, BAD_CREDENTIALS, FORBIDDEN, NOT_FOUND, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, VERSION_CONFLICT, DUPLICATE, STATE_CONFLICT, CONSENT_REQUIRED, OFF_LIMITS, GONE, PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE, TOO_MANY_REQUESTS, INTERNAL_ERROR]
+      enum: [VALIDATION_FAILED, REASON_REQUIRED, UNAUTHENTICATED, BAD_CREDENTIALS, FORBIDDEN, NOT_FOUND, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, VERSION_CONFLICT, DUPLICATE, STATE_CONFLICT, CONSENT_REQUIRED, OFF_LIMITS, ARCHIVED, GONE, PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE, TOO_MANY_REQUESTS, INTERNAL_ERROR]
     # ---------- auth and users ----------
     LoginRequest:
       type: object
@@ -3535,6 +3812,39 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        archive:
+          oneOf: [{ $ref: '#/components/schemas/ArchiveInfo' }, { type: 'null' }]
+          description: Since 1.3.0. Null while not archived.
+        legalName: { type: [string, 'null'], description: 'Since 1.3.0. Registered name (ticari unvan), used on invoices.', examples: [Örnek Gıda Sanayi ve Ticaret A.Ş.] }
+        taxId: { type: [string, 'null'], description: 'Since 1.3.0. VKN, TCKN or a foreign tax id as entered; no format check in 1.3.' }
+        taxOffice: { type: [string, 'null'], examples: [Boğaziçi Kurumlar] }
+        mersisNo: { type: [string, 'null'] }
+        einvoiceStatus: { $ref: '#/components/schemas/EInvoiceStatus' }
+        einvoiceAlias: { type: [string, 'null'] }
+        billingAddress: { type: [string, 'null'] }
+        billingEmails:
+          type: array
+          items: { type: string, format: email }
+        billingCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        vatExempt: { type: boolean }
+        withholdingApplies: { type: boolean }
+        parentAccount:
+          oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }]
+          description: Since 1.3.0. Group parent; the group is this account, its parent chain and children.
+        groupName: { type: [string, 'null'], description: Group name when the parent is not in the CRM., examples: [Marmara Holding] }
+        employeeBand:
+          oneOf: [{ $ref: '#/components/schemas/EmployeeBand' }, { type: 'null' }]
+        hqCountry: { type: [string, 'null'], pattern: '^[A-Z]{2}$', description: 'ISO 3166-1 alpha-2; `city` is the HQ city.', examples: [TR] }
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
+        preferredLanguage:
+          oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }]
+        missingForActive:
+          type: array
+          description: |
+            Since 1.3.0. Profile fields still empty that an active client needs (PB-014, CO-019):
+            `legalName`, `taxId`, `taxOffice`, `billingAddress`, `billingEmails`, `signedAgreement`,
+            `conflictCheck`. Informational in 1.3 (no status guard yet, ADR 0013).
+          items: { type: string }
     AccountPage:
       type: object
       required: [content, page]
@@ -3555,8 +3865,33 @@ components:
         ownerId:
           $ref: '#/components/schemas/Id'
           description: Defaults to the current user.
+        legalName: { type: [string, 'null'], maxLength: 300 }
+        taxId: { type: [string, 'null'], maxLength: 20, description: Plain string; no check-digit validation in 1.3 (VWC). }
+        taxOffice: { type: [string, 'null'], maxLength: 100 }
+        mersisNo: { type: [string, 'null'], maxLength: 16 }
+        einvoiceStatus: { $ref: '#/components/schemas/EInvoiceStatus' }
+        einvoiceAlias: { type: [string, 'null'], maxLength: 100 }
+        billingAddress: { type: [string, 'null'], maxLength: 500 }
+        billingEmails:
+          type: array
+          maxItems: 5
+          items: { type: string, format: email, maxLength: 254 }
+        billingCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        vatExempt: { type: boolean, default: false }
+        withholdingApplies: { type: boolean, default: false }
+        parentAccountId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: No cycles and a chain of at most 5 (400 `VALIDATION_FAILED`, field `parentAccountId`); not an archived account (409 `ARCHIVED`).
+        groupName: { type: [string, 'null'], maxLength: 200 }
+        employeeBand:
+          oneOf: [{ $ref: '#/components/schemas/EmployeeBand' }, { type: 'null' }]
+        hqCountry: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
+        preferredLanguage:
+          oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }]
     AccountUpdateRequest:
       type: object
+      description: Since 1.3.0 also takes the profile fields of `AccountCreateRequest` (same rules).
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         sector: { type: string, minLength: 1, maxLength: 100 }
@@ -3565,6 +3900,29 @@ components:
         notes: { type: [string, 'null'], maxLength: 4000 }
         ownerId: { $ref: '#/components/schemas/Id' }
         version: { $ref: '#/components/schemas/Version' }
+        legalName: { type: [string, 'null'], maxLength: 300 }
+        taxId: { type: [string, 'null'], maxLength: 20 }
+        taxOffice: { type: [string, 'null'], maxLength: 100 }
+        mersisNo: { type: [string, 'null'], maxLength: 16 }
+        einvoiceStatus: { $ref: '#/components/schemas/EInvoiceStatus' }
+        einvoiceAlias: { type: [string, 'null'], maxLength: 100 }
+        billingAddress: { type: [string, 'null'], maxLength: 500 }
+        billingEmails:
+          type: array
+          maxItems: 5
+          items: { type: string, format: email, maxLength: 254 }
+        billingCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        vatExempt: { type: boolean }
+        withholdingApplies: { type: boolean }
+        parentAccountId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        groupName: { type: [string, 'null'], maxLength: 200 }
+        employeeBand:
+          oneOf: [{ $ref: '#/components/schemas/EmployeeBand' }, { type: 'null' }]
+        hqCountry: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
+        preferredLanguage:
+          oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }]
     AccountStatusChangeRequest:
       type: object
       required: [status]
@@ -3612,6 +3970,19 @@ components:
           type: [string, 'null']
           maxLength: 300
           description: Since 1.2.0. Only with the `cv` filter — a short excerpt of the current CV around the match (`ts_headline`), match marked with `«` and `»`.
+        archive:
+          oneOf: [{ $ref: '#/components/schemas/ArchiveInfo' }, { type: 'null' }]
+          description: Since 1.3.0. Null while not archived.
+        skills:
+          type: array
+          description: Since 1.3.0. Lower-case skill keywords (same rules as tags, at most 30).
+          items: { $ref: '#/components/schemas/Tag' }
+        functionArea:
+          oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }]
+          description: Since 1.3.0.
+        seniority:
+          oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }]
+          description: Since 1.3.0.
     PersonSummaryPage:
       type: object
       required: [content, page]
@@ -3881,6 +4252,12 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        archive:
+          oneOf: [{ $ref: '#/components/schemas/ArchiveInfo' }, { type: 'null' }]
+          description: Since 1.3.0. Null while not archived.
+        confidentialityLevel:
+          $ref: '#/components/schemas/ConfidentialityLevel'
+          description: Since 1.3.0. Stored and shown as a badge; list visibility rules follow in a later contract (ADR 0013).
     JobOrderPage:
       type: object
       required: [content, page]
@@ -3904,9 +4281,13 @@ components:
         ownerId:
           $ref: '#/components/schemas/Id'
           description: Defaults to the current user.
+        confidentialityLevel:
+          $ref: '#/components/schemas/ConfidentialityLevel'
+          description: Since 1.3.0. Defaults to the account's level.
     JobOrderUpdateRequest:
       type: object
       properties:
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
         title: { type: string, minLength: 1, maxLength: 200 }
         location: { type: [string, 'null'], maxLength: 200 }
         seniority: { type: [string, 'null'], maxLength: 100 }
@@ -3986,6 +4367,9 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        archive:
+          oneOf: [{ $ref: '#/components/schemas/ArchiveInfo' }, { type: 'null' }]
+          description: Since 1.3.0. Null while not archived.
     ProposalPage:
       type: object
       required: [content, page]
@@ -5157,3 +5541,81 @@ components:
         reason:
           oneOf: [{ $ref: '#/components/schemas/ShareBlockReason' }, { type: 'null' }]
           description: Null when shareable.
+    # ---------- 1.3.0: archive and merge (ADR 0013) ----------
+    ArchiveReason:
+      type: string
+      description: '`contracts/enums/ArchiveReason.java`. MERGED and IMPORT_ROLLBACK are set by the server only.'
+      enum: [DUPLICATE, CREATED_BY_MISTAKE, NO_LONGER_RELEVANT, MERGED, IMPORT_ROLLBACK, OTHER]
+    ArchiveInfo:
+      type: object
+      required: [archivedAt, archivedBy, reason]
+      properties:
+        archivedAt: { type: string, format: date-time }
+        archivedBy: { $ref: '#/components/schemas/UserRef' }
+        reason: { $ref: '#/components/schemas/ArchiveReason' }
+        note: { type: [string, 'null'], maxLength: 500 }
+        mergedInto:
+          oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }]
+          description: Accounts only; set when `reason` is MERGED.
+    ArchiveRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          $ref: '#/components/schemas/ArchiveReason'
+          description: MERGED and IMPORT_ROLLBACK give 400 `VALIDATION_FAILED`.
+        note: { type: [string, 'null'], maxLength: 500, description: Required when `reason` is OTHER (400). }
+        version: { $ref: '#/components/schemas/Version' }
+    RestoreRequest:
+      type: object
+      properties:
+        version: { $ref: '#/components/schemas/Version' }
+    AccountMergeRequest:
+      type: object
+      required: [mergedId, version]
+      properties:
+        mergedId:
+          $ref: '#/components/schemas/Id'
+          description: The account to merge into the path account.
+        takeFromMerged:
+          type: array
+          description: Survivor fields to overwrite with the merged account's value (others are kept; empty ones are filled).
+          uniqueItems: true
+          items:
+            type: string
+            enum: [sector, city, website, notes, ownerId, legalName, taxId, taxOffice, mersisNo, billingAddress, billingEmails, parentAccountId, employeeBand]
+        version:
+          $ref: '#/components/schemas/Version'
+          description: The survivor's version (required, 409 on mismatch).
+    AccountMergeResult:
+      type: object
+      required: [survivor, mergedId, moved]
+      properties:
+        survivor: { $ref: '#/components/schemas/Account' }
+        mergedId: { $ref: '#/components/schemas/Id' }
+        moved:
+          type: object
+          description: Moved row counts per kind, e.g. contacts, jobOrders, proposals, activities, nextActions, offLimitsRules, agreements, placements.
+          additionalProperties: { type: integer, minimum: 0 }
+          examples: [{ contacts: 3, jobOrders: 2, activities: 14 }]
+    # ---------- 1.3.0: account profile ----------
+    ConfidentialityLevel:
+      type: string
+      description: '`contracts/enums/ConfidentialityLevel.java`; default NORMAL. RESTRICTED = named team; CONFIDENTIAL = hidden from non-team users (rule in a later contract, ADR 0013).'
+      enum: [NORMAL, RESTRICTED, CONFIDENTIAL]
+    EInvoiceStatus:
+      type: string
+      description: '`contracts/enums/EInvoiceStatus.java`; default UNKNOWN.'
+      enum: [UNKNOWN, E_FATURA, E_ARSIV]
+    EmployeeBand:
+      type: string
+      enum: [B1_50, B51_250, B251_1000, B1001_5000, B5000_PLUS]
+    # ---------- 1.3.0: candidate search ----------
+    JobFunction:
+      type: string
+      description: '`contracts/enums/JobFunction.java`.'
+      enum: [GENERAL_MANAGEMENT, FINANCE, HR, SALES, MARKETING, OPERATIONS, SUPPLY_CHAIN, PROCUREMENT, ENGINEERING, IT, RND, LEGAL, OTHER]
+    Seniority:
+      type: string
+      description: '`contracts/enums/Seniority.java`, highest first.'
+      enum: [BOARD, C_LEVEL, VP_DIRECTOR, HEAD, MANAGER, SPECIALIST]
