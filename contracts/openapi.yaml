@@ -56,7 +56,7 @@ info:
       consent renewal (`purpose`, reminders, tracked `openedAt`), retention basis `FROM_LAST_CONSENT`.
       Talent pools are tags plus shared saved views (`tag` filter). New response fields are optional, so
       1.1.x clients and servers stay valid.
-    - 1.3.0 (additive; ADR 0013): archive and restore for accounts, job orders, proposals and people
+    - 1.3.0 (additive; ADR 0013): archive and restore for accounts, job orders and people
       (`archived` list filter, 409 `ARCHIVED`) and the audited account merge; account profile fields
       (legal and billing data, group parent, size, HQ country, confidentiality level); tag management
       (`/tags`, talent pool flag); longlist/shortlist (derived `list`, `rank`, `rating`, `rationale`,
@@ -68,6 +68,12 @@ info:
       Every new response field is optional and the `archived` filter defaults to the 1.2 result, so 1.2
       clients stay valid. Behaviour changes for 1.2 callers: moving into a client-facing stage from the
       longlist now needs `rating` and `rationale`.
+      Review round (still 1.3.0): organisation identity on `account` (roles, aliases, normalised name,
+      employment and off-limits links; `Account.sector` may be null for non-client organisations and
+      `GET /accounts` defaults to CLIENT/PROSPECT); application `closeReason`, outreach SCREENED;
+      activity outcome, direction, attendees, duration, source and external message id; brief team size
+      (band encrypted at rest); agreement signed file, guarantee start basis, VAT per fee item. Cut from
+      1.3: proposal archive/restore, proposal exports and `proposalId` on conflict checks.
   contact:
     name: architect agent
   license:
@@ -1566,7 +1572,6 @@ paths:
           style: form
           explode: true
         - $ref: '#/components/parameters/OwnerId'
-        - $ref: '#/components/parameters/Archived'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - $ref: '#/components/parameters/Sort'
@@ -3350,53 +3355,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
-  /proposals/{id}/archive:
-    parameters:
-      - $ref: '#/components/parameters/IdPath'
-    post:
-      tags: [Archive]
-      operationId: archiveProposal
-      summary: Archive a proposal in any status (soft delete; restorable)
-      x-roles: [CONSULTANT, MANAGER, ADMIN]
-      x-owner: pipeline / backend-pipeline
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/ArchiveRequest' }
-      responses:
-        '200':
-          description: Archived
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Proposal' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-  /proposals/{id}/restore:
-    parameters:
-      - $ref: '#/components/parameters/IdPath'
-    post:
-      tags: [Archive]
-      operationId: restoreProposal
-      summary: Restore an archived proposal
-      description: Fails with 409 `ARCHIVED` while its account is archived.
-      x-roles: [CONSULTANT, MANAGER, ADMIN]
-      x-owner: pipeline / backend-pipeline
-      requestBody:
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/RestoreRequest' }
-      responses:
-        '200':
-          description: Restored
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Proposal' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
   /people/{id}/archive:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -4640,15 +4598,16 @@ paths:
       description: |
         `filters` and `columns` are a `ViewDefinition` of the entity (same validation). The server counts
         the rows: up to the approval threshold (default 25 people or accounts, setting
-        `app.exports.approval-threshold`; job orders and proposals have none) or when the caller is
+        `app.exports.approval-threshold`; job orders have none) or when the caller is
         MANAGER/ADMIN, the file is built at once (READY); otherwise PENDING_APPROVAL until a manager
         approves. `includeCompensation` is MANAGER/ADMIN only (403) and PEOPLE only. Every export writes
         an access-log EXPORT row per exported person (entity PERSON) and one EXPORT row for the job
         (entity EXPORT_JOB) with filter keys, row count, columns and purpose. The CSV starts with a
         watermark line (user, date, purpose) and expires 24 hours after it is ready. Exports of a client
-        report or a person's KVKK export are not done here.
+        report or a person's KVKK export are not done here. `entity` PROPOSALS gives 400
+        `VALIDATION_FAILED` (proposal exports are cut from 1.3; R7/R75 move proposals to opportunities).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
-      x-owner: security / security-privacy (job, approval, audit); `ExportSource` beans in accounts (PEOPLE, ACCOUNTS) and pipeline (JOB_ORDERS, PROPOSALS)
+      x-owner: security / security-privacy (job, approval, audit); `ExportSource` beans in accounts (PEOPLE, ACCOUNTS) and pipeline (JOB_ORDERS)
       requestBody:
         required: true
         content:
@@ -6011,9 +5970,6 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
-        archive:
-          oneOf: [{ $ref: '#/components/schemas/ArchiveInfo' }, { type: 'null' }]
-          description: Since 1.3.0. Null while not archived.
     ProposalPage:
       type: object
       required: [content, page]
@@ -6628,7 +6584,7 @@ components:
           `hasCv`; the salary filters are never stored in SHARED views (they would expose pay ranges).
         - ACCOUNTS: `q`, `status`, `sector`, `ownerId`; since 1.3.0 `archived`, `parentAccountId`
         - JOB_ORDERS: `q`, `accountId`, `status`, `open`, `ownerId`; since 1.3.0 `archived`
-        - PROPOSALS: `accountId`, `status`, `ownerId`; since 1.3.0 `archived`
+        - PROPOSALS: `accountId`, `status`, `ownerId`
         Values are validated like the query parameters (enum names, UUIDs, dates). `ownerId` may also be
         `"me"`, which the client replaces with the current user's id when it runs the view (so one shared
         "My accounts" view works for everybody). The server rejects unknown keys and bad values with 400
@@ -8109,8 +8065,6 @@ components:
         jobOrderId:
           oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
           description: The search being considered (also gives function and seniority for COMPETING_SEARCH).
-        proposalId:
-          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
     ConflictHit:
       type: object
       required: [kind, refType, refId, title]
@@ -8138,7 +8092,6 @@ components:
         account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
         companyName: { type: [string, 'null'] }
         jobOrderId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
-        proposalId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
         hits:
           type: array
           items: { $ref: '#/components/schemas/ConflictHit' }
@@ -8188,7 +8141,9 @@ components:
       type: object
       required: [entity, filters, columns, purpose]
       properties:
-        entity: { $ref: '#/components/schemas/ListEntity' }
+        entity:
+          $ref: '#/components/schemas/ListEntity'
+          description: PEOPLE, ACCOUNTS or JOB_ORDERS; PROPOSALS gives 400 in 1.3.
         filters:
           type: object
           maxProperties: 20
