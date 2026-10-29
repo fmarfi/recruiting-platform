@@ -9,10 +9,10 @@ type Stats = components['schemas']['MyDay']['stats'];
 export function StatsStrip({ stats }: { stats: Stats }) {
   const { t } = useTranslation();
   const items = [
-    ['activeAccounts', stats.activeAccounts, '/accounts'],
-    ['openJobs', stats.openJobOrders, '/job-orders'],
-    ['inProcess', stats.candidatesInProcess, '/job-orders'],
-    ['placed', stats.placedThisYear, '/job-orders'],
+    ['activeAccounts', stats.activeAccounts, '/clients'],
+    ['openJobs', stats.openJobOrders, '/searches'],
+    ['inProcess', stats.candidatesInProcess, '/searches'],
+    ['placed', stats.placedThisYear, '/searches'],
   ] as const;
   return (
     <SimpleGrid cols={{ base: 2, md: 4 }}>

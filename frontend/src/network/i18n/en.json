@@ -1,9 +1,9 @@
 {
   "network": {
-    "accounts": "Accounts",
+    "accounts": "Clients",
     "addAction": "Add action",
     "addConnection": "Add connection",
-    "addToJob": "Add to a job",
+    "addToJob": "Add to a search",
     "all": "All",
     "career": "Career",
     "clear": "Clear",
@@ -39,31 +39,31 @@
       "REFERRED": "Referred",
       "REPORTS_TO": "Reports to"
     },
-    "loadFailed": "Could not load the network.",
+    "loadFailed": "Could not load the candidates.",
     "logActivity": "Log activity",
     "mine": "Mine",
     "never": "Never",
-    "newPerson": "New person",
+    "newPerson": "New candidate",
     "nextActions": "Next actions",
     "noActivity": "No contact logged. Log your first call or meeting.",
     "noConnections": "Who introduced you? Add the first connection.",
-    "noOpenJobs": "No open jobs available.",
-    "noPipelines": "Not on any job yet.",
+    "noOpenJobs": "No open searches available.",
+    "noPipelines": "Not on any search yet.",
     "note": "Note",
-    "notFound": "Person not found.",
+    "notFound": "Candidate not found.",
     "openExisting": "Open existing",
-    "person": "Person",
+    "person": "Candidate",
     "pipelines": "Pipelines",
     "privacy": "Privacy",
     "privacyUnavailable": "Privacy details are not available.",
     "retention": "Retention ends {{date}}",
     "retentionWarning": "Data scheduled for deletion.",
-    "search": "Search people",
+    "search": "Search candidates",
     "sendConsent": "Send consent request",
     "tabs": {
       "activity": "Activity",
       "connections": "Connections",
-      "jobs": "Clients and jobs",
+      "jobs": "Clients and searches",
       "map": "Map",
       "overview": "Overview",
       "privacy": "Privacy",
@@ -89,7 +89,7 @@
     "removeFilter": "Remove filter",
     "exportSelected": "Export selected",
     "exportFailed": "Could not export the list.",
-    "exportCapped": "Exported the first {{count}} people (limit {{limit}}). Narrow the filters to export the rest.",
+    "exportCapped": "Exported the first {{count}} candidates (limit {{limit}}). Narrow the filters to export the rest.",
     "requestConsent": "Request consent",
     "bulkConsentDone": "Consent requests queued: {{queued}}. Skipped: {{skipped}}.",
     "map": {
@@ -107,7 +107,7 @@
       "last90": "last 90 days",
       "reach": "Connections",
       "reachSub": "people linked",
-      "pipelines": "Jobs",
+      "pipelines": "Searches",
       "openActions": "{{count}} open actions",
       "health": {
         "GOOD": "Warm",
@@ -205,16 +205,16 @@
         "TOO_MANY": "too many files (50 at most)",
         "EMPTY": "file is empty"
       },
-      "duplicateFile": "This exact file is already uploaded for this person.",
+      "duplicateFile": "This exact file is already uploaded for this candidate.",
       "uploadFailed": "Upload failed.",
       "loadFailed": "Could not load the files.",
       "empty": "No CV yet. Drop one above.",
-      "anonymised": "This person is anonymised; files cannot be added.",
-      "consentNote": "Uploading a CV sends the privacy notice and consent request automatically when that is enabled and the person has an email address."
+      "anonymised": "This candidate is anonymised; files cannot be added.",
+      "consentNote": "Uploading a CV sends the privacy notice and consent request automatically when that is enabled and the candidate has an email address."
     },
     "exposure": {
       "account": "Client",
-      "jobOrder": "Job order",
+      "jobOrder": "Search",
       "date": "Presented",
       "outcome": "Outcome so far",
       "empty": "Not presented to any client yet.",
@@ -225,7 +225,7 @@
         "REPORT": "Report",
         "SHARE_LINK": "Share link"
       },
-      "emptyHint": "Once this person is presented to a client, it is recorded here."
+      "emptyHint": "Once this candidate is presented to a client, it is recorded here."
     },
     "dup": {
       "nav": "Duplicates",
@@ -282,7 +282,7 @@
       "nav": "CV intake",
       "title": "CV intake",
       "limits": "Up to {{max}} files at once, 10 MB each. PDF, DOCX, DOC, RTF, ODT or TXT.",
-      "noConsentYet": "No consent email goes out until a person exists: attach each CV to a person or create one.",
+      "noConsentYet": "No consent email goes out until a candidate exists: attach each CV to a candidate or create one.",
       "uploaded": "{{count}} CV(s) uploaded for review.",
       "empty": "No CVs waiting for review.",
       "loadFailed": "Could not load the intake list.",
@@ -290,18 +290,18 @@
       "detected": "Found in the CV",
       "looksLike": "Looks like",
       "attachTo": "Attach to {{name}}",
-      "createPerson": "Create person",
+      "createPerson": "Create candidate",
       "discard": "Discard",
-      "createTitle": "Create person from CV",
+      "createTitle": "Create candidate from CV",
       "createConfirm": "Create and attach",
       "prefillHint": "Email, phone and LinkedIn were found in the CV text and are only suggestions. Check them and type the name.",
       "attached": "CV attached to {{name}}.",
       "attachFailed": "Could not attach the CV.",
       "discardFailed": "Could not discard the CV.",
-      "emailExists": "A person with this email already exists.",
+      "emailExists": "A candidate with this email already exists.",
       "discardTitle": "Discard this CV?",
       "discardBody": "{{name}} and its extracted text will be deleted. This cannot be undone.",
-      "attachToThat": "Attach to that person"
+      "attachToThat": "Attach to that candidate"
     },
     "subtitle": "Everyone you know: who to contact next and who has given consent.",
     "err": {
@@ -324,10 +324,10 @@
     },
     "noConnectionsAction": "Connections show who can introduce this person.",
     "loadErrorHint": "Check your connection, then try again.",
-    "emptyHint": "Add the first person, or import CVs, to start building your network.",
-    "backToList": "Back to the network",
+    "emptyHint": "Add the first candidate, or import CVs, to start building your candidates.",
+    "backToList": "Back to the candidates",
     "notFoundHint": "It may have been deleted or merged, or the link is wrong.",
-    "noActivityHint": "Log calls, meetings and notes so the next person knows where things stand.",
-    "noPipelinesHint": "Add this person to a job order to start a pipeline."
+    "noActivityHint": "Log calls, meetings and notes so the next colleague knows where things stand.",
+    "noPipelinesHint": "Add this candidate to a search to start a pipeline."
   }
 }

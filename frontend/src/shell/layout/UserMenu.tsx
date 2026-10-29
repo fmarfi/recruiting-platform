@@ -5,7 +5,7 @@ import { useAuth } from '../auth/useAuth';
 
 export function UserMenu() {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
+  const { user, logout, isManager } = useAuth();
   const nav = useNavigate();
   return (
     <Menu position="bottom-end" withinPortal>
@@ -28,6 +28,7 @@ export function UserMenu() {
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{user?.email}</Menu.Label>
+        {isManager && <Menu.Item onClick={() => nav('/settings/users')}>{t('nav.settings')}</Menu.Item>}
         <Menu.Item onClick={() => void logout().then(() => nav('/login'))}>{t('shell.logout')}</Menu.Item>
       </Menu.Dropdown>
     </Menu>

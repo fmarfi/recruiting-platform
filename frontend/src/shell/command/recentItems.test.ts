@@ -28,8 +28,8 @@ describe('recent items (KVKK)', () => {
     expect(localStorage.getItem('command.recent')).toBeNull();
   });
   it('maps refs to routes', () => {
-    expect(recentPath({ kind: 'account', id: 'x' })).toBe('/accounts/x');
-    expect(recentPath({ kind: 'person', id: 'x' })).toBe('/people/x');
-    expect(recentPath({ kind: 'job', id: 'x' })).toBe('/job-orders/x');
+    expect(recentPath({ kind: 'account', id: 'x' })).toBe('/clients/x');
+    expect(recentPath({ kind: 'person', id: 'x' })).toBe('/candidates/x');
+    expect(recentPath({ kind: 'job', id: 'x' })).toBe('/searches/x');
   });
 });
