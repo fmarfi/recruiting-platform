@@ -1,0 +1,179 @@
+{
+  "$comment": "PROPOSAL v2 'Quiet Authority' (docs/product/brand/brand-direction.md). Same shape as contracts/design-tokens.json v1.1 so frontend/src/theme/tokens.ts and theme.ts map it unchanged; only additive keys. Do not copy over contracts/design-tokens.json without the architect (contract owner). Key meanings are kept: 'accent' is still the primary action colour (Midnight) so Mantine primaryColor 'brand' keeps working; the brass accent lives in new keys brass/brassDeco/brassSoft. Tone keys are the contracts/enums/Tone.java names; status-to-tone mapping still comes from GET /reference-data. Contrast ratios for every text/background pair are in brand-direction.md section 2.2. Light-only in Phase 1: dark keys mirror light.",
+  "version": "2.0.0-proposal",
+  "color": {
+    "light": {
+      "bg": "#f7f5f0",
+      "surface": "#ffffff",
+      "surface2": "#f2efe8",
+      "surface3": "#e8e4da",
+      "border": "#ddd8cc",
+      "borderStrong": "#857f72",
+      "ink": "#16181d",
+      "ink2": "#3a3f48",
+      "ink3": "#5b616c",
+      "accent": "#14233d",
+      "accentHover": "#0b1628",
+      "accentInk": "#ffffff",
+      "accentSoft": "#e8ecf3",
+      "danger": "#b42318",
+      "dangerSoft": "#fcebe8",
+      "focus": "#1f5fd1",
+      "backdrop": "rgba(22,24,29,0.40)",
+      "brass": "#8a5f1a",
+      "brassDeco": "#c49a4e",
+      "brassSoft": "#f5eedf",
+      "chrome": "#14233d",
+      "chromeActive": "#24385e",
+      "chromeInk": "#ffffff",
+      "chromeInk2": "#b9c3d6",
+      "focusOnChrome": "#7fa6f0",
+      "success": "#1e6b45",
+      "warning": "#8a5a00",
+      "info": "#1d4f91"
+    },
+    "dark": {
+      "bg": "#f7f5f0",
+      "surface": "#ffffff",
+      "surface2": "#f2efe8",
+      "surface3": "#e8e4da",
+      "border": "#ddd8cc",
+      "borderStrong": "#857f72",
+      "ink": "#16181d",
+      "ink2": "#3a3f48",
+      "ink3": "#5b616c",
+      "accent": "#14233d",
+      "accentHover": "#0b1628",
+      "accentInk": "#ffffff",
+      "accentSoft": "#e8ecf3",
+      "danger": "#b42318",
+      "dangerSoft": "#fcebe8",
+      "focus": "#1f5fd1",
+      "backdrop": "rgba(22,24,29,0.40)",
+      "brass": "#8a5f1a",
+      "brassDeco": "#c49a4e",
+      "brassSoft": "#f5eedf",
+      "chrome": "#14233d",
+      "chromeActive": "#24385e",
+      "chromeInk": "#ffffff",
+      "chromeInk2": "#b9c3d6",
+      "focusOnChrome": "#7fa6f0",
+      "success": "#1e6b45",
+      "warning": "#8a5a00",
+      "info": "#1d4f91"
+    }
+  },
+  "ramp": {
+    "$comment": "Precomputed 10-shade Mantine tuples (index 6 = base). theme.ts may use these instead of mix().",
+    "brand": ["#e8ecf3", "#bec4cf", "#939caa", "#697386", "#3e4b61", "#23314a", "#14233d", "#0b1628", "#0f1724", "#131720"],
+    "brass": ["#f5eedf", "#e6d5b4", "#d8bc88", "#c49a4e", "#a77c34", "#8a5f1a", "#6e4b12", "#543c15", "#3e2f18", "#28221b"],
+    "gray": ["#f7f5f0", "#f2efe8", "#e8e4da", "#ddd8cc", "#b5afa2", "#857f72", "#5b616c", "#3a3f48", "#25282f", "#16181d"]
+  },
+  "tone": {
+    "light": {
+      "NEUTRAL": { "bg": "#eeebe4", "fg": "#3a3f48", "dot": "#7d7869" },
+      "INFO": { "bg": "#e5edf9", "fg": "#1d4f91", "dot": "#3b78c0" },
+      "PROGRESS": { "bg": "#eceaf7", "fg": "#40368a", "dot": "#6a5cc8" },
+      "GOOD": { "bg": "#dff0e5", "fg": "#17573a", "dot": "#2f8f5a" },
+      "WARN": { "bg": "#faefd6", "fg": "#744a00", "dot": "#a8740c" },
+      "BAD": { "bg": "#fbe3df", "fg": "#9a2c25", "dot": "#cf4a40" },
+      "MUTED": { "bg": "#f1efea", "fg": "#555b66", "dot": "#8c877b" }
+    },
+    "dark": {
+      "NEUTRAL": { "bg": "#eeebe4", "fg": "#3a3f48", "dot": "#7d7869" },
+      "INFO": { "bg": "#e5edf9", "fg": "#1d4f91", "dot": "#3b78c0" },
+      "PROGRESS": { "bg": "#eceaf7", "fg": "#40368a", "dot": "#6a5cc8" },
+      "GOOD": { "bg": "#dff0e5", "fg": "#17573a", "dot": "#2f8f5a" },
+      "WARN": { "bg": "#faefd6", "fg": "#744a00", "dot": "#a8740c" },
+      "BAD": { "bg": "#fbe3df", "fg": "#9a2c25", "dot": "#cf4a40" },
+      "MUTED": { "bg": "#f1efea", "fg": "#555b66", "dot": "#8c877b" }
+    }
+  },
+  "badge": {
+    "$comment": "A badge is always dot + text label (never colour alone). sm for lists and cards, md default, lg for record headers. Font sizes raised to the tokenCss overrides already live in tokens.ts.",
+    "shape": "pill",
+    "sizes": {
+      "sm": { "height": 22, "paddingX": 8, "fontSize": "0.8125rem" },
+      "md": { "height": 24, "paddingX": 10, "fontSize": "0.875rem" },
+      "lg": { "height": 28, "paddingX": 12, "fontSize": "0.9375rem" }
+    },
+    "fontWeight": 500,
+    "dotSize": 6
+  },
+  "spacing": {
+    "unit": 4,
+    "scale": { "0": 0, "1": 4, "2": 8, "3": 12, "4": 16, "5": 20, "6": 24, "7": 28, "8": 40, "9": 48, "10": 64 },
+    "gutter": { "desktop": 24, "phone": 16 },
+    "sidebarWidth": 232,
+    "sidebarCollapsedWidth": 64,
+    "contentMaxWidth": 1440,
+    "sidePanelWidth": 480,
+    "sidePanelWideWidth": 720,
+    "touchTargetMin": 44,
+    "targetSizeMinimum": 24,
+    "density": {
+      "comfortable": { "rowHeight": 48, "cellPaddingX": 14 },
+      "compact": { "rowHeight": 36, "cellPaddingX": 10 }
+    },
+    "$comment": "Card padding 24 desktop, 16 phone; card gap 12; section gap 24. targetSizeMinimum is the WCAG 2.2 SC 2.5.8 floor for dense grid icons; touchTargetMin applies on phone and to primary actions."
+  },
+  "radius": { "sm": 4, "md": 6, "lg": 10, "sheet": 14, "pill": 999 },
+  "shadow": {
+    "pop": {
+      "light": "0 10px 28px rgba(22,24,29,.12), 0 1px 3px rgba(22,24,29,.06)",
+      "dark": "0 10px 28px rgba(22,24,29,.12), 0 1px 3px rgba(22,24,29,.06)"
+    },
+    "raised": {
+      "light": "0 1px 2px rgba(22,24,29,.06)",
+      "dark": "0 1px 2px rgba(22,24,29,.06)"
+    },
+    "panel": {
+      "light": "-12px 0 32px rgba(22,24,29,.10)",
+      "dark": "-12px 0 32px rgba(22,24,29,.10)"
+    }
+  },
+  "typography": {
+    "$comment": "Google Fonts, latin-ext subset (Ğ Ş İ ı Ç Ö Ü). fontDisplay (serif) ONLY for display, h1, record names, KPI values and report headings; never in tables, forms or buttons. Numbers use tabular figures (font-variant-numeric: tabular-nums). Never below 13px except eyebrow (12px uppercase).",
+    "fontDisplay": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+    "fontSans": "\"Inter\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
+    "fontMono": "\"IBM Plex Mono\", ui-monospace, \"SFMono-Regular\", Consolas, monospace",
+    "googleFontsHref": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono&display=swap&subset=latin-ext",
+    "base": { "desktop": "16px", "phone": "16px", "lineHeight": 1.5 },
+    "scale": {
+      "display": { "size": "2.25rem", "phone": "1.75rem", "lineHeight": 1.15, "weight": 600, "family": "display", "letterSpacing": "-0.015em" },
+      "h1": { "desktop": "1.75rem", "phone": "1.5rem", "lineHeight": 1.2, "weight": 600, "family": "display", "letterSpacing": "-0.01em" },
+      "h2": { "size": "1.25rem", "lineHeight": 1.3, "weight": 600, "family": "sans" },
+      "h3": { "size": "1.0625rem", "lineHeight": 1.35, "weight": 600, "family": "sans" },
+      "body": { "size": "1rem", "lineHeight": 1.5, "weight": 400, "family": "sans" },
+      "table": { "size": "0.9375rem", "compact": "0.875rem", "lineHeight": 1.4, "weight": 400, "family": "sans" },
+      "small": { "size": "0.875rem", "lineHeight": 1.45, "weight": 500, "family": "sans" },
+      "caption": { "size": "0.8125rem", "lineHeight": 1.45, "weight": 400, "family": "sans" },
+      "eyebrow": { "size": "0.75rem", "lineHeight": 1.3, "weight": 600, "transform": "uppercase", "letterSpacing": "0.06em", "family": "sans" },
+      "kpi": { "size": "2rem", "lineHeight": 1.1, "weight": 600, "family": "display", "numeric": "tabular-nums" }
+    },
+    "proseMax": "70ch"
+  },
+  "breakpoints": { "phone": 719, "tablet": 960, "laptop": 1100, "wide": 1440 },
+  "motion": {
+    "fast": "120ms",
+    "base": "200ms",
+    "slow": "320ms",
+    "easeEnter": "cubic-bezier(0.2, 0, 0, 1)",
+    "easeExit": "cubic-bezier(0.4, 0, 1, 1)",
+    "maxTranslate": 16,
+    "toastDuration": "6000ms",
+    "undoWindow": "10000ms",
+    "honourReducedMotion": true,
+    "$comment": "Reduced motion: translations become opacity fades <=120ms, shimmer static. Toast with Undo stays at least 6s and pauses on hover/focus (WCAG 2.2.1)."
+  },
+  "zIndex": { "header": 100, "sidePanel": 200, "bulkBar": 250, "popover": 300, "modal": 400, "commandBar": 500, "toast": 600 },
+  "layout": {
+    "headerHeight": 56,
+    "boardColumnWidth": { "desktop": 248, "phone": "78vw" },
+    "bottomTabBarHeight": 56,
+    "recordHeaderHeight": 112,
+    "bulkBarHeight": 56,
+    "commandBarWidth": 640
+  },
+  "focusRing": { "width": 3, "offset": 2, "color": "focus", "colorOnChrome": "focusOnChrome" }
+}
