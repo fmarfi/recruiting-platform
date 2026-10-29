@@ -28,7 +28,7 @@ SELECT pg_temp.uid(8, 100 + s.n), (ARRAY['CALL','MEETING','EMAIL'])[s.n % 3 + 1]
        w.at, pg_temp.uid(1, j.owner), w.at, pg_temp.uid(1, j.owner)
 FROM app_seed s JOIN j_seed j ON j.n = s.job
 CROSS JOIN LATERAL (SELECT now() - make_interval(days => s.n % 15 + 1, hours => 2) AS at) w
-WHERE s.n BETWEEN 2 AND 21;
+WHERE s.n BETWEEN 2 AND 21 OR s.n BETWEEN 44 AND 48;
 
 -- last contact dates follow the activities (notes do not count as contact)
 UPDATE account a SET last_activity_at = x.last_at
