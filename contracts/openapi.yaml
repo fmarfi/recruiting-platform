@@ -3992,6 +3992,377 @@ paths:
         '204': { description: Removed }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  # ---------- 1.3.0: commercial (ADR 0013) ----------
+  /agreements:
+    get:
+      tags: [Commercial]
+      operationId: listAgreements
+      summary: Fee agreements (terms of business per account, engagement letters per search)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/AgreementStatus' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of agreements
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgreementPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Commercial]
+      operationId: createAgreement
+      summary: Record a fee agreement with its fee schedule (PB-007/008/009)
+      description: |
+        `jobOrderId` null = the account's framework terms (kind TERMS_OF_BUSINESS); set = the engagement
+        for that search (ENGAGEMENT_LETTER; its schedule items are the ones that become due and are
+        invoiced). Rules (400 `VALIDATION_FAILED`): FLAT_FEE needs `flatFeeAmount`; percent models need
+        `feePercent` (0-100) and at least one `feeBasis` component; `feeMinimum <= feeCap`; each schedule
+        item has exactly one of `percent` and `amount`; DATE_OFFSET items need `offsetDays`; for
+        RETAINED_THIRDS the item percents sum to 100. `billingAccountId` defaults to the account (a group
+        parent may pay). The job order must belong to the account (400). Archived account or job order →
+        409 `ARCHIVED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgreementCreateRequest' }
+      responses:
+        '201':
+          description: Created (status DRAFT unless sent)
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agreement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /agreements/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Commercial]
+      operationId: getAgreement
+      summary: One agreement with its fee schedule
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Agreement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agreement' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Commercial]
+      operationId: updateAgreement
+      summary: Change terms, status or the fee schedule
+      description: |
+        `scheduleItems` replaces the whole schedule (items with `id` updated, new ones created, missing
+        ones deleted) and is allowed only while every item is NOT_DUE (409 `STATE_CONFLICT`). Status is a
+        plain field (no transition table): SIGNED needs `signedOn` (400) and makes SIGNING items DUE.
+        Commercial terms of a SIGNED agreement change only by MANAGER/ADMIN (403), or better by an
+        AMENDMENT agreement.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgreementUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agreement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Commercial]
+      operationId: deleteAgreement
+      summary: Delete a DRAFT agreement (others → 409 `STATE_CONFLICT`; set TERMINATED instead)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /fee-schedule-items:
+    get:
+      tags: [Commercial]
+      operationId: listFeeScheduleItems
+      summary: Instalments across agreements, e.g. "Invoice ready" (`invoiceState=DUE`, CO-020)
+      description: Only items of engagement agreements (with a job order); framework items are templates.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - name: invoiceState
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/InvoiceState' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - name: dueBefore
+          in: query
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of items
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeeScheduleItemPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /fee-schedule-items/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Commercial]
+      operationId: recordInvoice
+      summary: Record the invoice state of an instalment (finance; no invoice is issued by the platform)
+      description: |
+        Allowed moves: NOT_DUE → DUE (manual, e.g. EXPENSES), DUE → INVOICED (needs `einvoiceRef`,
+        `invoicedOn`, `invoicedAmount`), INVOICED → PAID (needs `paidOn`), any unpaid → CANCELLED (needs
+        `reason`). Others → 409 `ILLEGAL_TRANSITION`. Automatic NOT_DUE → DUE moves are done by pipeline
+        (see `FeeTrigger`).
+      x-roles: [MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeeScheduleItemUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeeScheduleItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /applications/{id}/placement:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Commercial]
+      operationId: placeCandidate
+      summary: Place the candidate — creates the placement and moves the application to PLACED (SX-020, CO-021)
+      description: |
+        One transaction: guard and move OFFER → PLACED exactly like `PATCH /applications/{id}/stage`
+        (409 `ILLEGAL_TRANSITION` from another stage, sharing guard), then the placement row. An application
+        has at most one placement (409 `DUPLICATE`). The agreement is the job order's engagement letter,
+        else the account's SIGNED terms of business. `feeAmount` is computed (`feePercent` × the
+        `feeBasis` components of `compensation`, clamped to `feeMinimum`/`feeCap`; or `flatFeeAmount`);
+        sending `feeAmount` overrides it and is MANAGER/ADMIN only (403); with no agreement `feeAmount` is
+        required (400). `guaranteeEndOn` = `startDate` + the agreement's `guaranteeMonths` (override
+        allowed). Makes OFFER_ACCEPTED items DUE, publishes `PlacementCreated` (accounts adds a
+        GUARANTEE_PERIOD off-limits rule on the client until `guaranteeEndOn`), timeline PLACEMENT.
+        Moving to PLACED through the stage endpoint still works (1.2 clients) but creates no placement.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlacementCreateRequest' }
+      responses:
+        '201':
+          description: Placed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Placement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /placements:
+    get:
+      tags: [Commercial]
+      operationId: listPlacements
+      summary: Placements list and guarantee tracker
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - $ref: '#/components/parameters/PersonIdQuery'
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/PlacementStatus' }
+          style: form
+          explode: true
+        - name: guaranteeEndsBefore
+          in: query
+          description: Guarantee ends on or before this date (the 30-day alert list).
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Page of placements (compensation never in lists)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlacementPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /placements/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Commercial]
+      operationId: getPlacement
+      summary: One placement
+      description: '`compensation` only for MANAGER/ADMIN and the job order owner or team; others get null and `compensationRestricted: true`. A read with compensation writes an access-log VIEW row (entity PLACEMENT).'
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Placement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Placement' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Commercial]
+      operationId: updatePlacement
+      summary: Record a start-date change, a departure, a replacement search or a cancellation
+      description: |
+        `leftOn` within the guarantee sets status LEFT_IN_GUARANTEE (and creates a next action for the job
+        order owner); `replacementJobOrderId` (a job order of the same account, fee 0 by convention) sets
+        REPLACED; CANCELLED (candidate withdrew after accepting) needs `reason`. `feeAmount` and
+        `guaranteeEndOn` are MANAGER/ADMIN only (403).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlacementUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Placement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /conflict-checks/preview:
+    post:
+      tags: [Commercial]
+      operationId: previewConflictCheck
+      summary: Run the pre-engagement conflict check without recording it (PB-018)
+      description: |
+        Hits for an account (its whole group: parent chain and children) or a company name: CURRENT_CLIENT
+        (ACTIVE account in the group), GUARANTEE_PERIOD (a placement whose guarantee runs, at a group
+        company), OFF_LIMITS_RULE (an active rule on the company), PLACED_CANDIDATE (a person we placed
+        works there now; counted, never named), COMPETING_SEARCH (an open job order at another client with
+        the same `functionArea` and `seniorityLevel` in its brief).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConflictCheckRequest' }
+      responses:
+        '200':
+          description: Hits
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ConflictHit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /conflict-checks:
+    get:
+      tags: [Commercial]
+      operationId: listConflictChecks
+      summary: Recorded conflict checks, newest first
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/AccountIdQuery'
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+        - name: proposalId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Page of checks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConflictCheckPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Commercial]
+      operationId: recordConflictCheck
+      summary: Run the check again and record it with a decision (append-only log)
+      description: |
+        The server recomputes the hits (never trusts the client). CLEAR is allowed only without hits (409
+        `STATE_CONFLICT`); PROCEED with hits is an override: MANAGER/ADMIN only (403) with
+        `overrideReason` (400 `REASON_REQUIRED`), shown on the record (PB-019); BLOCKED needs no reason.
+        Never blocks a proposal or job order by itself in 1.3 (the account's `missingForActive` lists
+        `conflictCheck` until one is recorded).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConflictCheckRecordRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConflictCheck' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -6816,3 +7187,325 @@ components:
         ownerId: { $ref: '#/components/schemas/Id' }
         offLimitsOverrideReason: { $ref: '#/components/schemas/Reason' }
         version: { $ref: '#/components/schemas/Version' }
+    # ---------- 1.3.0: commercial ----------
+    Money:
+      type: string
+      pattern: '^\d+(\.\d{1,2})?$'
+      description: Decimal amount as string (no rounding).
+      examples: ['450000.00']
+    AgreementKind:
+      type: string
+      enum: [TERMS_OF_BUSINESS, ENGAGEMENT_LETTER, AMENDMENT]
+    AgreementStatus:
+      type: string
+      enum: [DRAFT, SENT, SIGNED, EXPIRED, TERMINATED]
+    FeeModel:
+      type: string
+      description: 'PB-008: retained in thirds, retained with custom instalments, percent of first-year cash (success), flat fee, hybrid (retainer + success).'
+      enum: [RETAINED_THIRDS, RETAINED_CUSTOM, PERCENT_FIRST_YEAR_CASH, FLAT_FEE, HYBRID]
+    FeeBasisComponent:
+      type: string
+      description: Cash components the percent fee is computed on (PB-008 toggles).
+      enum: [BASE, TARGET_BONUS, PAID_BONUS, ALLOWANCES, SIGN_ON, CAR, OTHER_CASH]
+    Exclusivity:
+      type: string
+      enum: [EXCLUSIVE, NON_EXCLUSIVE]
+    FeeTrigger:
+      type: string
+      description: |
+        When an instalment becomes DUE (PB-009, CO-020): SIGNING (agreement SIGNED), DATE_OFFSET
+        (`signedOn` + `offsetDays`, nightly), SHORTLIST_DELIVERED (first move of the job order into a
+        client-facing stage, or a SHORTLIST report marked sent), OFFER_ACCEPTED (placement created),
+        START_DATE (placement `startDate` reached, nightly), EXPENSES (manual), ABORT (job order CANCELLED).
+      enum: [SIGNING, DATE_OFFSET, SHORTLIST_DELIVERED, OFFER_ACCEPTED, START_DATE, EXPENSES, ABORT]
+    InvoiceState:
+      type: string
+      enum: [NOT_DUE, DUE, INVOICED, PAID, CANCELLED]
+    PlacementStatus:
+      type: string
+      enum: [ACTIVE, LEFT_IN_GUARANTEE, GUARANTEE_ENDED, REPLACED, CANCELLED]
+    ConflictHitKind:
+      type: string
+      enum: [CURRENT_CLIENT, GUARANTEE_PERIOD, OFF_LIMITS_RULE, PLACED_CANDIDATE, COMPETING_SEARCH]
+    ConflictDecision:
+      type: string
+      enum: [CLEAR, PROCEED, BLOCKED]
+    FeeScheduleItemFields:
+      type: object
+      properties:
+        label: { type: string, minLength: 1, maxLength: 200, examples: [Retainer 1/3] }
+        trigger: { $ref: '#/components/schemas/FeeTrigger' }
+        offsetDays: { type: [integer, 'null'], minimum: 0, maximum: 730 }
+        percent: { type: [string, 'null'], pattern: '^\d{1,3}(\.\d{1,2})?$', description: 'Percent of the fee (estimated fee before placement, placement fee after).' }
+        amount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        dueDays: { type: integer, minimum: 0, maximum: 180, default: 30, description: Payment term after the trigger. }
+    FeeScheduleItem:
+      allOf:
+        - $ref: '#/components/schemas/FeeScheduleItemFields'
+        - type: object
+          required: [id, agreementId, seq, label, trigger, dueDays, invoiceState, version]
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            agreementId: { $ref: '#/components/schemas/Id' }
+            account: { $ref: '#/components/schemas/AccountRef' }
+            jobOrder:
+              oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+            seq: { type: integer, minimum: 1 }
+            computedAmount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }], description: '`amount`, or `percent` of the current fee; null when not computable yet.' }
+            currency: { type: string, pattern: '^[A-Z]{3}$' }
+            invoiceState: { $ref: '#/components/schemas/InvoiceState' }
+            triggeredAt: { type: [string, 'null'], format: date-time }
+            dueOn: { type: [string, 'null'], format: date }
+            einvoiceRef: { type: [string, 'null'], description: e-Fatura or e-Arşiv reference. }
+            invoicedOn: { type: [string, 'null'], format: date }
+            invoicedAmount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+            paidOn: { type: [string, 'null'], format: date }
+            stateReason: { type: [string, 'null'] }
+            version: { $ref: '#/components/schemas/Version' }
+    FeeScheduleItemPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/FeeScheduleItem' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    FeeScheduleItemRequest:
+      allOf:
+        - $ref: '#/components/schemas/FeeScheduleItemFields'
+        - type: object
+          required: [label, trigger]
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+              description: Omit for a new item.
+    FeeScheduleItemUpdateRequest:
+      type: object
+      required: [invoiceState]
+      properties:
+        invoiceState: { $ref: '#/components/schemas/InvoiceState' }
+        einvoiceRef: { type: [string, 'null'], maxLength: 100 }
+        invoicedOn: { type: [string, 'null'], format: date }
+        invoicedAmount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        paidOn: { type: [string, 'null'], format: date }
+        reason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    AgreementFields:
+      type: object
+      properties:
+        status: { $ref: '#/components/schemas/AgreementStatus' }
+        title: { type: [string, 'null'], maxLength: 200 }
+        signedOn: { type: [string, 'null'], format: date }
+        validFrom: { type: [string, 'null'], format: date }
+        validUntil: { type: [string, 'null'], format: date }
+        language: { oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }] }
+        governingLaw: { type: [string, 'null'], maxLength: 100, examples: [Turkish law, Istanbul courts] }
+        exclusivity: { oneOf: [{ $ref: '#/components/schemas/Exclusivity' }, { type: 'null' }] }
+        feeModel: { $ref: '#/components/schemas/FeeModel' }
+        feePercent: { type: [string, 'null'], pattern: '^\d{1,3}(\.\d{1,2})?$', examples: ['33.33'] }
+        feeBasis:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/FeeBasisComponent' }
+        flatFeeAmount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        estimatedFee: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }], description: Basis for percent instalments before a placement exists (retainers). }
+        feeMinimum: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        feeCap: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        currency: { type: string, pattern: '^[A-Z]{3}$', examples: [TRY] }
+        paymentTermsDays: { type: integer, minimum: 0, maximum: 180, default: 30 }
+        guaranteeMonths: { type: integer, minimum: 0, maximum: 36, default: 6 }
+        guaranteeTerms: { type: [string, 'null'], maxLength: 2000, description: 'Triggers, exclusions, client obligations (PB-011).' }
+        expensePolicy: { type: [string, 'null'], maxLength: 1000 }
+        offLimitsMonths: { type: [integer, 'null'], minimum: 0, maximum: 60, description: Non-solicitation term after the engagement. }
+        confidentialityTerms: { type: [string, 'null'], maxLength: 2000 }
+        signatoryContactId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: An active contact of the account (400 otherwise).
+        billingAccountId:
+          $ref: '#/components/schemas/Id'
+          description: The account invoiced (billing entity); defaults to the account.
+        notes: { type: [string, 'null'], maxLength: 4000 }
+    Agreement:
+      allOf:
+        - $ref: '#/components/schemas/AgreementFields'
+        - type: object
+          required: [id, account, kind, status, feeModel, currency, paymentTermsDays, guaranteeMonths, billingAccount, scheduleItems, createdAt, updatedAt, version]
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            account: { $ref: '#/components/schemas/AccountRef' }
+            jobOrder:
+              oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+            kind: { $ref: '#/components/schemas/AgreementKind' }
+            billingAccount: { $ref: '#/components/schemas/AccountRef' }
+            signatory:
+              oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }]
+            scheduleItems:
+              type: array
+              items: { $ref: '#/components/schemas/FeeScheduleItem' }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            version: { $ref: '#/components/schemas/Version' }
+    AgreementPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Agreement' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    AgreementCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/AgreementFields'
+        - type: object
+          required: [accountId, kind, feeModel, currency]
+          properties:
+            accountId: { $ref: '#/components/schemas/Id' }
+            jobOrderId:
+              oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+            kind: { $ref: '#/components/schemas/AgreementKind' }
+            scheduleItems:
+              type: array
+              maxItems: 20
+              items: { $ref: '#/components/schemas/FeeScheduleItemRequest' }
+    AgreementUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/AgreementFields'
+        - type: object
+          properties:
+            scheduleItems:
+              type: array
+              maxItems: 20
+              items: { $ref: '#/components/schemas/FeeScheduleItemRequest' }
+            version: { $ref: '#/components/schemas/Version' }
+    PlacementCompensation:
+      type: object
+      description: Encrypted as one value (like `Compensation`, ADR 0011/0013). Amounts per year.
+      required: [currency]
+      properties:
+        base: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        bonus: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }], description: Target or guaranteed first-year bonus. }
+        allowances: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        signOn: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        otherCash: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        firstYearCash: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }], description: Sum of the above when not given. }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+    Placement:
+      type: object
+      required: [id, applicationId, jobOrder, account, person, status, startDate, feeAmount, feeCurrency, guaranteeEndOn, compensationRestricted, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        applicationId: { $ref: '#/components/schemas/Id' }
+        jobOrder: { $ref: '#/components/schemas/JobOrderRef' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        person: { $ref: '#/components/schemas/PersonRef' }
+        agreementId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        status: { $ref: '#/components/schemas/PlacementStatus' }
+        offerAcceptedOn: { type: [string, 'null'], format: date }
+        startDate: { type: string, format: date }
+        compensation:
+          oneOf: [{ $ref: '#/components/schemas/PlacementCompensation' }, { type: 'null' }]
+          description: Null in lists and for users without access.
+        compensationRestricted: { type: boolean }
+        feeAmount: { $ref: '#/components/schemas/Money' }
+        feeCurrency: { type: string, pattern: '^[A-Z]{3}$' }
+        feeOverridden: { type: boolean, description: True when a manager set the fee instead of the computed one. }
+        guaranteeEndOn: { type: string, format: date }
+        leftOn: { type: [string, 'null'], format: date }
+        replacementJobOrder:
+          oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+        statusReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    PlacementPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Placement' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    PlacementCreateRequest:
+      type: object
+      required: [startDate, compensation]
+      properties:
+        offerAcceptedOn: { type: string, format: date, description: Defaults to today. }
+        startDate: { type: string, format: date }
+        compensation: { $ref: '#/components/schemas/PlacementCompensation' }
+        feeAmount:
+          oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }]
+          description: Override of the computed fee; MANAGER/ADMIN only.
+        guaranteeEndOn: { type: [string, 'null'], format: date, description: Override; MANAGER/ADMIN only. }
+        version:
+          $ref: '#/components/schemas/Version'
+          description: The application's version.
+    PlacementUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        startDate: { type: string, format: date }
+        compensation: { $ref: '#/components/schemas/PlacementCompensation' }
+        feeAmount: { $ref: '#/components/schemas/Money' }
+        guaranteeEndOn: { type: string, format: date }
+        leftOn: { type: [string, 'null'], format: date }
+        replacementJobOrderId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        status:
+          $ref: '#/components/schemas/PlacementStatus'
+          description: Only CANCELLED or GUARANTEE_ENDED may be set by hand; the others follow from the fields.
+        reason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
+    ConflictCheckRequest:
+      type: object
+      description: Exactly one of `accountId` and `companyName` (400).
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        companyName: { type: string, minLength: 1, maxLength: 200 }
+        jobOrderId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: The search being considered (also gives function and seniority for COMPETING_SEARCH).
+        proposalId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+    ConflictHit:
+      type: object
+      required: [kind, refType, refId, title]
+      properties:
+        kind: { $ref: '#/components/schemas/ConflictHitKind' }
+        refType: { $ref: '#/components/schemas/EntityType' }
+        refId: { $ref: '#/components/schemas/Id' }
+        title:
+          type: [string, 'null']
+          description: Account, job order or rule title; always null for PLACED_CANDIDATE (no person names in the log).
+        until: { type: [string, 'null'], format: date, description: End of the guarantee or rule. }
+    ConflictCheckRecordRequest:
+      allOf:
+        - $ref: '#/components/schemas/ConflictCheckRequest'
+        - type: object
+          required: [decision]
+          properties:
+            decision: { $ref: '#/components/schemas/ConflictDecision' }
+            overrideReason: { $ref: '#/components/schemas/Reason' }
+    ConflictCheck:
+      type: object
+      required: [id, decision, hits, checkedBy, checkedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+        companyName: { type: [string, 'null'] }
+        jobOrderId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
+        proposalId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
+        hits:
+          type: array
+          items: { $ref: '#/components/schemas/ConflictHit' }
+        decision: { $ref: '#/components/schemas/ConflictDecision' }
+        overrideReason: { type: [string, 'null'] }
+        checkedBy: { $ref: '#/components/schemas/UserRef' }
+        checkedAt: { type: string, format: date-time }
+    ConflictCheckPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ConflictCheck' }
+        page: { $ref: '#/components/schemas/PageMeta' }
