@@ -165,7 +165,7 @@
     "endContactBody": "{{name}} geçmişte kalır, ancak artık aktif kişi olarak listelenmez. Daha sonra yeniden ekleyebilirsiniz.",
     "endContactFailed": "Kişi sonlandırılamadı. Tekrar deneyin.",
     "loadErrorTitle": "Bu müşteri yüklenemedi",
-    "emptyJobsAction": "Bu müşteri için ilk iş emrini ekleyin.",
+    "emptyJobsAction": "Bu müşteri için ilk aramayı ekleyin.",
     "relationshipsEmpty": "İlişki kapsamını görmek için bir kişi ekleyin."
   }
 }

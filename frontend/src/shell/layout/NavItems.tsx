@@ -30,10 +30,11 @@ function useNavItems() {
 }
 
 /** Up to 5 open searches owned by the current user, one click each (laptop rail and drawer). */
-function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+export function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [rows, setRows] = useState<{ id: string; title: string }[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const uid = user?.id;
   useEffect(() => {
     if (!uid) return;
@@ -41,10 +42,18 @@ function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; onNavig
     void api
       .GET('/job-orders', { params: { query: { open: true, ownerId: uid, page: 0, size: 5, sort: ['openedOn,desc'] } } })
       .then((r) => {
-        if (live) setRows((r.data?.content ?? []).slice(0, 5).map((j) => ({ id: String(j.id), title: j.title })));
+        if (!live) return;
+        if (r.error || !r.data) {
+          setFailed(true);
+          setRows([]);
+          return;
+        }
+        setRows((r.data?.content ?? []).slice(0, 5).map((j) => ({ id: String(j.id), title: j.title })));
       })
       .catch(() => {
-        if (live) setRows([]);
+        if (!live) return;
+        setFailed(true);
+        setRows([]);
       });
     return () => {
       live = false;
@@ -56,7 +65,17 @@ function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; onNavig
       <Text size="xs" fw={700} tt="uppercase" px="var(--space-3)" style={{ color: 'var(--color-chromeInk2)' }}>
         {t('nav.pinned')}
       </Text>
-      {rows && rows.length === 0 && (
+      {rows === null && (
+        <Text size="sm" px="var(--space-3)" role="status" style={{ color: 'var(--color-chromeInk2)' }}>
+          {t('nav.pinnedLoading')}
+        </Text>
+      )}
+      {rows && rows.length === 0 && failed && (
+        <Text size="sm" px="var(--space-3)" role="alert" style={{ color: 'var(--color-chromeInk2)' }}>
+          {t('nav.pinnedError')}
+        </Text>
+      )}
+      {rows && rows.length === 0 && !failed && (
         <Text size="sm" px="var(--space-3)" style={{ color: 'var(--color-chromeInk2)' }}>
           {t('nav.noPinned')}
         </Text>

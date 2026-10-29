@@ -19,7 +19,7 @@ import { NetworkList } from './network/list/NetworkList';
 import { PersonPage } from './network/person/PersonPage';
 
 /** Old path to new path, keeping the id and the query string (filters). */
-function RedirectTo({ base }: { base: string }) {
+export function RedirectTo({ base }: { base: string }) {
   const { id } = useParams();
   const { search } = useLocation();
   return <Navigate to={`${base}${id ? `/${id}` : ''}${search}`} replace />;

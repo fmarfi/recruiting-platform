@@ -201,7 +201,7 @@
     "sub": {
       "users": "Kimlerin giriş yapabildiği ve neler yapabildiği.",
       "roles": "Her rolün neler yapabildiği. Bu sürümde sabittir.",
-      "statuses": "Müşteri, teklif, iş emri ve adaylarda kullanılan durum akışları.",
+      "statuses": "Müşteri, teklif, arama ve adaylarda kullanılan durum akışları.",
       "import": "Müşterileri ve kişileri CSV dosyasından alın; kaydetmeden önce önizleme gösterilir.",
       "retention": "Kişisel verilerin ne kadar saklandığı ve silme taleplerinin nasıl işlendiği.",
       "offlimits": "Aday için yaklaşmamamız gereken şirketler.",
