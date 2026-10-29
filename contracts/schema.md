@@ -82,6 +82,30 @@ Since 1.2.0 (ADR 0011) the non-AI candidate profile lives **on `person` in `acco
 | at | timestamptz | not null; index `(entity_type, entity_id, at desc)` and `(user_id, at desc)` |
 | ip_address | varchar(45) | null |
 
+**export_job** — not audited; it is itself the export log (1.3.0, CO-013, ADR 0013)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| entity | varchar(40) | `ListEntity` |
+| status | varchar(40) | `ExportStatus`; index `(status, requested_at)` |
+| filters | jsonb | not null; the filters **without** `q` and `cv` (free text may name a person); `CHECK (NOT (filters ?\| array['q','cv']))` |
+| filter_keys | varchar(50)[] | not null; every key used, including `q`/`cv` |
+| columns | varchar(100)[] | not null |
+| sort | varchar(100)[] | not null default `'{}'` |
+| purpose | varchar(300) | not null; no personal data (UI hint) |
+| include_compensation | boolean | not null default false |
+| row_count | int | not null |
+| requested_by | uuid FK app_user | not null; index `(requested_by, requested_at desc)` |
+| requested_at | timestamptz | not null |
+| decided_by | uuid FK app_user | null |
+| decided_at | timestamptz | null |
+| decision_reason | varchar(500) | null |
+| storage_key | varchar(300) | null; `export/<id>` in the `FileStore`; null after expiry |
+| ready_at, expires_at | timestamptz | null; `expires_at = ready_at + 24 hours` |
+
+A nightly job in `security` deletes the bytes of READY exports past `expires_at` and sets EXPIRED. The CSV holds personal data only during those 24 hours; the row holds none.
+
 **revinfo** — Envers revision entity: `rev bigint PK` (sequence `revinfo_seq`), `revtstmp bigint`, `user_id uuid null` (custom `RevisionListener` reads the current user).
 
 ### accounts
@@ -291,7 +315,11 @@ Written on person create/update, CV attach and by a nightly scan in `accounts`. 
 | errors | jsonb | `[{row, column, message}]`, first 500 |
 | failure_reason | text | null |
 | completed_at | timestamptz | null |
+| mapping | jsonb | null (1.3.0); `{header: templateColumn}` sent with the upload; header names only, no row data |
+| rolled_back_at | timestamptz | null (1.3.0); set with status ROLLED_BACK |
 | audit columns | | |
+
+**import_job_record** — append-only, not audited (1.3.0, CO-014 rollback): `import_id uuid FK import_job on delete cascade`, `entity_type varchar(40)` (`EntityType`: ACCOUNT, PERSON or CONTACT), `entity_id uuid` (no FK, like `access_log`), PK `(import_id, entity_type, entity_id)`, index `(entity_id)`. Written in the commit transaction, one row per created record. Ids only, so no anonymisation step.
 
 `PersonCreated.importId` tells privacy which import created a person; it keeps that in `person_privacy.import_id` so `POST /consent-requests/bulk` with `importId` can target them.
 
@@ -474,6 +502,26 @@ Written by `pipeline` in the transaction of the first move into a client-facing 
 | checked_by | uuid FK app_user | null |
 | include_in_report | boolean | not null default false |
 | audit columns | | |
+
+**client_report** — not audited; immutable after insert except `sent_on`, `sent_by` (1.3.0, SX-021/022, PB-021)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| job_order_id | uuid FK job_order | not null; unique `(job_order_id, kind, version)` |
+| kind | varchar(40) | `ReportKind` |
+| version | int | not null; max + 1 per job order and kind |
+| language | varchar(2) | `Language` |
+| blind | boolean | not null |
+| person_ids | uuid[] | not null default `'{}'`; included people (no FK, like `access_log`); GIN index (erasure lookup) |
+| storage_key | varchar(300) | not null, unique; `report/<job_order_id>/<id>.pdf` in the `FileStore` |
+| size_bytes | bigint | not null |
+| generated_by | uuid FK app_user | not null |
+| generated_at | timestamptz | not null |
+| sent_on | date | null |
+| sent_by | uuid FK app_user | null |
+
+The PDF holds personal data of every included person: anonymisation and deletion remove every report whose `person_ids` overlaps the person-id set (row and bytes; see "Anonymisation and deletion" step 3).
 
 **agreement** — audited (1.3.0, PB-007/008, ADR 0013)
 

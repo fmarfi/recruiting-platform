@@ -14,5 +14,10 @@ public enum ImportStatus {
     /** File unreadable or the commit failed; nothing written; final. */
     FAILED,
     /** Discarded by the user before commit; final. */
-    DISCARDED
+    DISCARDED,
+    /**
+     * Rolled back within 30 days of completion (since 1.3.0, CO-014): every account and person it
+     * created was archived with reason IMPORT_ROLLBACK, every contact it created was ended; final.
+     */
+    ROLLED_BACK
 }
