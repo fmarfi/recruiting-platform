@@ -7711,6 +7711,7 @@ components:
             billingAccount: { $ref: '#/components/schemas/AccountRef' }
             signatory:
               oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }]
+              description: Null when not set or when the signatory's contact was removed by a person deletion (`on delete set null`).
             scheduleItems:
               type: array
               items: { $ref: '#/components/schemas/FeeScheduleItem' }
@@ -7766,10 +7767,14 @@ components:
       required: [id, applicationId, jobOrder, account, person, status, startDate, feeAmount, feeCurrency, guaranteeEndOn, compensationRestricted, createdAt, version]
       properties:
         id: { $ref: '#/components/schemas/Id' }
-        applicationId: { $ref: '#/components/schemas/Id' }
+        applicationId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: Null after the person was deleted (ADR 0009); the placement stays as commercial evidence.
         jobOrder: { $ref: '#/components/schemas/JobOrderRef' }
         account: { $ref: '#/components/schemas/AccountRef' }
-        person: { $ref: '#/components/schemas/PersonRef' }
+        person:
+          oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }]
+          description: Null after the person was deleted (then `compensation` and `statusReason` are null too). An anonymised person shows as `Anonymised person`.
         agreementId:
           oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
         status: { $ref: '#/components/schemas/PlacementStatus' }

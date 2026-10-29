@@ -23,6 +23,11 @@ The data manipulation matrix (`docs/product/brand/app-architecture.md` §f) leav
 - New enum constants that existing exhaustive `switch` expressions would break: `BulkActionType.ARCHIVE` and `ImportKind.JOB_ORDERS/ACTIVITIES`. They are pre-approved; the backend that writes the handler adds the constant in the same PR (CRs in the hand-off).
 - Roles RESEARCHER, FINANCE_VIEW, AUDITOR (CO-015/PB-028); invoice issuing; currency conversion; proposal versions and opportunities (D11).
 
+## Deferred to post-pilot: role gating on fees and the search team (review 1.3 B2, B3)
+Decision (orchestrator, on the user's scope call): 1.3 adds **no new role or permission rules**; existing role behaviour stays as it is. Two known risks are accepted for the pilot and must be closed before wider roll-out:
+- **Fee → pay inference.** Placement `feeAmount` and agreement `feePercent` (with `feeBasis` = first-year cash) are readable by every consultant, so `feeAmount / feePercent` reveals a placed person's first-year cash even though `compensation` itself is restricted. Planned fix: fee fields nullable with `feesRestricted: true` below MANAGER/ADMIN, the same rule in `ExportSource` output.
+- **Self-add to the team.** Any consultant can `PUT /job-orders/{id}/team` and add themselves, and team membership grants read access to placement compensation. Planned fix: team edits by the owner or MANAGER/ADMIN only (403), and `job_order_team_member.sees_compensation` (default false, MANAGER/ADMIN set it; R64) instead of membership granting pay access.
+
 ## Consequences
 - All additions are optional fields, new endpoints or defaulted filters, so 1.2 clients keep working. One behaviour change: a 1.2 client moving a longlist candidate to PRESENTED without rating and rationale now gets 409; backend-pipeline updates its ITs and the seed.
 - Anonymisation grows: new person-FK tables cascade, a listener deletes evaluations, notes and references, scrubs feedback text, application rationale and placement pay, and deletes client reports naming the person; the `_aud` purge list grows accordingly (ADR 0009 "Amendment for contract 1.3.0", `schema.md`).
