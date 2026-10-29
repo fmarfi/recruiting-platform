@@ -160,7 +160,22 @@ Other rules:
 - A person may be in the pipelines of several job orders at once (same CV, different clients).
 - The rejection reason is stored on the application and in the status-change record; on reinstatement the field is cleared on the application but kept in history.
 - Adding a candidate to a `FILLED`/`CANCELLED` job order is rejected.
-- Consent (S-01) does not block pipeline moves in Phase 1. ASSUMPTION: show a consent warning on the card instead; to be reviewed with the KVKK lawyer.
+- Consent (S-01) does not block pipeline moves in Phase 1. ASSUMPTION: show a consent warning on the card instead; to be reviewed with the KVKK lawyer. *Superseded by contract 1.2.0 (ADR 0011): every move into a client-facing stage runs the sharing guard below.*
+
+Guards and side effects since contracts 1.2.0 and 1.3.0 (the move table above is unchanged; these only refuse or enrich a legal move):
+
+| # | When | Rule | Error |
+| --- | --- | --- | --- |
+| G1 | Every move into a client-facing stage (`PRESENTED`, `CLIENT_INTERVIEW`, `OFFER`, `PLACED`; `PipelineStage.sharedWithClient()`) | Sharing guard: valid consent (1.2.0) | 409 `CONSENT_REQUIRED` (no override) |
+| G2 | First move into a client-facing stage | Off-limits guard; MANAGER/ADMIN may override with `offLimitsOverrideReason` (1.2.0) | 409 `TRANSITION_GUARD_FAILED` (`OFF_LIMITS_RULE` items) |
+| G3 | From the longlist (`SOURCED`, `SCREENED`) into a client-facing stage (1.3.0, shortlist guard) | `rating` set and `rationale` at least 20 characters (in the request or already on the application) | 409 `TRANSITION_GUARD_FAILED` with `errors` |
+| G4 | Any move while the job order or the person is archived (1.3.0) | Archived records are read-only | 409 `ARCHIVED` |
+| S1 | `OFFER` → `PLACED` | Preferred path is `POST /applications/{id}/placement` (1.3.0): same guards, plus the placement row in the same transaction. `PATCH .../stage` to `PLACED` still works for 1.2 clients but creates no placement | – |
+| S2 | Client feedback with outcome `DECLINE` (1.3.0) | Moves the application to `REJECTED` with the decline text as reason and `closeReason = CLIENT_DECLINED`; allowed from any active stage except `PLACED` | 409 `ILLEGAL_TRANSITION` from `PLACED` |
+| S3 | Every move to `REJECTED` (1.3.0, R65) | Stores the coded `closeReason` (`CloseReason`, default `OTHER`) beside the free-text reason; reinstatement clears both on the application (history keeps them) | 400 when `closeReason` is sent with another target |
+| S4 | Move to `SCREENED` (1.3.0, R65) | Sets `outreachStatus = SCREENED` | – |
+
+Lists and rank (1.3.0, ADR 0013): `SOURCED`/`SCREENED` are the **longlist**, the client-facing stages the **shortlist** (`PipelineStage.candidateList()`), `REJECTED` is on no list. Only active applications are ranked: `PLACED` is shown on the shortlist without a rank, after the ranked ones. `OutreachStatus` (`TO_CALL`, `CALLED`, `INTERESTED`, `NOT_INTERESTED`, `NOT_NOW`, `SCREENED`) is a free label, not a lifecycle: any value may follow any other.
 
 ## 5. Consent status (S-01)
 
@@ -224,6 +239,13 @@ reason_required_to:
   job_order: [CANCELLED]
   pipeline: [REJECTED]
   data_subject: [REJECTED]
+close_reason_on:            # since 1.3.0 (R65), coded CloseReason, default OTHER
+  pipeline: [REJECTED]
+guards:                     # since 1.2.0 / 1.3.0; see section 4 table G1-G4
+  pipeline:
+    into_shared_with_client: [CONSENT_REQUIRED, OFF_LIMITS_first_time_only]
+    longlist_to_shortlist: [rating_set, rationale_min_20]
+    any_move_when_archived: ARCHIVED
 manager_or_admin_only:
   account: ["* -> CLOSED", "CLOSED -> LEAD"]
   job_order: ["CANCELLED -> OPEN"]
@@ -248,7 +270,10 @@ manager_or_admin_only:
 | 12 | Closed job orders | not defined | board read-only, no new candidates | Consistency |
 | 13 | Role rules | none | per-transition role table | Required by the task; whole table is ASSUMPTION |
 
-Nothing was added to or removed from the status enums, so enum names in `contracts/enums/` can follow the demo directly.
+| 14 | Guards on client-facing moves | none | consent (1.2.0), off-limits (1.2.0), shortlist rating and rationale (1.3.0), 409 `ARCHIVED` (1.3.0) | KVKK sharing, off-limits agreements, SX-014 |
+| 15 | Coded close reason | free text only | `CloseReason` on every rejection (1.3.0, R65) | Funnel reporting |
+
+Nothing was added to or removed from the status enums, so enum names in `contracts/enums/` can follow the demo directly. `OutreachStatus` and `CloseReason` (1.3.0) are labels, not lifecycles.
 
 ## Open questions affecting this document
 
