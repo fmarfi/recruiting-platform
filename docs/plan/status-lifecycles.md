@@ -50,6 +50,7 @@ Guards:
 - Closing an account (`CLOSED`) is blocked while it has job orders in an open status (`OPEN`, `SOURCING`, `SHORTLIST_SENT`, `INTERVIEWING`, `OFFER`). The user must fill or cancel them first. ASSUMPTION (avoids orphaned pipelines).
 - Putting an account `ON_HOLD` does not change its job orders; it only shows a warning on them. ASSUMPTION.
 - Accepting a proposal does not change the account status automatically. The UI may suggest moving the account to `ACTIVE`. ASSUMPTION.
+- Organisation roles (since contract 1.3.0, R63; `OrganisationRole`, not a lifecycle): the account status applies to organisations with the CLIENT or PROSPECT role. CLIENT is added automatically when the status becomes `ACTIVE` and when a job order is created for the organisation; removing CLIENT while it has open job orders is refused (409 `TRANSITION_GUARD_FAILED`, the job orders as blocking items), like closing the account.
 
 ## 2. Proposal status (A-05)
 

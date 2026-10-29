@@ -28,4 +28,16 @@ public interface ThirdPartyErasure {
      * @return number of records changed
      */
     int eraseEmail(String email);
+
+    /**
+     * Removes a sole trader's TCKN used as an organisation's tax id ({@code account.tax_id} and its
+     * history); called when the DSR handler enters the requester's TCKN. Only {@code accounts}
+     * holds tax ids, so the default does nothing.
+     *
+     * @param taxId the 11-digit TCKN as entered
+     * @return number of records changed
+     */
+    default int eraseTaxId(String taxId) {
+        return 0;
+    }
 }
