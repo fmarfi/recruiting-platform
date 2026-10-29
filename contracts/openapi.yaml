@@ -1511,6 +1511,7 @@ paths:
           in the old one; REJECTED and PLACED clear `rank` (PLACED keeps its rank on the shortlist report
           history only). Warning `SHORTLIST_LONG` when the shortlist then has more than 7 people.
         - Archived job orders and archived people reject stage moves with 409 `ARCHIVED`.
+        Since 1.3.0 (R65) a move to REJECTED stores `closeReason` (default OTHER); a move to SCREENED sets `outreachStatus` SCREENED. Archived job order or person: 409 `ARCHIVED`. Prefer `POST /applications/{id}/placement` for OFFER → PLACED (this endpoint creates no placement).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1686,6 +1687,22 @@ paths:
           in: query
           description: Logged by this user.
           schema: { $ref: '#/components/schemas/Id' }
+        - name: outcome
+          in: query
+          description: Since 1.3.0 (R70).
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ActivityOutcome' }
+          style: form
+          explode: true
+        - name: source
+          in: query
+          description: Since 1.3.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ActivitySource' }
+          style: form
+          explode: true
         - name: from
           in: query
           schema: { type: string, format: date-time }
@@ -1707,7 +1724,7 @@ paths:
       tags: [Activities]
       operationId: logActivity
       summary: Quick add a call, visit, meeting, e-mail or note (UX-06)
-      description: At least one of `accountId` and `personId`. Updates the account's last activity and, except for NOTE, the person's last contact date.
+      description: At least one of `accountId` and `personId`. Updates the account's last activity and, except for NOTE, the last contact date of the person and (since 1.3.0) of every attendee. Since 1.3.0 a duplicate `externalMessageId` gives 409 `DUPLICATE` with `existingId`; `personId` filters on `GET /activities` also match attendees.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1724,6 +1741,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /activities/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -3617,6 +3635,7 @@ paths:
         transaction, moves the application to REJECTED with reason `Client declined: <reason>` (the
         normal stage-move rules, event and timeline apply). `recordedBy` is the current user ("entered on
         the client's behalf").
+        Since R65 the DECLINE move sets `closeReason` CLIENT_DECLINED on the application.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -5847,6 +5866,9 @@ components:
         person: { $ref: '#/components/schemas/PersonSummary' }
         stage: { $ref: '#/components/schemas/PipelineStage' }
         rejectionReason: { type: [string, 'null'], description: Set while the stage is REJECTED. }
+        closeReason:
+          oneOf: [{ $ref: '#/components/schemas/CloseReason' }, { type: 'null' }]
+          description: Since 1.3.0 (R65). Set while the stage is REJECTED (1.2 rejections are backfilled as OTHER).
         stageChangedAt: { type: string, format: date-time }
         addedAt: { type: string, format: date-time }
         addedBy: { $ref: '#/components/schemas/UserRef' }
@@ -5890,6 +5912,9 @@ components:
       properties:
         stage: { $ref: '#/components/schemas/PipelineStage' }
         reason: { $ref: '#/components/schemas/Reason' }
+        closeReason:
+          $ref: '#/components/schemas/CloseReason'
+          description: Since 1.3.0 (R65). Only with `stage` REJECTED (400 otherwise); default OTHER. `reason` stays required for REJECTED.
         version: { $ref: '#/components/schemas/Version' }
         offLimitsOverrideReason:
           $ref: '#/components/schemas/Reason'
@@ -5979,6 +6004,21 @@ components:
         user: { $ref: '#/components/schemas/UserRef' }
         createdAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        outcome:
+          oneOf: [{ $ref: '#/components/schemas/ActivityOutcome' }, { type: 'null' }]
+          description: Since 1.3.0 (R70).
+        direction:
+          oneOf: [{ $ref: '#/components/schemas/ActivityDirection' }, { type: 'null' }]
+          description: Since 1.3.0. Null for NOTE.
+        attendees:
+          type: array
+          description: Since 1.3.0. Other people present (not the main `person`).
+          items: { $ref: '#/components/schemas/PersonRef' }
+        durationMin: { type: [integer, 'null'], minimum: 0, maximum: 1440, description: Since 1.3.0. }
+        source:
+          $ref: '#/components/schemas/ActivitySource'
+          description: Since 1.3.0. MANUAL for 1.2 rows.
+        externalMessageId: { type: [string, 'null'], description: 'Since 1.3.0. E-mail `Message-ID` when `source` is EMAIL.' }
     ActivityPage:
       type: object
       required: [content, page]
@@ -5998,13 +6038,43 @@ components:
         accountId: { $ref: '#/components/schemas/Id' }
         personId: { $ref: '#/components/schemas/Id' }
         jobOrderId: { $ref: '#/components/schemas/Id' }
+        outcome: { $ref: '#/components/schemas/ActivityOutcome' }
+        direction:
+          $ref: '#/components/schemas/ActivityDirection'
+          description: Since 1.3.0. Not with NOTE (400).
+        attendeePersonIds:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          description: Since 1.3.0 (R70). Other people present; not `personId`, not anonymised people (400).
+          items: { $ref: '#/components/schemas/Id' }
+        durationMin: { type: integer, minimum: 0, maximum: 1440 }
+        source:
+          $ref: '#/components/schemas/ActivitySource'
+          description: Since 1.3.0. Default MANUAL.
+        externalMessageId:
+          type: string
+          minLength: 1
+          maxLength: 300
+          description: Since 1.3.0. Only with `source` EMAIL (400 otherwise). Unique; a second activity with the same id gives 409 `DUPLICATE` with `existingId` (idempotent capture).
     ActivityUpdateRequest:
       type: object
+      description: Since 1.3.0 `attendeePersonIds` replaces the whole attendee list; `source` and `externalMessageId` cannot change.
       properties:
         type: { $ref: '#/components/schemas/ActivityType' }
         note: { type: string, minLength: 1, maxLength: 4000 }
         occurredAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        outcome:
+          oneOf: [{ $ref: '#/components/schemas/ActivityOutcome' }, { type: 'null' }]
+        direction:
+          oneOf: [{ $ref: '#/components/schemas/ActivityDirection' }, { type: 'null' }]
+        attendeePersonIds:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Id' }
+        durationMin: { type: [integer, 'null'], minimum: 0, maximum: 1440 }
     NextAction:
       type: object
       required: [id, title, dueOn, owner, done, overdue, createdAt, version]
@@ -7266,7 +7336,24 @@ components:
       enum: [LONGLIST, SHORTLIST]
     OutreachStatus:
       type: string
-      enum: [TO_CALL, CALLED, INTERESTED, NOT_INTERESTED, NOT_NOW]
+      description: '`contracts/enums/OutreachStatus.java`; not a lifecycle. A move to stage SCREENED sets SCREENED.'
+      enum: [TO_CALL, CALLED, INTERESTED, NOT_INTERESTED, NOT_NOW, SCREENED]
+    CloseReason:
+      type: string
+      description: '`contracts/enums/CloseReason.java` (R65). Coded reason on every move to REJECTED; internal only.'
+      enum: [CLIENT_DECLINED, CANDIDATE_WITHDREW, NOT_INTERESTED, NOT_QUALIFIED, COMPENSATION_MISMATCH, OFF_LIMITS, NO_RESPONSE, HIRED_ELSEWHERE, SEARCH_CLOSED, OTHER]
+    ActivityOutcome:
+      type: string
+      description: '`contracts/enums/ActivityOutcome.java` (R70).'
+      enum: [CONNECTED, NO_ANSWER, LEFT_MESSAGE, CALLBACK_REQUESTED, INTERESTED, NOT_INTERESTED, MEETING_BOOKED, WRONG_CONTACT, COMPLETED]
+    ActivityDirection:
+      type: string
+      description: '`contracts/enums/ActivityDirection.java` (R70). Null for NOTE.'
+      enum: [INBOUND, OUTBOUND]
+    ActivitySource:
+      type: string
+      description: '`contracts/enums/ActivitySource.java` (R70).'
+      enum: [MANUAL, EMAIL, CALL_SHEET]
     ClientFeedbackOutcome:
       type: string
       enum: [ADVANCE, HOLD, DECLINE]
