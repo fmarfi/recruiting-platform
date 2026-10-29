@@ -39,7 +39,7 @@
       "add": "Etiket ekle",
       "hint": "Etiket eklemek için Enter veya virgül",
       "remove": "{{tag}} etiketini kaldır",
-      "list": "Etiketler",
+      "list": "Seçili etiketler",
       "none": "Etiket yok",
       "max": "En fazla {{n}} etiket"
     },
