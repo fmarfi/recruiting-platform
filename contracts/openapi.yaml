@@ -1031,6 +1031,14 @@ paths:
                   type: string
                   contentMediaType: application/octet-stream
                   description: .csv or .xlsx
+                mapping:
+                  type: string
+                  contentMediaType: application/json
+                  description: |
+                    Since 1.3.0 (CO-014). Optional JSON object from a column header in the file to a template
+                    column of the kind, e.g. `{"Firma Adı":"name","Şehir":"city"}`; unmapped headers are
+                    ignored, a header mapped to an unknown column gives 400. Without it the headers must match
+                    the template (1.2 behaviour). Stored with the job as `ImportJob.mapping`.
             encoding:
               file:
                 contentType: text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
@@ -4431,6 +4439,258 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  # ---------- 1.3.0: import rollback, exports, client reports (ADR 0013) ----------
+  /imports/{id}/rollback:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Import]
+      operationId: rollbackImport
+      summary: Undo a completed import within 30 days (CO-014)
+      description: |
+        Archives every account and person the import created (reason IMPORT_ROLLBACK; records listed in
+        `import_job_record`) and ends every contact it created. Records changed since the import stay
+        archived too; records that are now on a job order, have activities or are anonymised are skipped
+        and counted in `skipped` (the user decides by hand). Status ROLLED_BACK. Not COMPLETED or past
+        `rollbackUntil` → 409 `STATE_CONFLICT`.
+      x-roles: [MANAGER, ADMIN]
+      x-owner: accounts / backend-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportRollbackRequest' }
+      responses:
+        '200':
+          description: Rolled back
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportRollbackResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /exports:
+    get:
+      tags: [Exports]
+      operationId: listExports
+      summary: My exports; for MANAGER/ADMIN every export (approval queue with `status=PENDING_APPROVAL`)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ExportStatus' }
+          style: form
+          explode: true
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Page of exports, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJobPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Exports]
+      operationId: requestExport
+      summary: Export a list view as CSV, with audit and approval (CO-013)
+      description: |
+        `filters` and `columns` are a `ViewDefinition` of the entity (same validation). The server counts
+        the rows: up to the approval threshold (default 25 people or accounts, setting
+        `app.exports.approval-threshold`; job orders and proposals have none) or when the caller is
+        MANAGER/ADMIN, the file is built at once (READY); otherwise PENDING_APPROVAL until a manager
+        approves. `includeCompensation` is MANAGER/ADMIN only (403) and PEOPLE only. Every export writes
+        an access-log EXPORT row per exported person (entity PERSON) and one EXPORT row for the job
+        (entity EXPORT_JOB) with filter keys, row count, columns and purpose. The CSV starts with a
+        watermark line (user, date, purpose) and expires 24 hours after it is ready. Exports of a client
+        report or a person's KVKK export are not done here.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy (job, approval, audit); `ExportSource` beans in accounts (PEOPLE, ACCOUNTS) and pipeline (JOB_ORDERS, PROPOSALS)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExportRequest' }
+      responses:
+        '201':
+          description: READY or PENDING_APPROVAL
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /exports/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Exports]
+      operationId: approveExport
+      summary: Approve a pending export (the file is built with the filters as they match now)
+      description: Not PENDING_APPROVAL → 409 `STATE_CONFLICT`. A manager cannot approve their own request (403).
+      x-roles: [MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExportDecisionRequest' }
+      responses:
+        '200':
+          description: READY
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /exports/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Exports]
+      operationId: rejectExport
+      summary: Reject a pending export (reason required)
+      x-roles: [MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExportDecisionRequest' }
+      responses:
+        '200':
+          description: REJECTED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /exports/{id}/content:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Exports]
+      operationId: downloadExport
+      summary: Download a READY export (requester only)
+      description: Other users → 404. EXPIRED or past `expiresAt` → 410 `GONE` (the bytes are deleted by a nightly job). Each download writes an access-log DOWNLOAD row (entity EXPORT_JOB).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: security / security-privacy
+      responses:
+        '200':
+          description: CSV (UTF-8 with BOM for Excel)
+          content:
+            text/csv:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '410': { $ref: '#/components/responses/Gone' }
+  /job-orders/{id}/reports:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Client reports]
+      operationId: listClientReports
+      summary: Generated client reports of a search, newest first
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClientReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Client reports]
+      operationId: generateClientReport
+      summary: Generate a branded PDF (shortlist, progress or candidate profile; SX-021/022, PB-021)
+      description: |
+        SHORTLIST: the shortlist in rank order (or `personIds`, which must be on it), with evaluation blocks
+        allowed by `reportBlocks`/`internalOnly`, interview notes marked `includeInReport`, reference status
+        and summary. PROGRESS: counts (targets researched and approached, longlist and shortlist sizes,
+        client feedback, next steps) and no candidate names. CANDIDATE_PROFILE: one person (`personIds`
+        with one id). People without valid consent are left out and listed in `excluded` (sharing guard
+        via `ShareGuard`; never overridable); private notes and referee details never appear.
+        `blind=true` replaces name, employer, photo, contact data, links and exact dates with an alias
+        ("Candidate A") and returns `blindWarnings` where free text still contains the person's name or
+        employer (advisory; the consultant checks). The file is stored (version per job order and kind) and
+        downloaded with `GET /client-reports/{id}/content`. Generating is not sending: exposure is recorded
+        by `POST /client-reports/{id}/sent`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline (report service); sharing guard by security-privacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientReportRequest' }
+      responses:
+        '201':
+          description: Generated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /client-reports/{id}/content:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Client reports]
+      operationId: downloadClientReport
+      summary: Download the PDF (access-log DOWNLOAD, entity CLIENT_REPORT)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: PDF
+          content:
+            application/pdf:
+              schema: { type: string, contentMediaType: application/pdf }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/Gone' }
+  /client-reports/{id}/sent:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Client reports]
+      operationId: markClientReportSent
+      summary: Mark the report as sent to the client
+      description: |
+        Re-checks consent for every included person (409 `CONSENT_REQUIRED` if one lost it since
+        generation: generate again). Writes one `candidate_exposure` row per included person (channel
+        REPORT) and, for the first SHORTLIST report of the search, fires SHORTLIST_DELIVERED fee items.
+        Sending twice returns the report unchanged.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientReportSentRequest' }
+      responses:
+        '200':
+          description: Marked sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -4776,7 +5036,7 @@ components:
       enum: [ACCOUNTS, CONTACTS, PEOPLE]
     ImportStatus:
       type: string
-      enum: [VALIDATED, IMPORTING, COMPLETED, FAILED, DISCARDED]
+      enum: [VALIDATED, IMPORTING, COMPLETED, FAILED, DISCARDED, ROLLED_BACK]
     TimelineKind:
       type: string
       enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE, ARCHIVE, MERGE, PLACEMENT]
@@ -5333,6 +5593,15 @@ components:
         createdAt: { type: string, format: date-time }
         createdBy: { $ref: '#/components/schemas/UserRef' }
         completedAt: { type: [string, 'null'], format: date-time }
+        mapping:
+          type: [object, 'null']
+          description: Since 1.3.0. The column mapping sent with the upload.
+          additionalProperties: { type: string }
+        rollbackUntil:
+          type: [string, 'null']
+          format: date-time
+          description: Since 1.3.0. COMPLETED imports can be rolled back until `completedAt` + 30 days.
+        rolledBackAt: { type: [string, 'null'], format: date-time, description: Since 1.3.0. }
     ImportJobPage:
       type: object
       required: [content, page]
@@ -7579,3 +7848,152 @@ components:
           type: array
           items: { $ref: '#/components/schemas/ConflictCheck' }
         page: { $ref: '#/components/schemas/PageMeta' }
+    # ---------- 1.3.0: import rollback, exports, client reports ----------
+    ImportRollbackRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { $ref: '#/components/schemas/Reason' }
+    ImportRollbackResult:
+      type: object
+      required: [import, archived, ended, skipped]
+      properties:
+        import: { $ref: '#/components/schemas/ImportJob' }
+        archived:
+          type: object
+          description: Archived records per entity (ACCOUNTS, PEOPLE).
+          additionalProperties: { type: integer, minimum: 0 }
+        ended: { type: integer, minimum: 0, description: Contacts ended. }
+        skipped:
+          type: array
+          description: Records left as they are, with the reason code.
+          items:
+            type: object
+            required: [entityType, id, code]
+            properties:
+              entityType: { $ref: '#/components/schemas/EntityType' }
+              id: { $ref: '#/components/schemas/Id' }
+              code: { type: string, enum: [IN_PIPELINE, HAS_ACTIVITY, ANONYMISED, ALREADY_ARCHIVED] }
+    ExportStatus:
+      type: string
+      description: '`contracts/enums/ExportStatus.java`.'
+      enum: [PENDING_APPROVAL, READY, REJECTED, EXPIRED, FAILED]
+    ExportRequest:
+      type: object
+      required: [entity, filters, columns, purpose]
+      properties:
+        entity: { $ref: '#/components/schemas/ListEntity' }
+        filters:
+          type: object
+          maxProperties: 20
+          description: Filter keys of the entity, as in `ViewDefinition.filters`.
+          additionalProperties: { $ref: '#/components/schemas/FilterValue' }
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { type: string, pattern: '^[A-Za-z][A-Za-z0-9.]{0,99}$' }
+        sort:
+          type: array
+          maxItems: 5
+          items: { type: string, pattern: '^[A-Za-z]+(,(asc|desc))?$' }
+        purpose: { type: string, minLength: 3, maxLength: 300, examples: [Client longlist review] }
+        includeCompensation: { type: boolean, default: false }
+    ExportDecisionRequest:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/Reason'
+          description: Required to reject.
+    ExportJob:
+      type: object
+      required: [id, entity, status, rowCount, columns, purpose, includeCompensation, requestedBy, requestedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        entity: { $ref: '#/components/schemas/ListEntity' }
+        status: { $ref: '#/components/schemas/ExportStatus' }
+        filterKeys:
+          type: array
+          description: The filter keys used (values are kept, except free text `q` and `cv`, which are stored only as present).
+          items: { type: string }
+        filters:
+          type: object
+          description: Filters without free text.
+          additionalProperties: { $ref: '#/components/schemas/FilterValue' }
+        rowCount: { type: integer, minimum: 0 }
+        columns:
+          type: array
+          items: { type: string }
+        purpose: { type: string }
+        includeCompensation: { type: boolean }
+        requestedBy: { $ref: '#/components/schemas/UserRef' }
+        requestedAt: { type: string, format: date-time }
+        decidedBy:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionReason: { type: [string, 'null'] }
+        readyAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+    ExportJobPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ExportJob' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    ReportKind:
+      type: string
+      description: '`contracts/enums/ReportKind.java`.'
+      enum: [SHORTLIST, PROGRESS, CANDIDATE_PROFILE]
+    ClientReportRequest:
+      type: object
+      required: [kind]
+      properties:
+        kind: { $ref: '#/components/schemas/ReportKind' }
+        language:
+          $ref: '#/components/schemas/Language'
+          description: Defaults to the account's preferred language, else TR.
+        blind: { type: boolean, default: false }
+        personIds:
+          type: array
+          maxItems: 30
+          uniqueItems: true
+          description: SHORTLIST (subset, report order follows rank) and CANDIDATE_PROFILE (exactly one).
+          items: { $ref: '#/components/schemas/Id' }
+        periodFrom: { type: string, format: date, description: PROGRESS only; defaults to 14 days ago. }
+        coverNote: { type: [string, 'null'], maxLength: 2000 }
+    ClientReport:
+      type: object
+      required: [id, jobOrderId, kind, version, language, blind, personCount, excluded, generatedBy, generatedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        jobOrderId: { $ref: '#/components/schemas/Id' }
+        kind: { $ref: '#/components/schemas/ReportKind' }
+        version: { type: integer, minimum: 1 }
+        language: { $ref: '#/components/schemas/Language' }
+        blind: { type: boolean }
+        personCount: { type: integer, minimum: 0 }
+        excluded:
+          type: array
+          description: People left out because they may not be shared (only in the generate response; empty when read later).
+          items: { $ref: '#/components/schemas/ShareCheckResult' }
+        blindWarnings:
+          type: array
+          description: Blind only; free-text fields that still contain a name or employer.
+          items:
+            type: object
+            required: [personId, field]
+            properties:
+              personId: { $ref: '#/components/schemas/Id' }
+              field: { type: string, examples: [summary] }
+        sizeBytes: { type: integer, minimum: 0 }
+        generatedBy: { $ref: '#/components/schemas/UserRef' }
+        generatedAt: { type: string, format: date-time }
+        sentOn: { type: [string, 'null'], format: date }
+        sentBy:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+    ClientReportSentRequest:
+      type: object
+      properties:
+        sentOn: { type: string, format: date, description: Defaults to today. }
