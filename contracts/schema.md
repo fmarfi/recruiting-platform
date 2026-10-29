@@ -475,6 +475,99 @@ Written by `pipeline` in the transaction of the first move into a client-facing 
 | include_in_report | boolean | not null default false |
 | audit columns | | |
 
+**agreement** — audited (1.3.0, PB-007/008, ADR 0013)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| account_id | uuid FK account | not null; index |
+| job_order_id | uuid FK job_order | null (framework terms) or the search (engagement); index |
+| kind | varchar(40) | `AgreementKind`; `CHECK ((kind = 'ENGAGEMENT_LETTER') = (job_order_id IS NOT NULL) OR kind = 'AMENDMENT')` |
+| status | varchar(40) | `AgreementStatus`, default `DRAFT`; `CHECK (status <> 'SIGNED' OR signed_on IS NOT NULL)` |
+| title | varchar(200) | null |
+| signed_on, valid_from, valid_until | date | null; `CHECK (valid_until IS NULL OR valid_from IS NULL OR valid_until >= valid_from)` |
+| language | varchar(2) | null; `Language` |
+| governing_law | varchar(100) | null |
+| exclusivity | varchar(40) | null; `Exclusivity` |
+| fee_model | varchar(40) | `FeeModel` |
+| fee_percent | numeric(5,2) | null; `CHECK (fee_percent BETWEEN 0 AND 100)` |
+| fee_basis | varchar(40)[] | not null default `'{}'`; `FeeBasisComponent` values (array CHECK) |
+| flat_fee_amount, estimated_fee, fee_minimum, fee_cap | numeric(14,2) | null; `CHECK (fee_minimum IS NULL OR fee_cap IS NULL OR fee_minimum <= fee_cap)` |
+| currency | char(3) | not null |
+| payment_terms_days | smallint | not null default 30; 0..180 |
+| guarantee_months | smallint | not null default 6; `CHECK (guarantee_months BETWEEN 0 AND 36)` |
+| guarantee_terms, confidentiality_terms | varchar(2000) | null |
+| expense_policy | varchar(1000) | null |
+| off_limits_months | smallint | null; 0..60 |
+| signatory_contact_id | uuid FK contact | null |
+| billing_account_id | uuid FK account | not null (defaults to `account_id`); the billing entity |
+| notes | text | null; no personal data |
+| audit columns | | |
+
+**fee_schedule_item** — audited (1.3.0, PB-009, CO-020)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| agreement_id | uuid FK agreement | not null; `on delete cascade` (only DRAFT agreements are deleted); unique `(agreement_id, seq)` |
+| seq | smallint | not null; 1..n in schedule order |
+| label | varchar(200) | not null |
+| trigger | varchar(40) | `FeeTrigger` |
+| offset_days | smallint | null; `CHECK (trigger <> 'DATE_OFFSET' OR offset_days IS NOT NULL)` |
+| percent | numeric(5,2) | null |
+| amount | numeric(14,2) | null; `CHECK ((percent IS NULL) <> (amount IS NULL))` |
+| due_days | smallint | not null default 30 |
+| invoice_state | varchar(40) | `InvoiceState`, default `NOT_DUE`; index `(invoice_state, due_on)` |
+| triggered_at | timestamptz | null; set on NOT_DUE → DUE (idempotent: a trigger never fires twice) |
+| due_on | date | null; `triggered_at::date + due_days` |
+| einvoice_ref | varchar(100) | null |
+| invoiced_on, paid_on | date | null |
+| invoiced_amount | numeric(14,2) | null |
+| state_reason | varchar(500) | null; no personal data |
+| audit columns | | |
+
+Triggers fire in `pipeline`, in the transaction of the cause (agreement SIGNED, first client-facing stage move, placement created, job order CANCELLED) or in a nightly job (DATE_OFFSET, START_DATE). Only items of agreements with a `job_order_id` fire; framework items are templates copied into a new engagement by the UI.
+
+**placement** — audited except `compensation_enc` is audited as ciphertext (1.3.0, CO-021, PB-011)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| application_id | uuid FK application | not null; unique; `on delete cascade` |
+| job_order_id | uuid FK job_order | not null; index |
+| account_id | uuid FK account | not null; index |
+| person_id | uuid FK person | not null; `on delete cascade` (ADR 0009); index |
+| agreement_id | uuid FK agreement | null |
+| status | varchar(40) | `PlacementStatus`, default `ACTIVE` |
+| offer_accepted_on | date | null |
+| start_date | date | not null |
+| compensation_enc | bytea | null; `PlacementCompensation` JSON encrypted by `security.FieldCipher` like `person.compensation_enc`; readable by MANAGER/ADMIN and the job order's owner and team |
+| fee_amount | numeric(14,2) | not null |
+| fee_currency | char(3) | not null |
+| fee_overridden | boolean | not null default false |
+| guarantee_end_on | date | not null; index (30-day alert) |
+| left_on | date | null |
+| replacement_job_order_id | uuid FK job_order | null |
+| status_reason | varchar(500) | null; personal data (scrubbed) |
+| audit columns | | |
+
+Nightly job in `pipeline`: a next action "Guarantee ends on <date>" for the job order owner 30 days before `guarantee_end_on` (`source_event_id` = UUID v5 of `placement.id + ':guarantee-30'`, so it is created once), status GUARANTEE_ENDED after the end date, START_DATE items DUE. Retention checks at 6 and 12 months are the same mechanism (`:retention-6`, `:retention-12`).
+
+**conflict_check** — append-only, not audited (1.3.0, PB-018/019; it is itself the log)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| account_id | uuid FK account | null; index `(account_id, checked_at desc)` |
+| company_name | varchar(200) | null; `CHECK ((account_id IS NULL) <> (company_name IS NULL))` |
+| job_order_id | uuid FK job_order | null |
+| proposal_id | uuid FK proposal | null |
+| hits | jsonb | not null default `'[]'`; `[{kind, refType, refId, title, until}]`; `title` is null for PLACED_CANDIDATE, so no person data is stored |
+| decision | varchar(40) | `ConflictDecision` |
+| override_reason | varchar(500) | null; required for PROCEED with hits (service); no personal data (UI hint) |
+| checked_by | uuid FK app_user | not null |
+| checked_at | timestamptz | not null |
+
 **proposal** — audited
 
 | Column | Type | Notes |
