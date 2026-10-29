@@ -25,7 +25,14 @@
     "recentSearches": "Son aramalar",
     "searchNone": "\"{{q}}\" için sonuç yok",
     "searchPlaceholder": "Müşteri, kişi, pozisyon ara",
-    "seeAll": "\"{{q}}\" için tüm sonuçlar"
+    "seeAll": "\"{{q}}\" için tüm sonuçlar",
+    "requiredNote": "* ile işaretli alanlar zorunludur.",
+    "confirm": "Onayla",
+    "close": "Kapat",
+    "loadErrorHint": "Bağlantınızı kontrol edip yeniden deneyin.",
+    "undone": "Geri alındı.",
+    "removed": "Kaldırıldı.",
+    "moreActions": "Diğer işlemler"
   },
   "grid": {
     "columns": "Sütunlar",
@@ -154,7 +161,9 @@
     "viewAllJobs": "Tüm pozisyonları gör",
     "viewAllClients": "Tüm müşterileri gör",
     "daysOpen": "{{n}} gündür açık",
-    "candidates": "{{n}} aday"
+    "candidates": "{{n}} aday",
+    "subtitle": "Bugün sizi neyin beklediği ve müşterilerinizde nelerin açık olduğu.",
+    "loadErrorHint": "Gününüz yüklenemedi. Bağlantınızı kontrol edip yeniden deneyin."
   },
   "search": {
     "results": "\"{{q}}\" sonuçları",

@@ -37,7 +37,7 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged }: Pro
             <StatusMenu kind="account" value={a.status} onMove={change.move} />
           </Group>
           <Group visibleFrom="sm">
-            <Button variant="default" onClick={onLog}>
+            <Button onClick={onLog}>
               {t('accounts.logActivity')}
             </Button>
             <Button variant="default" onClick={onAddAction}>

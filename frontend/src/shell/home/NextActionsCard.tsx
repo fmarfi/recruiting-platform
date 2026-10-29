@@ -27,7 +27,7 @@ export function NextActionsCard({ actions, today, undo, onDone, onSnooze, onAdd 
         <Title order={2} size="h3">
           {t('myday.actions')} ({actions.length})
         </Title>
-        <Button size="xs" variant="light" onClick={onAdd}>
+        <Button size="xs" variant="subtle" onClick={onAdd}>
           + {t('accounts.addAction')}
         </Button>
       </Group>
@@ -42,7 +42,7 @@ export function NextActionsCard({ actions, today, undo, onDone, onSnooze, onAdd 
         </Alert>
       )}
       {actions.length === 0 ? (
-        <EmptyState title={t('myday.caughtUp')} hint={t('myday.caughtUpHint')} actions={<Button onClick={onAdd}>{t('accounts.addAction')}</Button>} />
+        <EmptyState title={t('myday.caughtUp')} hint={t('myday.caughtUpHint')} actions={<Button variant="light" onClick={onAdd}>{t('accounts.addAction')}</Button>} />
       ) : (
         groups
           .filter(([, list]) => list.length > 0)

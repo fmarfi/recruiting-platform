@@ -1,4 +1,4 @@
-import { Anchor, Button, Card, Container, Grid, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core';
+import { Anchor, Badge, Button, Card, Container, Grid, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -20,6 +20,13 @@ import { RelationshipsTab } from './RelationshipsTab';
 import { TimelinePanel } from './TimelinePanel';
 import { useAccountPage } from './useAccountPage';
 
+const tabStyle = { whiteSpace: 'nowrap' } as const;
+const Count = ({ n }: { n: number }) => (
+  <Badge size="sm" variant="light" style={{ fontVariantNumeric: 'tabular-nums' }}>
+    {n}
+  </Badge>
+);
+
 /** Account page (UX-05): header, dashboard strip, tabs and the timeline in one view. */
 export function AccountPage() {
   const { t } = useTranslation();
@@ -40,7 +47,7 @@ export function AccountPage() {
         }
       />
     );
-  if (page.account.error) return <ErrorBanner onRetry={page.reloadAll} />;
+  if (page.account.error) return <ErrorBanner onRetry={page.reloadAll} message={t('accounts.loadErrorTitle')} />;
   if (!a)
     return (
       <Container maw="var(--content-max-width)" p={0}>
@@ -71,41 +78,47 @@ export function AccountPage() {
         <Grid>
           <Grid.Col span={{ base: 12, md: 8 }}>
             <Tabs defaultValue="jobs">
-              <Tabs.List>
-                <Tabs.Tab value="jobs">{t('accounts.tab.jobs')} {jobs.length}</Tabs.Tab>
-                <Tabs.Tab value="contacts">{t('accounts.tab.contacts')} {contacts.length}</Tabs.Tab>
-                <Tabs.Tab value="relationships">{t('accounts.tab.relationships')}</Tabs.Tab>
-                <Tabs.Tab value="proposals">{t('accounts.tab.proposals')} {proposals.length}</Tabs.Tab>
-                <Tabs.Tab value="timeline" hiddenFrom="md">
+              <Tabs.List style={{ flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden' }}>
+                <Tabs.Tab value="jobs" style={tabStyle} rightSection={<Count n={jobs.length} />}>{t('accounts.tab.jobs')}</Tabs.Tab>
+                <Tabs.Tab value="contacts" style={tabStyle} rightSection={<Count n={contacts.length} />}>{t('accounts.tab.contacts')}</Tabs.Tab>
+                <Tabs.Tab value="relationships" style={tabStyle}>{t('accounts.tab.relationships')}</Tabs.Tab>
+                <Tabs.Tab value="proposals" style={tabStyle} rightSection={<Count n={proposals.length} />}>{t('accounts.tab.proposals')}</Tabs.Tab>
+                <Tabs.Tab value="timeline" hiddenFrom="md" style={tabStyle}>
                   {t('accounts.tab.timeline')}
                 </Tabs.Tab>
               </Tabs.List>
               <Tabs.Panel value="jobs" pt="md">
-                <Group justify="flex-end" mb="xs">
-                  <Button size="compact-sm" variant="light" onClick={() => setDialog('job')}>
-                    + {t('accounts.newJob')}
-                  </Button>
-                </Group>
-                <JobsTab jobs={jobs} />
+                {jobs.length > 0 && (
+                  <Group justify="flex-end" mb="xs">
+                    <Button size="compact-sm" variant="light" onClick={() => setDialog('job')}>
+                      + {t('accounts.newJob')}
+                    </Button>
+                  </Group>
+                )}
+                <JobsTab jobs={jobs} onAdd={() => setDialog('job')} />
               </Tabs.Panel>
               <Tabs.Panel value="contacts" pt="md">
-                <Group justify="flex-end" mb="xs">
-                  <Button size="compact-sm" variant="light" onClick={() => setDialog('contact')}>
-                    + {t('accounts.addContact')}
-                  </Button>
-                </Group>
-                <ContactsTab contacts={contacts} showEnded={page.showEnded} onShowEnded={page.setShowEnded} accountId={a.id} onChanged={page.reloadAll} />
+                {contacts.length > 0 && (
+                  <Group justify="flex-end" mb="xs">
+                    <Button size="compact-sm" variant="light" onClick={() => setDialog('contact')}>
+                      + {t('accounts.addContact')}
+                    </Button>
+                  </Group>
+                )}
+                <ContactsTab onAdd={() => setDialog('contact')} contacts={contacts} showEnded={page.showEnded} onShowEnded={page.setShowEnded} accountId={a.id} onChanged={page.reloadAll} />
               </Tabs.Panel>
               <Tabs.Panel value="relationships" pt="md">
-                <RelationshipsTab contacts={contacts.filter((c) => c.active)} connections={page.connections.data} />
+                <RelationshipsTab contacts={contacts.filter((c) => c.active)} connections={page.connections.data} onAddContact={() => setDialog('contact')} />
               </Tabs.Panel>
               <Tabs.Panel value="proposals" pt="md">
-                <Group justify="flex-end" mb="xs">
-                  <Button size="compact-sm" variant="light" onClick={() => setDialog('proposal')}>
-                    + {t('accounts.newProposal')}
-                  </Button>
-                </Group>
-                <ProposalsTab proposals={proposals} onChanged={page.reloadAll} />
+                {proposals.length > 0 && (
+                  <Group justify="flex-end" mb="xs">
+                    <Button size="compact-sm" variant="light" onClick={() => setDialog('proposal')}>
+                      + {t('accounts.newProposal')}
+                    </Button>
+                  </Group>
+                )}
+                <ProposalsTab proposals={proposals} onChanged={page.reloadAll} onAdd={() => setDialog('proposal')} />
               </Tabs.Panel>
               <Tabs.Panel value="timeline" pt="md" hiddenFrom="md">
                 {timeline}

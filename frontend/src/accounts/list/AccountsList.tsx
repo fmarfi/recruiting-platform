@@ -1,11 +1,12 @@
 import { AppPagination } from '../../shell/components/AppPagination';
-import { Button, Container, Group, Stack, Title } from '@mantine/core';
+import { Button, Container, Stack } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
+import { PageHeader } from '../../shell/components/PageHeader';
 import { DataGrid, ViewsMenu, formatSort, parseSort, useGridColumns, useViewStore } from '../../shell/grid';
 import { tokens } from '../../theme/tokens';
 import { NewAccountDialog } from '../components/NewAccountDialog';
@@ -37,24 +38,25 @@ export function AccountsList() {
   const clear = () => setFilters((f) => ({ ...f, q: '', status: '', ownerId: '', page: 0 }));
   const filtered = !!(filters.q || filters.status || filters.ownerId);
   const d = res.data;
-  const newBtn = <Button onClick={() => setCreating(true)}>{t('accounts.newAccount')}</Button>;
+  const newBtn = <Button onClick={() => setCreating(true)}>+ {t('accounts.newAccount')}</Button>;
   const sort = parseSort(filters.sort) ?? parseSort(DEFAULT_SORT);
 
   return (
     <Container maw="var(--content-max-width)" p={0}>
-      <Group justify="space-between" mb="md">
-        <Title order={1} data-testid="screen-title">
-          {t('nav.accounts')} {d ? `(${d.page.totalElements})` : ''}
-        </Title>
-        <Group>
-          {isManager && (
-            <Button variant="default" onClick={() => nav('/settings/import')}>
-              {t('accounts.import')}
-            </Button>
-          )}
-          {newBtn}
-        </Group>
-      </Group>
+      <PageHeader
+        title={`${t('nav.accounts')} ${d ? `(${d.page.totalElements})` : ''}`}
+        subtitle={t('accounts.subtitle')}
+        actions={
+          <>
+            {isManager && (
+              <Button variant="default" onClick={() => nav('/settings/import')}>
+                {t('accounts.import')}
+              </Button>
+            )}
+            {newBtn}
+          </>
+        }
+      />
       <Stack>
         <AccountFilterBar filters={filters} meId={meId} onChange={change} onClear={clear} active={filtered} />
         <DataGrid<Account>

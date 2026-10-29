@@ -1,31 +1,126 @@
 {
   "network": {
-    "accounts": "Müşteriler", "addAction": "Aksiyon ekle", "addConnection": "Bağlantı ekle", "addToJob": "Pozisyona ekle", "all": "Tümü", "career": "Kariyer", "clear": "Temizle",
-    "consentFailed": "Onay isteği gönderilemedi.", "consentNoEmail": "Bu kişinin e-posta adresi yok.", "consentTo": "{{email}} adresine onay isteği gönderilecek.",
-    "createFailed": "Kişi oluşturulamadı.", "daysAgo": "{{count}} gün", "daysShort": "{{count}} gün önce",
+    "accounts": "Müşteriler",
+    "addAction": "Aksiyon ekle",
+    "addConnection": "Bağlantı ekle",
+    "addToJob": "Pozisyona ekle",
+    "all": "Tümü",
+    "career": "Kariyer",
+    "clear": "Temizle",
+    "consentFailed": "Onay isteği gönderilemedi.",
+    "consentNoEmail": "Bu kişinin e-posta adresi yok.",
+    "consentTo": "{{email}} adresine onay isteği gönderilecek.",
+    "createFailed": "Kişi oluşturulamadı.",
+    "daysAgo": "{{count}} gün",
+    "daysShort": "{{count}} gün önce",
     "doNotContact": "Yeni pozisyonlar için iletişime geçmeyin; veriler silinmek üzere planlandı.",
-    "fields": { "city": "Şehir", "company": "Şirket", "consent": "Onay", "email": "E-posta", "howWeKnow": "Nasıl tanışıyoruz", "lastContact": "Son görüşme", "name": "Ad", "owner": "İlişki sorumlusu", "title": "Unvan", "titleCompany": "Unvan ve şirket", "type": "Tür" },
+    "fields": {
+      "city": "Şehir",
+      "company": "Şirket",
+      "consent": "Onay",
+      "email": "E-posta",
+      "howWeKnow": "Nasıl tanışıyoruz",
+      "lastContact": "Son görüşme",
+      "name": "Ad",
+      "owner": "İlişki sorumlusu",
+      "title": "Unvan",
+      "titleCompany": "Unvan ve şirket",
+      "type": "Tür"
+    },
     "filtersTitle": "Filtreler",
-    "filterNotContacted": "Şu tarihten beri görüşülmedi", "formerRoles": "Önceki görevler", "linkFailed": "Bağlantı eklenemedi.", "linkType": "Bağlantı türü",
-    "linkTypes": { "KNOWS": "Tanıyor", "WORKED_WITH": "Birlikte çalıştı", "INTRODUCED": "Tanıştırdı", "REFERRED": "Yönlendirdi", "REPORTS_TO": "Bağlı çalışıyor" },
-    "loadFailed": "Ağ yüklenemedi.", "logActivity": "Hareket ekle", "mine": "Benim", "never": "Hiç", "newPerson": "Yeni kişi", "nextActions": "Sıradaki aksiyonlar",
-    "noActivity": "Henüz görüşme kaydı yok. İlk aramanızı veya toplantınızı kaydedin.", "noConnections": "Sizi kim tanıştırdı? İlk bağlantıyı ekleyin.",
-    "noOpenJobs": "Uygun açık pozisyon yok.", "noPipelines": "Henüz bir pozisyonda değil.", "note": "Not", "notFound": "Kişi bulunamadı.", "openExisting": "Mevcut kaydı aç",
-    "person": "Kişi", "pipelines": "Süreçler", "privacy": "Gizlilik", "privacyUnavailable": "Gizlilik bilgileri görüntülenemiyor.",
-    "retention": "Saklama süresi {{date}} tarihinde bitiyor", "retentionWarning": "Veriler silinmek üzere planlandı.", "search": "Kişi ara", "sendConsent": "Onay isteği gönder",
-    "tabs": { "activity": "Hareketler", "connections": "Bağlantılar", "jobs": "Müşteriler ve pozisyonlar", "map": "Harita", "overview": "Genel", "privacy": "Gizlilik", "files": "CV dosyaları", "exposure": "Sunum geçmişi" },
-    "types": { "EXECUTIVE": "Yönetici", "CLIENT_CONTACT": "Müşteri kontağı", "REFERRER": "Yönlendiren", "CANDIDATE": "Aday" },
-    "views": "Listeler", 
-    "presets": { "needsCall": "Aranması gerekenler", "noConsent": "Onay isteği gönderilmeyenler", "executives": "Yöneticiler", "referrers": "Yönlendirenler" }, 
-    "exportAll": "Tümünü dışa aktar (CSV)", "pageOnly": "yalnızca bu sayfa", "pageOnlyHint": "Sunucuda henüz uygulanmıyor: yalnızca yüklenen sayfayı daraltır.", "removeFilter": "Filtreyi kaldır", "exportSelected": "Seçilenleri dışa aktar", "exportFailed": "Liste dışa aktarılamadı.", "exportCapped": "İlk {{count}} kişi dışa aktarıldı (sınır {{limit}}). Kalanı için filtreleri daraltın.",
-    "requestConsent": "Onay iste", "bulkConsentDone": "Sıraya alınan onay isteği: {{queued}}. Atlanan: {{skipped}}.",
-    "map": { "label": "{{name}} ilişki haritası", "more": "{{count}} bağlantı daha Bağlantılar sekmesinde listeleniyor.", "expandFailed": "Bağlantıları yüklenemedi.", "open": "Profili aç", "expand": "Kimi tanıdığını göster", "noMore": "Başka bağlantı kaydı yok.", "hint": "Ayrıntılar ve tanıdıkları için bir kişi seçin." },
+    "filterNotContacted": "Şu tarihten beri görüşülmedi",
+    "formerRoles": "Önceki görevler",
+    "linkFailed": "Bağlantı eklenemedi.",
+    "linkType": "Bağlantı türü",
+    "linkTypes": {
+      "KNOWS": "Tanıyor",
+      "WORKED_WITH": "Birlikte çalıştı",
+      "INTRODUCED": "Tanıştırdı",
+      "REFERRED": "Yönlendirdi",
+      "REPORTS_TO": "Bağlı çalışıyor"
+    },
+    "loadFailed": "Ağ yüklenemedi.",
+    "logActivity": "Hareket ekle",
+    "mine": "Benim",
+    "never": "Hiç",
+    "newPerson": "Yeni kişi",
+    "nextActions": "Sıradaki aksiyonlar",
+    "noActivity": "Henüz görüşme kaydı yok. İlk aramanızı veya toplantınızı kaydedin.",
+    "noConnections": "Sizi kim tanıştırdı? İlk bağlantıyı ekleyin.",
+    "noOpenJobs": "Uygun açık pozisyon yok.",
+    "noPipelines": "Henüz bir pozisyonda değil.",
+    "note": "Not",
+    "notFound": "Kişi bulunamadı.",
+    "openExisting": "Mevcut kaydı aç",
+    "person": "Kişi",
+    "pipelines": "Süreçler",
+    "privacy": "Gizlilik",
+    "privacyUnavailable": "Gizlilik bilgileri görüntülenemiyor.",
+    "retention": "Saklama süresi {{date}} tarihinde bitiyor",
+    "retentionWarning": "Veriler silinmek üzere planlandı.",
+    "search": "Kişi ara",
+    "sendConsent": "Onay isteği gönder",
+    "tabs": {
+      "activity": "Hareketler",
+      "connections": "Bağlantılar",
+      "jobs": "Müşteriler ve pozisyonlar",
+      "map": "Harita",
+      "overview": "Genel",
+      "privacy": "Gizlilik",
+      "files": "CV dosyaları",
+      "exposure": "Sunum geçmişi"
+    },
+    "types": {
+      "EXECUTIVE": "Yönetici",
+      "CLIENT_CONTACT": "Müşteri kontağı",
+      "REFERRER": "Yönlendiren",
+      "CANDIDATE": "Aday"
+    },
+    "views": "Listeler",
+    "presets": {
+      "needsCall": "Aranması gerekenler",
+      "noConsent": "Onay isteği gönderilmeyenler",
+      "executives": "Yöneticiler",
+      "referrers": "Yönlendirenler"
+    },
+    "exportAll": "Tümünü dışa aktar (CSV)",
+    "pageOnly": "yalnızca bu sayfa",
+    "pageOnlyHint": "Sunucuda henüz uygulanmıyor: yalnızca yüklenen sayfayı daraltır.",
+    "removeFilter": "Filtreyi kaldır",
+    "exportSelected": "Seçilenleri dışa aktar",
+    "exportFailed": "Liste dışa aktarılamadı.",
+    "exportCapped": "İlk {{count}} kişi dışa aktarıldı (sınır {{limit}}). Kalanı için filtreleri daraltın.",
+    "requestConsent": "Onay iste",
+    "bulkConsentDone": "Sıraya alınan onay isteği: {{queued}}. Atlanan: {{skipped}}.",
+    "map": {
+      "label": "{{name}} ilişki haritası",
+      "more": "{{count}} bağlantı daha Bağlantılar sekmesinde listeleniyor.",
+      "expandFailed": "Bağlantıları yüklenemedi.",
+      "open": "Profili aç",
+      "expand": "Kimi tanıdığını göster",
+      "noMore": "Başka bağlantı kaydı yok.",
+      "hint": "Ayrıntılar ve tanıdıkları için bir kişi seçin."
+    },
     "snapshot": {
-      "warmth": "Son görüşme", "touches": "Temas", "last90": "son 90 gün", "reach": "Bağlantılar", "reachSub": "bağlı kişi", "pipelines": "Pozisyonlar", "openActions": "{{count}} açık aksiyon",
-      "health": { "GOOD": "Sıcak", "WARN": "Soğuyor", "BAD": "Soğuk" },
+      "warmth": "Son görüşme",
+      "touches": "Temas",
+      "last90": "son 90 gün",
+      "reach": "Bağlantılar",
+      "reachSub": "bağlı kişi",
+      "pipelines": "Pozisyonlar",
+      "openActions": "{{count}} açık aksiyon",
+      "health": {
+        "GOOD": "Sıcak",
+        "WARN": "Soğuyor",
+        "BAD": "Soğuk"
+      },
       "next": {
-        "doNotContact": "Yeni pozisyonlar için iletişime geçmeyin.", "overdueAction": "{{count}} gecikmiş aksiyon: önce onları tamamlayın.", "neverContacted": "Hiç görüşülmedi: ilk aramayı veya toplantıyı kaydedin.",
-        "reconnect": "90 günden uzun süredir görüşülmedi: yeniden iletişime geçin.", "planNext": "Planlı bir sonraki adım yok: aksiyon ekleyin.", "onTrack": "Yolunda: sonraki adım planlandı."
+        "doNotContact": "Yeni pozisyonlar için iletişime geçmeyin.",
+        "overdueAction": "{{count}} gecikmiş aksiyon: önce onları tamamlayın.",
+        "neverContacted": "Hiç görüşülmedi: ilk aramayı veya toplantıyı kaydedin.",
+        "reconnect": "90 günden uzun süredir görüşülmedi: yeniden iletişime geçin.",
+        "planNext": "Planlı bir sonraki adım yok: aksiyon ekleyin.",
+        "onTrack": "Yolunda: sonraki adım planlandı."
       }
     },
     "pool": {
@@ -204,8 +299,30 @@
       "discardFailed": "CV silinemedi.",
       "emailExists": "Bu e-postaya sahip bir kişi zaten var.",
       "discardTitle": "Bu CV silinsin mi?",
- "discardBody": "{{name}} ve çıkarılan metni silinecek. Bu işlem geri alınamaz.",
- "attachToThat": "O kişiye ekle"
-    }
+      "discardBody": "{{name}} ve çıkarılan metni silinecek. Bu işlem geri alınamaz.",
+      "attachToThat": "O kişiye ekle"
+    },
+    "subtitle": "Tanıdığınız herkes: sıradaki kişi ve onay durumları.",
+    "err": {
+      "name": "Kişinin adını girin.",
+      "email": "Geçerli bir e-posta girin, örneğin ad@sirket.com.",
+      "linkedin": "https:// ile başlayan tam bir bağlantı girin."
+    },
+    "help": {
+      "name": "Ad ve soyad.",
+      "type": "Kişinin hangi liste ve filtrelerde görüneceğini belirler.",
+      "email": "Onay talebi göndermek için gerekir.",
+      "howWeKnow": "Bir yıl sonra da hatırlayacağınız tek satır.",
+      "phone": "Mümkünse ülke koduyla."
+    },
+    "section": {
+      "who": "Kim",
+      "where": "Nerede çalışıyor",
+      "reach": "Ulaşım",
+      "origin": "Nasıl tanıyoruz"
+    },
+    "noConnectionsAction": "Bağlantılar bu kişiyi kimin tanıştırabileceğini gösterir.",
+    "loadErrorHint": "Bağlantınızı kontrol edip yeniden deneyin.",
+    "emptyHint": "Ağınızı oluşturmaya başlamak için ilk kişiyi ekleyin veya CV yükleyin."
   }
 }
