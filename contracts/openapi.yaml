@@ -3814,6 +3814,184 @@ paths:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  # ---------- 1.3.0: search brief and research (ADR 0013) ----------
+  /job-orders/{id}/brief:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Search brief]
+      operationId: getSearchBrief
+      summary: The brief of a job order (Brief tab, printable)
+      description: Always 200; a job order without a saved brief returns empty fields, `briefVersion` 0 and `version` null. `offLimitsRules` are the rules in force today (all companies, plus those of the job order's account), read-only, for the Research tab.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Brief
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchBrief' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Search brief]
+      operationId: saveSearchBrief
+      summary: Save the whole brief (create or replace)
+      description: |
+        Criteria: items with an `id` are updated, items without one are created, criteria not in the list
+        are marked removed (`removedAt`; kept because evaluations score them, SX-017). `briefVersion` goes
+        up by one when the criteria, compensation band or timeline change (the history is in Envers).
+        `compMin <= compMax` and `compCurrency` required with either (400). Missing fields never block a
+        stage or status change (SX-001: warning only, shown by the UI from `missingFields`). Archived job
+        order → 409 `ARCHIVED`.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SearchBriefRequest' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchBrief' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/team:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Search brief]
+      operationId: getSearchTeam
+      summary: The named team of a job order (the owner is always LEAD)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Team
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SearchTeamMember' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Search brief]
+      operationId: saveSearchTeam
+      summary: Replace the team (at most 10; inactive users → 400)
+      description: The owner is added as LEAD when missing. Envers records the change. The team will drive RESTRICTED/CONFIDENTIAL visibility in a later contract.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              maxItems: 10
+              items: { $ref: '#/components/schemas/SearchTeamMemberRequest' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SearchTeamMember' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-orders/{id}/target-companies:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Search brief]
+      operationId: listTargetCompanies
+      summary: Target companies of a search (Research tab, SX-003), tier then name
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/TargetCompanyStatus' }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Targets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TargetCompany' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Search brief]
+      operationId: addTargetCompany
+      summary: Add a target company (an account or a company name)
+      description: Exactly one of `accountId` and `companyName` (400). The same company twice → 409 `DUPLICATE` (name match accent- and case-insensitive, trimmed). A company matching an active off-limits rule is added with `offLimits` true (the off-limits guard applies when it is set to APPROACHED). At most 300 per search.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TargetCompanyCreateRequest' }
+      responses:
+        '201':
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TargetCompany' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /target-companies/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Search brief]
+      operationId: updateTargetCompany
+      summary: Change tier, status, rationale, owner or notes
+      description: Setting status APPROACHED on an off-limits company gives 409 `OFF_LIMITS` (rules in `blockingItems`) unless a MANAGER/ADMIN sends `offLimitsOverrideReason` (403 for consultants; stored and audited), like the pipeline guard.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TargetCompanyUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TargetCompany' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Search brief]
+      operationId: deleteTargetCompany
+      summary: Remove a target company (prefer status CLOSED once approached)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 components:
   securitySchemes:
     sessionCookie:
@@ -6479,3 +6657,162 @@ components:
         - type: object
           properties:
             version: { $ref: '#/components/schemas/Version' }
+    # ---------- 1.3.0: search brief ----------
+    CriterionKind:
+      type: string
+      enum: [MUST_HAVE, NICE_TO_HAVE]
+    SearchTeamRole:
+      type: string
+      enum: [LEAD, CONSULTANT, RESEARCHER]
+    TargetTier:
+      type: string
+      enum: [A, B, C]
+    TargetCompanyStatus:
+      type: string
+      description: EXCLUDED = the client asked not to approach this company for this search.
+      enum: [TO_MAP, MAPPED, APPROACHED, CLOSED, EXCLUDED]
+    SearchCriterion:
+      type: object
+      required: [id, kind, text, sortOrder]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        kind: { $ref: '#/components/schemas/CriterionKind' }
+        text: { type: string, examples: ['IFRS reporting in a listed company'] }
+        sortOrder: { type: integer, minimum: 0 }
+        removedAt: { type: [string, 'null'], format: date-time, description: Only in `removedCriteria`. }
+    SearchCriterionRequest:
+      type: object
+      required: [kind, text]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+          description: Omit for a new criterion.
+        kind: { $ref: '#/components/schemas/CriterionKind' }
+        text: { type: string, minLength: 1, maxLength: 300 }
+    SearchBriefFields:
+      type: object
+      properties:
+        reportingLine: { type: [string, 'null'], maxLength: 200, examples: [Reports to the CEO] }
+        purpose: { type: [string, 'null'], maxLength: 4000, description: Why the role exists and what success looks like. }
+        idealProfile: { type: [string, 'null'], maxLength: 4000 }
+        seniorityLevel:
+          oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }]
+        functionArea:
+          oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }]
+        compMin: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$', description: Decimal as string. }
+        compMax: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$' }
+        compCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        compPeriod:
+          oneOf: [{ $ref: '#/components/schemas/CompensationPeriod' }, { type: 'null' }]
+        compBonusNote: { type: [string, 'null'], maxLength: 300, examples: ['Target bonus 30%, car'] }
+        languages:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/LanguageSkill' }
+        kickoffOn: { type: [string, 'null'], format: date }
+        longlistDueOn: { type: [string, 'null'], format: date }
+        shortlistDueOn: { type: [string, 'null'], format: date }
+        targetStartOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+    SearchBrief:
+      allOf:
+        - $ref: '#/components/schemas/SearchBriefFields'
+        - type: object
+          required: [jobOrderId, briefVersion, criteria, removedCriteria, team, offLimitsRules, missingFields]
+          properties:
+            jobOrderId: { $ref: '#/components/schemas/Id' }
+            briefVersion: { type: integer, minimum: 0 }
+            criteria:
+              type: array
+              description: Current criteria, MUST_HAVE first, then by `sortOrder`.
+              items: { $ref: '#/components/schemas/SearchCriterion' }
+            removedCriteria:
+              type: array
+              description: Criteria removed from the brief; old evaluation scores still point at them.
+              items: { $ref: '#/components/schemas/SearchCriterion' }
+            team:
+              type: array
+              items: { $ref: '#/components/schemas/SearchTeamMember' }
+            offLimitsRules:
+              type: array
+              items: { $ref: '#/components/schemas/OffLimitsRule' }
+            missingFields:
+              type: array
+              description: 'Brief fields still empty that SX-001 expects (e.g. `purpose`, `compMin`, `shortlistDueOn`, `criteria`); a warning only.'
+              items: { type: string }
+            updatedAt: { type: [string, 'null'], format: date-time }
+            updatedBy:
+              oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+            version:
+              oneOf: [{ $ref: '#/components/schemas/Version' }, { type: 'null' }]
+              description: Null until the brief is first saved.
+    SearchBriefRequest:
+      allOf:
+        - $ref: '#/components/schemas/SearchBriefFields'
+        - type: object
+          required: [criteria]
+          properties:
+            criteria:
+              type: array
+              maxItems: 30
+              items: { $ref: '#/components/schemas/SearchCriterionRequest' }
+            version: { $ref: '#/components/schemas/Version' }
+    SearchTeamMember:
+      type: object
+      required: [user, role]
+      properties:
+        user: { $ref: '#/components/schemas/UserRef' }
+        role: { $ref: '#/components/schemas/SearchTeamRole' }
+    SearchTeamMemberRequest:
+      type: object
+      required: [userId, role]
+      properties:
+        userId: { $ref: '#/components/schemas/Id' }
+        role: { $ref: '#/components/schemas/SearchTeamRole' }
+    TargetCompany:
+      type: object
+      required: [id, jobOrderId, account, companyName, tier, status, offLimits, owner, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        jobOrderId: { $ref: '#/components/schemas/Id' }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+        companyName: { type: [string, 'null'], description: Set when the company is not an account. }
+        sector: { type: [string, 'null'] }
+        tier: { $ref: '#/components/schemas/TargetTier' }
+        status: { $ref: '#/components/schemas/TargetCompanyStatus' }
+        rationale: { type: [string, 'null'] }
+        source: { type: [string, 'null'], examples: [Client list] }
+        notes: { type: [string, 'null'] }
+        offLimits: { type: boolean, description: Matches an active off-limits rule today. }
+        offLimitsOverrideReason: { type: [string, 'null'] }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    TargetCompanyCreateRequest:
+      type: object
+      required: [tier]
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        companyName: { type: string, minLength: 1, maxLength: 200 }
+        sector: { type: [string, 'null'], maxLength: 100 }
+        tier: { $ref: '#/components/schemas/TargetTier' }
+        status:
+          $ref: '#/components/schemas/TargetCompanyStatus'
+          description: Defaults to TO_MAP; APPROACHED runs the off-limits guard.
+        rationale: { type: [string, 'null'], maxLength: 1000 }
+        source: { type: [string, 'null'], maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        ownerId: { $ref: '#/components/schemas/Id' }
+    TargetCompanyUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        sector: { type: [string, 'null'], maxLength: 100 }
+        tier: { $ref: '#/components/schemas/TargetTier' }
+        status: { $ref: '#/components/schemas/TargetCompanyStatus' }
+        rationale: { type: [string, 'null'], maxLength: 1000 }
+        source: { type: [string, 'null'], maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        ownerId: { $ref: '#/components/schemas/Id' }
+        offLimitsOverrideReason: { $ref: '#/components/schemas/Reason' }
+        version: { $ref: '#/components/schemas/Version' }
