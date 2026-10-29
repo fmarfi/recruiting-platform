@@ -1,0 +1,119 @@
+{
+  "edit": {
+    "close": "Kapat",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor...",
+    "cancel": "Vazgeç",
+    "saveError": "Kaydedilemedi. Tekrar deneyin.",
+    "saveHint": "Kaydetmek için Ctrl+Enter",
+    "guard": {
+      "title": "Kaydedilmemiş değişiklikler silinsin mi?",
+      "body": "Bu kayıtta yaptığınız düzenlemeler kaydedilmedi.",
+      "keep": "Düzenlemeye devam et",
+      "discard": "Değişiklikleri sil"
+    },
+    "conflict": {
+      "title": "Karşılaştır ve kaydet",
+      "body": "Siz düzenlerken başka biri bu kaydı değiştirdi. Hangi değerlerin kalacağını seçin.",
+      "field": "Alan",
+      "mine": "Sizin değeriniz",
+      "theirs": "Güncel değer",
+      "keepMine": "Değişikliklerimi koru ve kaydet",
+      "useTheirs": "Güncel değerleri kullan",
+      "empty": "(boş)"
+    },
+    "inline": {
+      "edit": "{{label}} alanını düzenle",
+      "save": "{{label}} alanını kaydet",
+      "cancel": "{{label}} düzenlemesinden vazgeç",
+      "empty": "Girilmedi",
+      "hint": "Kaydetmek için Enter, vazgeçmek için Esc",
+      "saved": "{{label}} güncellendi"
+    },
+    "undo": {
+      "action": "Geri al",
+      "done": "Geri alındı",
+      "failed": "Geri alınamadı. Tekrar deneyin."
+    },
+    "tags": {
+      "add": "Etiket ekle",
+      "hint": "Etiket eklemek için Enter veya virgül",
+      "remove": "{{tag}} etiketini kaldır",
+      "list": "Seçili etiketler",
+      "none": "Etiket yok",
+      "max": "En fazla {{n}} etiket"
+    },
+    "archive": {
+      "action": "Arşivle",
+      "restore": "Geri yükle",
+      "unavailable": "Arşivleme henüz kullanılamıyor",
+      "done": "{{name}} arşivlendi",
+      "restored": "{{name}} geri yüklendi",
+      "error": "Arşivlenemedi. Tekrar deneyin."
+    }
+  },
+  "bulk": {
+    "bar": "Toplu işlemler",
+    "actions": "İşlemler",
+    "run": "Uygula",
+    "cancel": "Vazgeç",
+    "running": "Uygulanıyor...",
+    "error": "Toplu işlem başarısız. Tekrar deneyin.",
+    "action": {
+      "REASSIGN_OWNER": "Sahibini değiştir",
+      "CHANGE_STATUS": "Durumu değiştir",
+      "ADD_TAG": "Etiket ekle",
+      "REMOVE_TAG": "Etiket kaldır",
+      "SET_NEXT_ACTION": "Sonraki adımı belirle",
+      "REQUEST_CONSENT": "Onay iste"
+    },
+    "field": {
+      "owner": "Sahip",
+      "ownerId": "Sahip kimliği",
+      "status": "Durum",
+      "reason": "Neden (isteğe bağlı)",
+      "tag": "Etiket",
+      "title": "Sonraki adım",
+      "dueOn": "Son tarih"
+    },
+    "summary": "{{ok}} tamamlandı, {{skipped}} atlandı, {{failed}} başarısız",
+    "details": "Ayrıntılar",
+    "dismiss": "Kapat",
+    "undone": "{{n}} değişiklik geri alındı",
+    "undoLabel": "{{action}}: {{ok}} tamamlandı",
+    "code": {
+      "NO_CHANGE": "Değişiklik gerekmiyor",
+      "NOT_FOUND": "Bulunamadı",
+      "FORBIDDEN": "İzin verilmiyor",
+      "ILLEGAL_TRANSITION": "Durum değişikliğine izin verilmiyor",
+      "TRANSITION_GUARD_FAILED": "Durum değişikliği bir kural nedeniyle engellendi",
+      "REASON_REQUIRED": "Neden gerekli",
+      "STATE_CONFLICT": "Kayıt bu işleme uygun durumda değil",
+      "VERSION_CONFLICT": "Başka biri değiştirdi",
+      "NO_EMAIL": "E-posta adresi yok",
+      "CONSENT_GIVEN": "Onay zaten verilmiş",
+      "CONSENT_REFUSED": "Onay reddedilmiş",
+      "CONSENT_WITHDRAWN": "Onay geri çekilmiş",
+      "REQUEST_PENDING": "İstek zaten beklemede",
+      "ANONYMISED": "Kayıt anonimleştirilmiş",
+      "NO_CONSENT_BASIS": "Onay dayanağı yok",
+      "TOO_MANY_TAGS": "Çok fazla etiket",
+      "INTERNAL_ERROR": "Beklenmeyen hata"
+    }
+  },
+  "history": {
+    "title": "Geçmiş",
+    "loading": "Geçmiş yükleniyor",
+    "error": "Geçmiş yüklenemedi.",
+    "empty": "Henüz kayıtlı değişiklik yok.",
+    "more": "Daha fazla yükle",
+    "system": "Sistem",
+    "type": {
+      "ADD": "Oluşturuldu",
+      "MOD": "Değiştirildi",
+      "DEL": "Silindi"
+    },
+    "change": "{{field}}: {{from}} yerine {{to}}",
+    "none": "(boş)"
+  }
+}
