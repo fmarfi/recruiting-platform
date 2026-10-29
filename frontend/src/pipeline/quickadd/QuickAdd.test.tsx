@@ -66,6 +66,6 @@ describe('QuickAdd', () => {
 
   it('asks for an account or person when there is no context', () => {
     setup({ context: undefined });
-    expect(screen.getByText('Pick an account or a person.')).toBeInTheDocument();
+    expect(screen.getByText('Pick a client or a candidate.')).toBeInTheDocument();
   });
 });

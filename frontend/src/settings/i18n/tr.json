@@ -145,7 +145,7 @@
       "lifecycle": {
         "account": "Müşteriler",
         "proposal": "Teklifler",
-        "jobOrder": "Pozisyonlar",
+        "jobOrder": "Aramalar",
         "pipelineStage": "Aday aşamaları",
         "consent": "Onay",
         "dataSubjectRequest": "Veri talepleri"

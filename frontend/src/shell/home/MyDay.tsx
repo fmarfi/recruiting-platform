@@ -86,7 +86,7 @@ export function MyDay() {
         </Stack>
       )}
       <AddActionDialog opened={adding} onClose={() => setAdding(false)} onDone={home.reload} />
-      <NewAccountDialog opened={newAccount} onClose={() => setNewAccount(false)} onCreated={(id) => nav(`/accounts/${id}`)} />
+      <NewAccountDialog opened={newAccount} onClose={() => setNewAccount(false)} onCreated={(id) => nav(`/clients/${id}`)} />
     </Container>
   );
 }

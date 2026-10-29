@@ -92,19 +92,19 @@ export function SearchPage() {
                   q={q}
                   title={t('search.group.accounts')}
                   total={d.totals.accounts}
-                  rows={d.accounts.map((a) => ({ id: a.id, to: `/accounts/${a.id}`, title: a.name, sub: [a.sector, a.city, a.owner.name].filter(Boolean).join(' - '), right: <StatusBadge kind="account" value={a.status} size="sm" /> }))}
+                  rows={d.accounts.map((a) => ({ id: a.id, to: `/clients/${a.id}`, title: a.name, sub: [a.sector, a.city, a.owner.name].filter(Boolean).join(' - '), right: <StatusBadge kind="account" value={a.status} size="sm" /> }))}
                 />
                 <SearchGroupCard
                   q={q}
                   title={t('search.group.people')}
                   total={d.totals.people}
-                  rows={d.people.map((p) => ({ id: p.id, to: `/people/${p.id}`, title: p.name, sub: [p.title, p.company].filter(Boolean).join(', '), right: <Text size="xs" c="dimmed">{fmtRelative(p.lastContactAt, i18n.language)}</Text> }))}
+                  rows={d.people.map((p) => ({ id: p.id, to: `/candidates/${p.id}`, title: p.name, sub: [p.title, p.company].filter(Boolean).join(', '), right: <Text size="xs" c="dimmed">{fmtRelative(p.lastContactAt, i18n.language)}</Text> }))}
                 />
                 <SearchGroupCard
                   q={q}
                   title={t('search.group.jobs')}
                   total={d.totals.jobOrders}
-                  rows={d.jobOrders.map((j) => ({ id: j.id, to: `/job-orders/${j.id}`, title: j.title, sub: `${j.account.name} - ${t('myday.daysOpen', { n: j.daysOpen })}`, right: <StatusBadge kind="jobOrder" value={j.status} size="sm" /> }))}
+                  rows={d.jobOrders.map((j) => ({ id: j.id, to: `/searches/${j.id}`, title: j.title, sub: `${j.account.name} - ${t('myday.daysOpen', { n: j.daysOpen })}`, right: <StatusBadge kind="jobOrder" value={j.status} size="sm" /> }))}
                 />
               </Stack>
             )
