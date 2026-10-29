@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Recruiting Platform API
-  version: 1.2.0
+  version: 1.3.0
   summary: Phase 1 (non-AI) REST contract — CRM, candidate pool, CV files, KVKK consent engine and audit.
   description: |
     Contract owned by the architect (Wave 0). Backends implement it, frontends build against the
@@ -56,6 +56,18 @@ info:
       consent renewal (`purpose`, reminders, tracked `openedAt`), retention basis `FROM_LAST_CONSENT`.
       Talent pools are tags plus shared saved views (`tag` filter). New response fields are optional, so
       1.1.x clients and servers stay valid.
+    - 1.3.0 (additive; ADR 0013): archive and restore for accounts, job orders, proposals and people
+      (`archived` list filter, 409 `ARCHIVED`) and the audited account merge; account profile fields
+      (legal and billing data, group parent, size, HQ country, confidentiality level); tag management
+      (`/tags`, talent pool flag); longlist/shortlist (derived `list`, `rank`, `rating`, `rationale`,
+      outreach status, ranking, client feedback; shortlist entry needs rating and rationale); candidate
+      evaluations, interview notes and references; search brief, criteria, team and target companies;
+      fee agreements with fee schedule items, placements with guarantee, conflict checks; pool filters
+      (skill, function, seniority, language, notice, mobility, salary, hasCv); import column mapping and
+      rollback; audited list exports with approval (`/exports`); client report PDFs (`/job-orders/{id}/reports`).
+      Every new response field is optional and the `archived` filter defaults to the 1.2 result, so 1.2
+      clients stay valid. Behaviour changes for 1.2 callers: moving into a client-facing stage from the
+      longlist now needs `rating` and `rationale`.
   contact:
     name: architect agent
   license:
@@ -5284,8 +5296,8 @@ components:
           maxItems: 5
           items: { type: string, format: email, maxLength: 254 }
         billingCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
-        vatExempt: { type: boolean, default: false }
-        withholdingApplies: { type: boolean, default: false }
+        vatExempt: { type: boolean, description: Default false. }
+        withholdingApplies: { type: boolean, description: Default false. }
         parentAccountId:
           oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
           description: No cycles and a chain of at most 5 (400 `VALIDATION_FAILED`, field `parentAccountId`); not an archived account (409 `ARCHIVED`).
@@ -5446,6 +5458,13 @@ components:
         noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365 }
         mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
         compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        skills:
+          type: array
+          maxItems: 30
+          description: Since 1.3.0. Replaces the whole list when sent; trimmed and lower-cased.
+          items: { $ref: '#/components/schemas/Tag' }
+        functionArea: { oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }] }
+        seniority: { oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }] }
         languages:
           type: array
           maxItems: 20
@@ -5478,6 +5497,13 @@ components:
         noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365 }
         mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
         compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        skills:
+          type: array
+          maxItems: 30
+          description: Since 1.3.0. Replaces the whole list when sent; trimmed and lower-cased.
+          items: { $ref: '#/components/schemas/Tag' }
+        functionArea: { oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }] }
+        seniority: { oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }] }
         languages:
           type: array
           maxItems: 20
@@ -6723,6 +6749,13 @@ components:
         noticePeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 365, examples: [60] }
         mobility: { oneOf: [{ $ref: '#/components/schemas/Mobility' }, { type: 'null' }] }
         compensation: { oneOf: [{ $ref: '#/components/schemas/Compensation' }, { type: 'null' }] }
+        skills:
+          type: array
+          maxItems: 30
+          description: Since 1.3.0. Replaces the whole list when sent; trimmed and lower-cased.
+          items: { $ref: '#/components/schemas/Tag' }
+        functionArea: { oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }] }
+        seniority: { oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }] }
         languages:
           type: array
           maxItems: 20
@@ -7076,7 +7109,7 @@ components:
         name: { $ref: '#/components/schemas/Tag' }
         colour: { $ref: '#/components/schemas/TagColour' }
         description: { type: [string, 'null'] }
-        talentPool: { type: boolean, description: A talent pool is a tag with this flag; open it with `GET /people?tag=<name>`. }
+        talentPool: { type: boolean, description: 'A talent pool is a tag with this flag; open it with `GET /people?tag=<name>`.' }
         defined: { type: boolean, description: A `tag_definition` row exists. }
         counts:
           type: object
@@ -7315,7 +7348,7 @@ components:
         heldOn: { type: string, format: date, description: Defaults to today. }
         interviewType: { $ref: '#/components/schemas/InterviewType' }
         body: { type: string, minLength: 1, maxLength: 20000 }
-        includeInReport: { type: boolean, default: false }
+        includeInReport: { type: boolean, description: Default false. }
     InterviewNoteUpdateRequest:
       type: object
       minProperties: 1
@@ -7360,7 +7393,7 @@ components:
         status: { $ref: '#/components/schemas/ReferenceStatus' }
         summary: { type: [string, 'null'], maxLength: 4000 }
         checkedOn: { type: [string, 'null'], format: date }
-        includeInReport: { type: boolean, default: false }
+        includeInReport: { type: boolean, description: Default false. }
     CandidateReferenceUpdateRequest:
       allOf:
         - $ref: '#/components/schemas/CandidateReferenceRequest'
@@ -7577,7 +7610,7 @@ components:
         offsetDays: { type: [integer, 'null'], minimum: 0, maximum: 730 }
         percent: { type: [string, 'null'], pattern: '^\d{1,3}(\.\d{1,2})?$', description: 'Percent of the fee (estimated fee before placement, placement fee after).' }
         amount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
-        dueDays: { type: integer, minimum: 0, maximum: 180, default: 30, description: Payment term after the trigger. }
+        dueDays: { type: integer, minimum: 0, maximum: 180, description: Payment term in days after the trigger (default 30). }
     FeeScheduleItem:
       allOf:
         - $ref: '#/components/schemas/FeeScheduleItemFields'
@@ -7651,8 +7684,8 @@ components:
         feeMinimum: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
         feeCap: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
         currency: { type: string, pattern: '^[A-Z]{3}$', examples: [TRY] }
-        paymentTermsDays: { type: integer, minimum: 0, maximum: 180, default: 30 }
-        guaranteeMonths: { type: integer, minimum: 0, maximum: 36, default: 6 }
+        paymentTermsDays: { type: integer, minimum: 0, maximum: 180, description: Default 30. }
+        guaranteeMonths: { type: integer, minimum: 0, maximum: 36, description: Default 6. }
         guaranteeTerms: { type: [string, 'null'], maxLength: 2000, description: 'Triggers, exclusions, client obligations (PB-011).' }
         expensePolicy: { type: [string, 'null'], maxLength: 1000 }
         offLimitsMonths: { type: [integer, 'null'], minimum: 0, maximum: 60, description: Non-solicitation term after the engagement. }
@@ -7898,7 +7931,7 @@ components:
           maxItems: 5
           items: { type: string, pattern: '^[A-Za-z]+(,(asc|desc))?$' }
         purpose: { type: string, minLength: 3, maxLength: 300, examples: [Client longlist review] }
-        includeCompensation: { type: boolean, default: false }
+        includeCompensation: { type: boolean, description: Default false. }
     ExportDecisionRequest:
       type: object
       properties:
@@ -7954,7 +7987,7 @@ components:
         language:
           $ref: '#/components/schemas/Language'
           description: Defaults to the account's preferred language, else TR.
-        blind: { type: boolean, default: false }
+        blind: { type: boolean, description: Default false. }
         personIds:
           type: array
           maxItems: 30
