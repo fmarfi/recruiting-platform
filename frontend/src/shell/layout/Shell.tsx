@@ -2,7 +2,8 @@ import { ActionIcon, AppShell, Burger, Group, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { UndoToastProvider } from '../edit';
 import { tokens } from '../../theme/tokens';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 import { CommandButton, useCommandHotkey } from '../command/CommandButton';
@@ -25,6 +26,7 @@ function readCollapsed() {
 
 /** App frame (UX-09, brand chrome): 232 px midnight rail (collapsible to 64 px) on laptop, bottom bar on phone, 56 px header with search, + New, TR/EN and user menu. */
 export function Shell() {
+  const { pathname } = useLocation();
   const { t } = useTranslation();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
   const [drawer, setDrawer] = useState(false);
@@ -84,7 +86,10 @@ export function Shell() {
         )}
       </AppShell.Navbar>
       <AppShell.Main id="main-content" tabIndex={-1} style={{ outline: 'none' }}>
-        <Outlet key={version} />
+        {/* One undo toast host; keyed by path so a pending undo is dropped when another record opens. */}
+        <UndoToastProvider key={pathname}>
+          <Outlet key={version} />
+        </UndoToastProvider>
       </AppShell.Main>
       <CommandPalette opened={command} onClose={() => setCommand(false)} onChanged={() => setVersion((v) => v + 1)} />
       {phone && (

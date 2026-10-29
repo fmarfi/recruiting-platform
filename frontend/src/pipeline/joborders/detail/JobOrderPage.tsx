@@ -1,5 +1,5 @@
 // Job order page with the pipeline board (A-06, A-07, UX-03, UX-04).
-import { Anchor, Button, Card, Container, Group, Skeleton, Text, Title } from '@mantine/core';
+import { Accordion, Anchor, Button, Card, Container, Group, Skeleton, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -14,7 +14,9 @@ import { ErrorBanner } from '../../../shell/components/ErrorBanner';
 import { Highlights } from '../../../shell/components/Highlights';
 import { SkeletonRows } from '../../../shell/components/SkeletonRows';
 import { Alert } from '@mantine/core';
+import { HistoryPanel } from '../../../shell/edit';
 import { AddCandidateDialog } from './AddCandidateDialog';
+import { JobOrderEditDrawer } from './JobOrderEditDrawer';
 import { JobStatusMenu } from './JobStatusMenu';
 import { MoveToast } from './MoveToast';
 import { useJobOrder } from './useJobOrder';
@@ -28,6 +30,7 @@ export function JobOrderPage() {
   const { job, apps: appsRes } = useJobOrder(id);
   const moves = useBoardMoves(appsRes.data, job.reload, appsRes.reload);
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [logCtx, setLogCtx] = useState<QuickAddContext>();
   const [statusAsk, setStatusAsk] = useState<string>();
 
@@ -96,6 +99,9 @@ export function JobOrderPage() {
             />
           </Group>
           <Group gap="xs">
+            <Button variant="subtle" onClick={() => setEditOpen(true)} data-testid="job-edit">
+              {t('pipeline.edit.action')}
+            </Button>
             {!readOnly && <Button onClick={() => setAddOpen(true)}>+ {t('pipeline.addCandidate')}</Button>}
             <Button variant="default" onClick={() => setLogCtx({ account: j.account, jobOrder: j })}>
               {t('pipeline.logActivity')}
@@ -116,6 +122,11 @@ export function JobOrderPage() {
         {j.feeTerms && (
           <Text size="sm" c="dimmed" mt="md">
             <b>{t('pipeline.fee')}:</b> {j.feeTerms}
+          </Text>
+        )}
+        {j.description && (
+          <Text size="sm" mt="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {j.description}
           </Text>
         )}
       </Card>
@@ -171,6 +182,15 @@ export function JobOrderPage() {
         />
       )}
 
+      <Accordion mt="md" variant="contained">
+        <Accordion.Item value="history">
+          <Accordion.Control>{t('pipeline.edit.history')}</Accordion.Control>
+          <Accordion.Panel>
+            <HistoryPanel entityType="JOB_ORDER" entityId={id} headingOrder={null} />
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
+      <JobOrderEditDrawer job={j} opened={editOpen} onClose={() => setEditOpen(false)} onSaved={job.reload} />
       <AddCandidateDialog
         jobId={id}
         opened={addOpen}

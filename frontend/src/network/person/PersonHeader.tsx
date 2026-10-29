@@ -1,5 +1,5 @@
 // Person header: name, type, contact data, owner, last contact and the consent status badge (S-01).
-import { Anchor, Avatar, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Avatar, Badge, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { StatusBadge, useFormat, type Schemas } from '../../pipeline/shared';
 import { canResendConsent } from './profile';
@@ -9,12 +9,14 @@ export function PersonHeader({
   onLog,
   onAction,
   onResend,
+  onEdit,
   resending = false,
 }: {
   person: Schemas['Person'];
   onLog: () => void;
   onAction: () => void;
   onResend: () => void;
+  onEdit: () => void;
   resending?: boolean;
 }) {
   const { t } = useTranslation();
@@ -43,6 +45,15 @@ export function PersonHeader({
             <Text size="sm" c="dimmed">
               {t('network.fields.owner')}: {person.owner.name}
             </Text>
+            {!!person.tags?.length && (
+              <Group gap={4} aria-label={t('network.pool.tags')}>
+                {person.tags.map((tag) => (
+                  <Badge key={tag} variant="light" size="sm" tt="none">
+                    {tag}
+                  </Badge>
+                ))}
+              </Group>
+            )}
             {person.howWeKnow && (
               <Text size="sm">
                 {t('network.fields.howWeKnow')}: {person.howWeKnow}
@@ -68,6 +79,9 @@ export function PersonHeader({
           </Stack>
         </Group>
         <Group gap="xs">
+          <Button variant="subtle" onClick={onEdit} disabled={person.anonymised} data-testid="person-edit">
+            {t('network.edit.action')}
+          </Button>
           <Button onClick={onLog}>{t('network.logActivity')}</Button>
           <Button variant="default" onClick={onAction}>
             {t('network.addAction')}
