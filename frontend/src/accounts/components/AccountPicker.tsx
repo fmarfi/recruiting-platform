@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api';
 
 /** Type-ahead account picker for the quick-add sheets (UX-06). */
-export function AccountPicker({ value, onChange, label, optional }: { value: string | null; onChange: (id: string | null) => void; label: string; optional?: boolean }) {
+export function AccountPicker({ value, onChange, label, optional, error }: { value: string | null; onChange: (id: string | null) => void; label: string; optional?: boolean; error?: string }) {
   const [q, setQ] = useState('');
   const [opts, setOpts] = useState<{ value: string; label: string }[]>([]);
   useEffect(() => {
@@ -17,6 +17,7 @@ export function AccountPicker({ value, onChange, label, optional }: { value: str
   return (
     <Select
       label={label}
+      error={error}
       data={opts}
       value={value}
       onChange={onChange}
@@ -25,7 +26,7 @@ export function AccountPicker({ value, onChange, label, optional }: { value: str
       onSearchChange={setQ}
       filter={({ options }) => options}
       nothingFoundMessage="-"
-      required={!optional}
+      withAsterisk={!optional}
     />
   );
 }

@@ -29,8 +29,9 @@ export function useJobColumns(): ColumnDef<JobOrderRow>[] {
       { id: 'client', header: t('pipeline.list.client'), accessor: (j) => j.account.name },
       { id: 'status', header: t('pipeline.list.status'), sortable: true, accessor: (j) => label('jobOrder', j.status), cell: (j) => <StatusBadge lifecycle="jobOrder" value={j.status} /> },
       { id: 'owner', header: t('pipeline.owner'), accessor: (j) => j.owner.name },
-      { id: 'daysOpen', header: t('pipeline.list.daysOpen'), sortable: true, firstSortDir: 'desc', accessor: (j) => j.daysOpen },
-      { id: 'activeCandidates', header: t('pipeline.list.active'), accessor: (j) => j.activeCandidates },
+      { id: 'daysOpen', header: t('pipeline.list.daysOpen'), numeric: true, sortable: true, firstSortDir: 'desc', accessor: (j) => j.daysOpen },
+      { id: 'openings', header: t('pipeline.list.openings'), numeric: true, accessor: (j) => j.openings },
+      { id: 'activeCandidates', header: t('pipeline.list.active'), numeric: true, accessor: (j) => j.activeCandidates },
     ],
     [t, label],
   );

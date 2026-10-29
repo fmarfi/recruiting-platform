@@ -18,7 +18,7 @@ export function StatsStrip({ stats }: { stats: Stats }) {
     <SimpleGrid cols={{ base: 2, md: 4 }}>
       {items.map(([k, n, to]) => (
         <Card key={k} withBorder className="kpi-tile" component={Link} to={to} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <Text fz={30} fw={700} lh={1.1}>
+          <Text fz={30} fw={700} lh={1.1} style={{ fontVariantNumeric: 'tabular-nums' }}>
             {n}
           </Text>
           <Text size="sm" c="dimmed">

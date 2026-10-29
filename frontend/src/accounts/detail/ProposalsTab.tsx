@@ -1,4 +1,4 @@
-import { Group, Stack, Text } from '@mantine/core';
+import { Button, Group, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../../api';
 import { EmptyState } from '../../shell/components/EmptyState';
@@ -36,9 +36,9 @@ function ProposalRow({ p, onChanged }: { p: Proposal; onChanged: () => void }) {
   );
 }
 
-export function ProposalsTab({ proposals, onChanged }: { proposals: Proposal[]; onChanged: () => void }) {
+export function ProposalsTab({ proposals, onChanged, onAdd }: { proposals: Proposal[]; onChanged: () => void; onAdd: () => void }) {
   const { t } = useTranslation();
-  if (proposals.length === 0) return <EmptyState title={t('accounts.emptyProposals')} hint={t('accounts.emptyProposalsHint')} />;
+  if (proposals.length === 0) return <EmptyState title={t('accounts.emptyProposals')} hint={t('accounts.emptyProposalsHint')} actions={<Button onClick={onAdd}>+ {t('accounts.newProposal')}</Button>} />;
   return (
     <Stack gap="sm">
       {proposals.map((p) => (

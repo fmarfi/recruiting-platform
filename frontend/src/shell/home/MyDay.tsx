@@ -1,4 +1,4 @@
-import { Button, Container, Grid, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Button, Container, Grid, Skeleton, Stack } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { NewAccountDialog } from '../../accounts/components/NewAccountDialog';
 import { useAuth } from '../auth/useAuth';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { PageHeader } from '../components/PageHeader';
 import { SkeletonRows } from '../components/SkeletonRows';
 import { fmtDate } from '../lib/format';
 import { NextActionsCard } from './NextActionsCard';
@@ -31,7 +32,7 @@ export function MyDay() {
         <SkeletonRows n={4} />
       </Container>
     );
-  if (!d) return <ErrorBanner onRetry={home.reload} message={t('myday.loadError')} />;
+  if (!d) return <ErrorBanner onRetry={home.reload} message={t('myday.loadError')} hint={t('myday.loadErrorHint')} />;
 
   const noAccounts = d.stats.activeAccounts === 0 && d.recentAccounts.length === 0 && d.openJobOrders.length === 0;
   const actions = d.nextActions.filter((a) => !home.hidden.has(a.id));
@@ -39,15 +40,17 @@ export function MyDay() {
 
   return (
     <Container maw="var(--content-max-width)" p={0}>
-      <Group justify="space-between" align="baseline" mb="md">
-        <div>
-          <Title order={1} data-testid="screen-title">
-            {t('myday.greeting', { name: d.user.name })}
-          </Title>
-          <Text c="dimmed">{t('myday.summary', { overdue: d.overdueCount, today: todayCount })}</Text>
-        </div>
-        <Text c="dimmed">{fmtDate(d.today, i18n.language)}</Text>
-      </Group>
+      <PageHeader
+        title={t('myday.greeting', { name: d.user.name })}
+        subtitle={`${fmtDate(d.today, i18n.language)} - ${t('myday.summary', { overdue: d.overdueCount, today: todayCount })}`}
+        actions={
+          !noAccounts && (
+            <Button onClick={() => setAdding(true)}>
+              + {t('accounts.addAction')}
+            </Button>
+          )
+        }
+      />
 
       {noAccounts ? (
         <EmptyState

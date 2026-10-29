@@ -1,31 +1,126 @@
 {
   "network": {
-    "accounts": "Accounts", "addAction": "Add action", "addConnection": "Add connection", "addToJob": "Add to a job", "all": "All", "career": "Career", "clear": "Clear",
-    "consentFailed": "Could not send the consent request.", "consentNoEmail": "This person has no email address.", "consentTo": "A consent request will be sent to {{email}}.",
-    "createFailed": "Could not create the person.", "daysAgo": "{{count}} days", "daysShort": "{{count}} d ago",
+    "accounts": "Accounts",
+    "addAction": "Add action",
+    "addConnection": "Add connection",
+    "addToJob": "Add to a job",
+    "all": "All",
+    "career": "Career",
+    "clear": "Clear",
+    "consentFailed": "Could not send the consent request.",
+    "consentNoEmail": "This person has no email address.",
+    "consentTo": "A consent request will be sent to {{email}}.",
+    "createFailed": "Could not create the person.",
+    "daysAgo": "{{count}} days",
+    "daysShort": "{{count}} d ago",
     "doNotContact": "Do not contact for new roles; data scheduled for deletion.",
-    "fields": { "city": "City", "company": "Company", "consent": "Consent", "email": "Email", "howWeKnow": "How we know them", "lastContact": "Last contact", "name": "Name", "owner": "Relationship owner", "title": "Title", "titleCompany": "Title and company", "type": "Type" },
+    "fields": {
+      "city": "City",
+      "company": "Company",
+      "consent": "Consent",
+      "email": "Email",
+      "howWeKnow": "How we know them",
+      "lastContact": "Last contact",
+      "name": "Name",
+      "owner": "Relationship owner",
+      "title": "Title",
+      "titleCompany": "Title and company",
+      "type": "Type"
+    },
     "filtersTitle": "Filters",
-    "filterNotContacted": "Not contacted since", "formerRoles": "Former roles", "linkFailed": "Could not add the connection.", "linkType": "Connection type",
-    "linkTypes": { "KNOWS": "Knows", "WORKED_WITH": "Worked with", "INTRODUCED": "Introduced", "REFERRED": "Referred", "REPORTS_TO": "Reports to" },
-    "loadFailed": "Could not load the network.", "logActivity": "Log activity", "mine": "Mine", "never": "Never", "newPerson": "New person", "nextActions": "Next actions",
-    "noActivity": "No contact logged. Log your first call or meeting.", "noConnections": "Who introduced you? Add the first connection.",
-    "noOpenJobs": "No open jobs available.", "noPipelines": "Not on any job yet.", "note": "Note", "notFound": "Person not found.", "openExisting": "Open existing",
-    "person": "Person", "pipelines": "Pipelines", "privacy": "Privacy", "privacyUnavailable": "Privacy details are not available.",
-    "retention": "Retention ends {{date}}", "retentionWarning": "Data scheduled for deletion.", "search": "Search people", "sendConsent": "Send consent request",
-    "tabs": { "activity": "Activity", "connections": "Connections", "jobs": "Clients and jobs", "map": "Map", "overview": "Overview", "privacy": "Privacy", "files": "CV files", "exposure": "Exposure" },
-    "types": { "EXECUTIVE": "Executive", "CLIENT_CONTACT": "Client contact", "REFERRER": "Referrer", "CANDIDATE": "Candidate" },
-    "views": "Lists", 
-    "presets": { "needsCall": "Needs a call", "noConsent": "No consent request yet", "executives": "Executives", "referrers": "Referrers" }, 
-    "exportAll": "Export all (CSV)", "pageOnly": "this page only", "pageOnlyHint": "Not applied yet on the server: narrows the loaded page only.", "removeFilter": "Remove filter", "exportSelected": "Export selected", "exportFailed": "Could not export the list.", "exportCapped": "Exported the first {{count}} people (limit {{limit}}). Narrow the filters to export the rest.",
-    "requestConsent": "Request consent", "bulkConsentDone": "Consent requests queued: {{queued}}. Skipped: {{skipped}}.",
-    "map": { "label": "Relationship map of {{name}}", "more": "{{count}} more connections are listed on the Connections tab.", "expandFailed": "Could not load their connections.", "open": "Open profile", "expand": "Show who they know", "noMore": "No further connections recorded.", "hint": "Select a person to see details and who they know." },
+    "filterNotContacted": "Not contacted since",
+    "formerRoles": "Former roles",
+    "linkFailed": "Could not add the connection.",
+    "linkType": "Connection type",
+    "linkTypes": {
+      "KNOWS": "Knows",
+      "WORKED_WITH": "Worked with",
+      "INTRODUCED": "Introduced",
+      "REFERRED": "Referred",
+      "REPORTS_TO": "Reports to"
+    },
+    "loadFailed": "Could not load the network.",
+    "logActivity": "Log activity",
+    "mine": "Mine",
+    "never": "Never",
+    "newPerson": "New person",
+    "nextActions": "Next actions",
+    "noActivity": "No contact logged. Log your first call or meeting.",
+    "noConnections": "Who introduced you? Add the first connection.",
+    "noOpenJobs": "No open jobs available.",
+    "noPipelines": "Not on any job yet.",
+    "note": "Note",
+    "notFound": "Person not found.",
+    "openExisting": "Open existing",
+    "person": "Person",
+    "pipelines": "Pipelines",
+    "privacy": "Privacy",
+    "privacyUnavailable": "Privacy details are not available.",
+    "retention": "Retention ends {{date}}",
+    "retentionWarning": "Data scheduled for deletion.",
+    "search": "Search people",
+    "sendConsent": "Send consent request",
+    "tabs": {
+      "activity": "Activity",
+      "connections": "Connections",
+      "jobs": "Clients and jobs",
+      "map": "Map",
+      "overview": "Overview",
+      "privacy": "Privacy",
+      "files": "CV files",
+      "exposure": "Exposure"
+    },
+    "types": {
+      "EXECUTIVE": "Executive",
+      "CLIENT_CONTACT": "Client contact",
+      "REFERRER": "Referrer",
+      "CANDIDATE": "Candidate"
+    },
+    "views": "Lists",
+    "presets": {
+      "needsCall": "Needs a call",
+      "noConsent": "No consent request yet",
+      "executives": "Executives",
+      "referrers": "Referrers"
+    },
+    "exportAll": "Export all (CSV)",
+    "pageOnly": "this page only",
+    "pageOnlyHint": "Not applied yet on the server: narrows the loaded page only.",
+    "removeFilter": "Remove filter",
+    "exportSelected": "Export selected",
+    "exportFailed": "Could not export the list.",
+    "exportCapped": "Exported the first {{count}} people (limit {{limit}}). Narrow the filters to export the rest.",
+    "requestConsent": "Request consent",
+    "bulkConsentDone": "Consent requests queued: {{queued}}. Skipped: {{skipped}}.",
+    "map": {
+      "label": "Relationship map of {{name}}",
+      "more": "{{count}} more connections are listed on the Connections tab.",
+      "expandFailed": "Could not load their connections.",
+      "open": "Open profile",
+      "expand": "Show who they know",
+      "noMore": "No further connections recorded.",
+      "hint": "Select a person to see details and who they know."
+    },
     "snapshot": {
-      "warmth": "Last contact", "touches": "Touchpoints", "last90": "last 90 days", "reach": "Connections", "reachSub": "people linked", "pipelines": "Jobs", "openActions": "{{count}} open actions",
-      "health": { "GOOD": "Warm", "WARN": "Cooling", "BAD": "Cold" },
+      "warmth": "Last contact",
+      "touches": "Touchpoints",
+      "last90": "last 90 days",
+      "reach": "Connections",
+      "reachSub": "people linked",
+      "pipelines": "Jobs",
+      "openActions": "{{count}} open actions",
+      "health": {
+        "GOOD": "Warm",
+        "WARN": "Cooling",
+        "BAD": "Cold"
+      },
       "next": {
-        "doNotContact": "Do not contact for new roles.", "overdueAction": "{{count}} overdue action(s): finish them first.", "neverContacted": "Never contacted: log a first call or meeting.",
-        "reconnect": "Not contacted for over 90 days: reconnect.", "planNext": "No next step planned: add an action.", "onTrack": "On track: next step is planned."
+        "doNotContact": "Do not contact for new roles.",
+        "overdueAction": "{{count}} overdue action(s): finish them first.",
+        "neverContacted": "Never contacted: log a first call or meeting.",
+        "reconnect": "Not contacted for over 90 days: reconnect.",
+        "planNext": "No next step planned: add an action.",
+        "onTrack": "On track: next step is planned."
       }
     },
     "pool": {
@@ -204,8 +299,30 @@
       "discardFailed": "Could not discard the CV.",
       "emailExists": "A person with this email already exists.",
       "discardTitle": "Discard this CV?",
- "discardBody": "{{name}} and its extracted text will be deleted. This cannot be undone.",
- "attachToThat": "Attach to that person"
-    }
+      "discardBody": "{{name}} and its extracted text will be deleted. This cannot be undone.",
+      "attachToThat": "Attach to that person"
+    },
+    "subtitle": "Everyone you know: who to contact next and who has given consent.",
+    "err": {
+      "name": "Enter the person's name.",
+      "email": "Enter a valid e-mail address, for example name@company.com.",
+      "linkedin": "Enter a full link starting with https://"
+    },
+    "help": {
+      "name": "First and last name.",
+      "type": "Decides which lists and filters the person appears in.",
+      "email": "Needed to send a consent request.",
+      "howWeKnow": "One line you will remember in a year.",
+      "phone": "With country code if possible."
+    },
+    "section": {
+      "who": "Who",
+      "where": "Where they work",
+      "reach": "How to reach them",
+      "origin": "How we know them"
+    },
+    "noConnectionsAction": "Connections show who can introduce this person.",
+    "loadErrorHint": "Check your connection, then try again.",
+    "emptyHint": "Add the first person, or import CVs, to start building your network."
   }
 }

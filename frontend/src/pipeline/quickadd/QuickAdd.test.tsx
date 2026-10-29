@@ -47,7 +47,7 @@ describe('QuickAdd', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Action' }), { target: { value: 'Send proposal' } });
     const save = screen.getByRole('button', { name: 'Save' });
     expect(save).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('Due date'), { target: { value: '2026-11-01' } });
+    fireEvent.change(screen.getByLabelText(/Due date/), { target: { value: '2026-11-01' } });
     fireEvent.click(save);
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect(post.mock.calls[0]![0]).toBe('/next-actions');

@@ -1,4 +1,4 @@
-import { Alert, Anchor, Badge, Card, Group, Progress, Stack, Table, Text, Title } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Card, Group, Progress, Stack, Table, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { components } from '../../api';
@@ -23,10 +23,11 @@ export function coverage(contacts: Contact[], now = Date.now()) {
 }
 
 /** Relationships (A-13): which contacts have gone quiet, and who in our network knows them (warm introductions). */
-export function RelationshipsTab({ contacts, connections }: { contacts: Contact[]; connections: Connection[] | undefined }) {
+export function RelationshipsTab({ contacts, connections, onAddContact }: { contacts: Contact[]; connections: Connection[] | undefined; onAddContact?: () => void }) {
   const { t } = useTranslation();
   const cov = coverage(contacts);
-  if (cov.total === 0) return <EmptyState title={t('accounts.emptyContacts')} hint={t('accounts.emptyContactsHint')} />;
+  if (cov.total === 0)
+    return <EmptyState title={t('accounts.emptyContacts')} hint={t('accounts.relationshipsEmpty')} actions={onAddContact && <Button onClick={onAddContact}>+ {t('accounts.addContact')}</Button>} />;
   const pct = Math.round((cov.covered / cov.total) * 100);
   const byContact = new Map<string, Connection[]>();
   (connections ?? []).forEach((c) => byContact.set(c.contact.id, [...(byContact.get(c.contact.id) ?? []), c]));

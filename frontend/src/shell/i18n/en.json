@@ -25,7 +25,14 @@
     "recentSearches": "Recent searches",
     "searchNone": "No results for \"{{q}}\"",
     "searchPlaceholder": "Search clients, people, jobs",
-    "seeAll": "See all results for \"{{q}}\""
+    "seeAll": "See all results for \"{{q}}\"",
+    "requiredNote": "Fields marked * are required.",
+    "confirm": "Confirm",
+    "close": "Close",
+    "loadErrorHint": "Check your connection, then try again.",
+    "undone": "Undone.",
+    "removed": "Removed.",
+    "moreActions": "More actions"
   },
   "grid": {
     "columns": "Columns",
@@ -154,7 +161,9 @@
     "viewAllJobs": "View all job orders",
     "viewAllClients": "View all clients",
     "daysOpen": "{{n}} days open",
-    "candidates": "{{n}} candidates"
+    "candidates": "{{n}} candidates",
+    "subtitle": "What needs you today, and what is open across your clients.",
+    "loadErrorHint": "Your day could not be loaded. Check your connection and retry."
   },
   "search": {
     "results": "Results for \"{{q}}\"",
