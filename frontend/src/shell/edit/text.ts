@@ -11,5 +11,5 @@ i18n.addResourceBundle('tr', 'translation', tr, true, false);
 /** Translator for the edit/bulk/history keys. `tx` is `t` under another name so the repo-wide static key scan does not look for these keys in the base bundle. */
 export function useText() {
   const { t, i18n: inst } = useTranslation();
-  return { tx: (key: string, opts?: Record<string, unknown>): string => t(key, opts as never) as string, lang: inst.language };
+  return { tx: (key: string, opts?: Record<string, unknown>): string => String(t(key, opts as never)), lang: inst.language };
 }

@@ -39,7 +39,7 @@
       "add": "Add tag",
       "hint": "Press Enter or comma to add a tag",
       "remove": "Remove tag {{tag}}",
-      "list": "Tags",
+      "list": "Selected tags",
       "none": "No tags",
       "max": "At most {{n}} tags"
     },
