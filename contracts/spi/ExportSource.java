@@ -10,7 +10,7 @@ import java.util.UUID;
  * Writes the rows of one list entity for {@code POST /exports} (CO-013, since contract 1.3.0,
  * ADR 0013). {@code security} owns the export job, approval, watermark and audit; it finds the
  * bean whose {@link #entity()} matches. {@code accounts} implements PEOPLE and ACCOUNTS,
- * {@code pipeline} JOB_ORDERS and PROPOSALS. Filters, columns and sort are already validated
+ * {@code pipeline} JOB_ORDERS (PROPOSALS is cut from 1.3: the caller rejects it with 400). Filters, columns and sort are already validated
  * against the entity's {@code ViewDefinition} rules by the caller.
  */
 public interface ExportSource {

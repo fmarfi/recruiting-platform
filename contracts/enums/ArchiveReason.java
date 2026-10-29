@@ -1,7 +1,7 @@
 package com.recruiting.platform.contracts;
 
 /**
- * Why a business record (account, job order, proposal, person) was archived (soft delete, since
+ * Why a business record (account, job order, person) was archived (soft delete, since
  * contract 1.3.0, ADR 0013). Archived records leave the lists and can be restored, except
  * {@link #MERGED}.
  */
