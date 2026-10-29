@@ -452,6 +452,18 @@ paths:
           in: query
           description: Since 1.3.0. Direct children of this account (group view).
           schema: { $ref: '#/components/schemas/Id' }
+        - name: role
+          in: query
+          description: |
+            Since 1.3.0 (R63). Organisations with any of these roles (repeat the parameter). Omitted =
+            CLIENT or PROSPECT, which is the 1.2 client list (every 1.2 row is backfilled into one of
+            them). The organisation picker (employment, targets, off-limits) sends all four. Since 1.3.0
+            `q` also matches `aliases` (normalised, ADR 0013).
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/OrganisationRole' }
+          style: form
+          explode: true
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -473,6 +485,8 @@ paths:
       tags: [Accounts]
       operationId: createAccount
       summary: Add a client account (status LEAD)
+      description: |
+        Since 1.3.0 (R63) an account is an organisation with roles; default roles [PROSPECT]. See `AccountCreateRequest` for `sector` and the 409 `DUPLICATE` name rule.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
       requestBody:
@@ -3068,8 +3082,10 @@ paths:
       summary: Mark a client account or another company as off-limits
       description: |
         Exactly one of `accountId` (a client in the CRM) or `companyName` (a company that is not an
-        account). The guard compares the person's current company with the account name or
-        `companyName` (accent- and case-insensitive, trimmed). An active rule for the same account or
+        account). Since 1.3.0 (R63) the guard first matches the person's current employments by
+        `organisationId` (the rule's account, and its subsidiaries when `includeSubsidiaries`), then falls
+        back to the normalised company text against `companyName` or the account's name and aliases
+        (`schema.md`, "Off-limits match"). An active rule for the same account or
         company gives 409 `DUPLICATE` with `existingId`. **ASSUMPTION:** MANAGER/ADMIN only.
       x-roles: [MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
@@ -3244,6 +3260,7 @@ paths:
            write `account_merge` (counts only), publish `AccountMerged`; timeline entry MERGE.
         Errors: same id, either account archived, or the merged account is the survivor's parent or
         child chain → 409 `STATE_CONFLICT`; survivor `version` mismatch → 409 `VERSION_CONFLICT`.
+        Since R63: the survivor gets the union of both role sets and aliases (the merged name becomes an alias, at most 20), and `person_employment.organisation_id` moves to the survivor (accounts, same transaction).
       x-roles: [MANAGER, ADMIN]
       x-owner: accounts / backend-accounts (orchestration); pipeline step by backend-pipeline
       requestBody:
@@ -4049,7 +4066,9 @@ paths:
       tags: [Search brief]
       operationId: addTargetCompany
       summary: Add a target company (an account or a company name)
-      description: Exactly one of `accountId` and `companyName` (400). The same company twice → 409 `DUPLICATE` (name match accent- and case-insensitive, trimmed). A company matching an active off-limits rule is added with `offLimits` true (the off-limits guard applies when it is set to APPROACHED). At most 300 per search.
+      description: |
+        Exactly one of `accountId` and `companyName` (400). The same company twice → 409 `DUPLICATE` (name match accent- and case-insensitive, trimmed). A company matching an active off-limits rule is added with `offLimits` true (the off-limits guard applies when it is set to APPROACHED). At most 300 per search.
+        With `accountId`, publishes `TargetCompanyAdded` (accounts sets the TARGET role). Since R63 a `companyName` that matches exactly one organisation (`OrganisationApi.match`, name or alias) is stored as that `accountId`.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -5247,7 +5266,18 @@ components:
       properties:
         id: { $ref: '#/components/schemas/Id' }
         name: { type: string, examples: [Örnek Gıda A.Ş.] }
-        sector: { type: string, examples: [FMCG] }
+        sector: { type: [string, 'null'], description: 'Null only for organisations that are neither CLIENT nor PROSPECT (since 1.3.0, R63).', examples: [FMCG] }
+        roles:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          description: Since 1.3.0 (R63). The organisation's roles; `status` is the client lifecycle and matters for CLIENT and PROSPECT.
+          items: { $ref: '#/components/schemas/OrganisationRole' }
+        aliases:
+          type: array
+          description: Since 1.3.0 (R63). Former names, brands, abbreviations; matched like the name.
+          items: { type: string }
+        normalizedName: { type: string, description: 'Since 1.3.0 (R63). Read-only; lower case, accents and legal forms removed (`schema.md`). Unique among non-archived organisations.', examples: [ornek gida] }
         city: { type: [string, 'null'], examples: [İstanbul] }
         website: { type: [string, 'null'], format: uri }
         notes: { type: [string, 'null'] }
@@ -5303,10 +5333,25 @@ components:
         page: { $ref: '#/components/schemas/PageMeta' }
     AccountCreateRequest:
       type: object
-      required: [name, sector]
+      required: [name]
+      description: |
+        `sector` is required (400) unless `roles` holds only TARGET and/or EMPLOYER (since 1.3.0, R63).
+        A name or alias whose normalised form matches a non-archived organisation's name or alias gives
+        409 `DUPLICATE` with `existingId`.
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
-        sector: { type: string, minLength: 1, maxLength: 100 }
+        sector: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        roles:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          description: Since 1.3.0. Default [PROSPECT].
+          items: { $ref: '#/components/schemas/OrganisationRole' }
+        aliases:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 200 }
         city: { type: [string, 'null'], maxLength: 100 }
         website: { type: [string, 'null'], format: uri, maxLength: 300 }
         notes: { type: [string, 'null'], maxLength: 4000 }
@@ -5339,10 +5384,20 @@ components:
           oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }]
     AccountUpdateRequest:
       type: object
-      description: Since 1.3.0 also takes the profile fields of `AccountCreateRequest` (same rules).
+      description: Since 1.3.0 also takes the profile fields, `roles` and `aliases` of `AccountCreateRequest` (same rules; `aliases` replaces the whole list). CLIENT is also set by the server when the status becomes ACTIVE, TARGET when the organisation becomes a target company, EMPLOYER on an employment link; removing a role a record still depends on is allowed (flags are labels, not guards).
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
-        sector: { type: string, minLength: 1, maxLength: 100 }
+        sector: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        roles:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          items: { $ref: '#/components/schemas/OrganisationRole' }
+        aliases:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 200 }
         city: { type: [string, 'null'], maxLength: 100 }
         website: { type: [string, 'null'], format: uri, maxLength: 300 }
         notes: { type: [string, 'null'], maxLength: 4000 }
@@ -5443,10 +5498,17 @@ components:
       type: object
       required: [company]
       properties:
-        company: { type: string, maxLength: 200, examples: [Marmara Holding] }
+        company: { type: string, maxLength: 200, description: 'Free text, the fallback when no organisation is linked; when `organisationId` is set the server stores the organisation''s name here.', examples: [Marmara Holding] }
         title: { type: [string, 'null'], maxLength: 200, examples: [Finance Director] }
         startDate: { type: [string, 'null'], format: date }
         endDate: { type: [string, 'null'], format: date, description: '`null` = current' }
+        organisationId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: Since 1.3.0 (R63). The employer organisation (an account); sets its EMPLOYER role. Unknown id → 400.
+        organisation:
+          oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }]
+          readOnly: true
+          description: Since 1.3.0. Response only.
     Person:
       allOf:
         - $ref: '#/components/schemas/PersonSummary'
@@ -6993,6 +7055,7 @@ components:
         id: { $ref: '#/components/schemas/Id' }
         account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
         companyName: { type: [string, 'null'], description: Set when the company is not an account., examples: [Anadolu Lojistik] }
+        includeSubsidiaries: { type: boolean, description: 'Since 1.3.0 (R63). The rule also covers every organisation below `account` in the group tree. Always false for a `companyName` rule.' }
         reason: { $ref: '#/components/schemas/OffLimitsReason' }
         note: { type: [string, 'null'], description: No personal data., examples: [Retained search agreement until end of 2027] }
         startsOn: { type: string, format: date }
@@ -7016,6 +7079,7 @@ components:
       properties:
         accountId: { $ref: '#/components/schemas/Id' }
         companyName: { type: string, minLength: 1, maxLength: 200 }
+        includeSubsidiaries: { type: boolean, description: 'Since 1.3.0. Default false; true with `companyName` gives 400.' }
         reason: { $ref: '#/components/schemas/OffLimitsReason' }
         note: { type: [string, 'null'], maxLength: 500 }
         startsOn: { type: string, format: date, description: Defaults to today. }
@@ -7025,6 +7089,7 @@ components:
       minProperties: 1
       properties:
         reason: { $ref: '#/components/schemas/OffLimitsReason' }
+        includeSubsidiaries: { type: boolean, description: Since 1.3.0; account rules only (400 otherwise). }
         note: { type: [string, 'null'], maxLength: 500 }
         startsOn: { type: string, format: date }
         endsOn: { type: [string, 'null'], format: date }
@@ -7106,6 +7171,10 @@ components:
           additionalProperties: { type: integer, minimum: 0 }
           examples: [{ contacts: 3, jobOrders: 2, activities: 14 }]
     # ---------- 1.3.0: account profile ----------
+    OrganisationRole:
+      type: string
+      description: '`contracts/enums/OrganisationRole.java` (R63, since 1.3.0).'
+      enum: [CLIENT, PROSPECT, TARGET, EMPLOYER]
     ConfidentialityLevel:
       type: string
       description: '`contracts/enums/ConfidentialityLevel.java`; default NORMAL. RESTRICTED = named team; CONFIDENTIAL = hidden from non-team users (rule in a later contract, ADR 0013).'
