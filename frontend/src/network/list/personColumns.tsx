@@ -45,7 +45,7 @@ export function usePersonColumns(withCv = false): ColumnDef<Person>[] {
       { id: 'type', header: t('network.fields.type'), accessor: (p) => t(`network.types.${p.type}`) },
       { id: 'city', header: t('network.fields.city'), accessor: (p) => p.city },
       { id: 'owner', header: t('network.fields.owner'), accessor: (p) => p.owner.name },
-      { id: 'lastContactAt', header: t('network.fields.lastContact'), sortable: true, firstSortDir: 'desc', accessor: (p) => p.lastContactAt?.slice(0, 10) ?? '', cell: (p) => <LastContact at={p.lastContactAt} /> },
+      { id: 'lastContactAt', header: t('network.fields.lastContact'), numeric: true, sortable: true, firstSortDir: 'desc', accessor: (p) => p.lastContactAt?.slice(0, 10) ?? '', cell: (p) => <LastContact at={p.lastContactAt} /> },
       { id: 'consent', header: t('network.fields.consent'), accessor: (p) => label('consent', p.consentStatus), cell: (p) => <StatusBadge lifecycle="consent" value={p.consentStatus} /> },
       { id: 'tags', header: t('network.pool.tags'), defaultVisible: false, accessor: (p) => (p.tags ?? []).join(', '), cell: (p) => <Group gap={4}>{(p.tags ?? []).map((x) => <Badge key={x} variant='light' tt='none' size='sm'>{x}</Badge>)}</Group> },
       { id: 'sourceChannel', header: t('network.pool.channels'), defaultVisible: false, accessor: (p) => (p.sourceChannel ? t(`network.pool.channel.${p.sourceChannel}`) : '') },

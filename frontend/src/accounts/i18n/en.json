@@ -122,6 +122,50 @@
       "until": "until {{date}}",
       "hint": "Candidates who work at this company cannot be moved into the pipeline without a manager override.",
       "manage": "Manage off-limits rules"
-    }
+    },
+    "subtitle": "Companies you work with, who owns them and what is open.",
+    "err": {
+      "name": "Enter the client name.",
+      "sector": "Pick or type a sector.",
+      "person": "Choose a person from the list.",
+      "title": "Enter a title.",
+      "due": "Pick a due date.",
+      "client": "Choose a client.",
+      "note": "Write a short note.",
+      "fee": "Use digits only, for example 25000.00.",
+      "currency": "Use a 3-letter currency code, for example TRY."
+    },
+    "help": {
+      "name": "As it appears on contracts.",
+      "sector": "Start typing to see known sectors.",
+      "city": "Head office city, if known.",
+      "person": "Search by name. Add the person to the network first if they are missing.",
+      "role": "For example CFO or HR director.",
+      "primary": "The first person we call at this client.",
+      "actionTitle": "Start with a verb, for example Call about the proposal.",
+      "due": "Defaults to tomorrow.",
+      "jobTitle": "The role being searched for, for example CFO.",
+      "openings": "How many people the client wants to hire.",
+      "terms": "Fee basis, guarantee and anything agreed so far.",
+      "fee": "Amount without thousands separators.",
+      "note": "What was said or agreed."
+    },
+    "section": {
+      "company": "Company",
+      "location": "Location",
+      "who": "Who",
+      "about": "About the contact",
+      "what": "What",
+      "when": "When and where",
+      "role": "The role",
+      "proposal": "Proposal",
+      "fees": "Fees"
+    },
+    "endContactTitle": "End this contact?",
+    "endContactBody": "{{name}} stays in the history, but is no longer listed as an active contact. You can add them again later.",
+    "endContactFailed": "Could not end this contact. Try again.",
+    "loadErrorTitle": "This client could not be loaded",
+    "emptyJobsAction": "Add the first job order for this client.",
+    "relationshipsEmpty": "Add a contact to see relationship coverage."
   }
 }

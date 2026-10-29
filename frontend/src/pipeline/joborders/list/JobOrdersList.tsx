@@ -1,12 +1,14 @@
 // Flat list of job orders for 3-click access (UX-03): defaults to open jobs owned by me. DataGrid with column chooser, sort, density, views and CSV.
 import { AppPagination } from '../../../shell/components/AppPagination';
 import { useAuth } from '../../../shell/auth/useAuth';
-import { Button, Chip, Container, Group, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Chip, Container, Group, SegmentedControl, Stack, Text, TextInput } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { EmptyState } from '../../../shell/components/EmptyState';
+import { PageHeader } from '../../../shell/components/PageHeader';
+import { NewJobOrderDialog } from './NewJobOrderDialog';
 import { DataGrid, ViewsMenu, formatSort, localViewStore, parseSort, useGridColumns } from '../../../shell/grid';
 import { tokens } from '../../../theme/tokens';
 import { useCurrentUser, useLabel, type Schemas } from '../../shared';
@@ -28,6 +30,7 @@ export function JobOrdersList() {
   const s = useMemo(() => jobStateFromParams(params, isAdmin), [params, isAdmin]);
   const set = (patch: Partial<JobListState>, resetPage = true) => setParams(jobParamsFromState({ ...s, ...(resetPage ? { page: 0 } : {}), ...patch }, isAdmin), { replace: true });
   const [viewWarn, setViewWarn] = useState(false);
+  const [creating, setCreating] = useState(false);
   const defs = useJobColumns();
   const columns = useGridColumns<JobOrderRow>(GRID_ID, defs);
   const views = useMemo(() => localViewStore<JobView>(GRID_ID, () => setViewWarn(true)), []);
@@ -40,9 +43,11 @@ export function JobOrdersList() {
 
   return (
     <Container maw="var(--content-max-width)" fluid>
-      <Title order={1} data-testid="screen-title" mb="md">
-        {t('pipeline.list.title')}
-      </Title>
+      <PageHeader
+        title={t('pipeline.list.title')}
+        subtitle={res.data ? t(filtered ? 'pipeline.list.subtitleFiltered' : 'pipeline.list.subtitle', { count: res.data.page.totalElements }) : undefined}
+        actions={<Button onClick={() => setCreating(true)}>+ {t('pipeline.list.new')}</Button>}
+      />
       <Group mb="sm" align="flex-end">
         <TextInput label={t('pipeline.list.client')} placeholder={t('pipeline.list.searchPlaceholder')} value={s.q} onChange={(e) => set({ q: e.currentTarget.value })} />
         <SegmentedControl
@@ -99,12 +104,15 @@ export function JobOrdersList() {
             <div data-testid="list-empty">
               <EmptyState
                 title={t('pipeline.list.empty')}
+                hint={filtered ? undefined : t('pipeline.list.emptyHint')}
                 actions={
                   filtered ? (
                     <Button variant="light" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
                       {t('pipeline.list.clear')}
                     </Button>
-                  ) : undefined
+                  ) : (
+                    <Button onClick={() => setCreating(true)}>+ {t('pipeline.list.new')}</Button>
+                  )
                 }
               />
             </div>
@@ -112,6 +120,7 @@ export function JobOrdersList() {
         />
         {(res.data?.page.totalPages ?? 0) > 1 && <AppPagination total={res.data!.page.totalPages} value={s.page + 1} onChange={(p) => set({ page: p - 1 }, false)} />}
       </Stack>
+      <NewJobOrderDialog opened={creating} onClose={() => setCreating(false)} onDone={res.reload} />
     </Container>
   );
 }

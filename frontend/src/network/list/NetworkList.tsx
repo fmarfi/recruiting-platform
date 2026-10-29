@@ -1,6 +1,6 @@
 // Network list (A-12): who do we know and who should I contact? Smart lists, DataGrid (columns, sort, density, saved views, CSV) and bulk consent requests.
 import { AppPagination } from '../../shell/components/AppPagination';
-import { Alert, Badge, Button, Card, Chip, CloseButton, Container, Group, SegmentedControl, Select, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Button, Card, Chip, CloseButton, Container, Group, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import { api } from '../../api';
 import { useCurrentUser, useLabel, type Schemas } from '../../pipeline/shared';
 import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
+import { PageHeader } from '../../shell/components/PageHeader';
 import { DataGrid, ViewsMenu, formatSort, localViewStore, useGridColumns } from '../../shell/grid';
 import { tokens } from '../../theme/tokens';
 import { migrateLegacyViews } from './legacyViews';
@@ -83,12 +84,11 @@ export function NetworkList() {
 
   return (
     <Container maw="var(--content-max-width)" fluid>
-      <Group justify="space-between" mb="md">
-        <Title order={1} data-testid="screen-title">
-          {t('nav.network')}
-          {res.data ? ` (${res.data.page.totalElements})` : ''}
-        </Title>
-        <Group>
+      <PageHeader
+        title={`${t('nav.network')}${res.data ? ` (${res.data.page.totalElements})` : ''}`}
+        subtitle={t('network.subtitle')}
+        actions={
+          <>
           <Button variant="default" loading={busy} disabled={!res.data?.page.totalElements} onClick={() => void exportCsv()}>
             {t('network.exportAll')}
           </Button>
@@ -101,8 +101,9 @@ export function NetworkList() {
             </Button>
           )}
           <Button onClick={() => setNewOpen(true)}>+ {t('network.newPerson')}</Button>
-        </Group>
-      </Group>
+          </>
+        }
+      />
       <PresetsBar current={f} onApply={(v) => set({ ...DEFAULT_FILTERS, ...v })} />
       <Card withBorder padding="md" mb="md" component="section" aria-label={t('network.filtersTitle')}>
       <Group mb="sm" align="flex-end">
@@ -209,12 +210,15 @@ export function NetworkList() {
           empty={
             <EmptyState
               title={t(filtered ? 'network.emptyFiltered' : 'network.empty')}
+              hint={filtered ? undefined : t('network.emptyHint')}
               actions={
                 filtered ? (
                   <Button variant="light" onClick={() => set(DEFAULT_FILTERS)}>
                     {t('network.clear')}
                   </Button>
-                ) : undefined
+                ) : (
+                  <Button onClick={() => setNewOpen(true)}>+ {t('network.newPerson')}</Button>
+                )
               }
             />
           }

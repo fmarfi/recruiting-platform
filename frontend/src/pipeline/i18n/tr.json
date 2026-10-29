@@ -8,7 +8,15 @@
     "undo": "Geri al"
   },
   "pipeline": {
-    "hl": { "client": "Müşteri", "location": "Konum", "seniority": "Kıdem", "fee": "Ücret koşulları", "owner": "Sorumlu", "opened": "Açılış", "candidates": "Aktif aday" },
+    "hl": {
+      "client": "Müşteri",
+      "location": "Konum",
+      "seniority": "Kıdem",
+      "fee": "Ücret koşulları",
+      "owner": "Sorumlu",
+      "opened": "Açılış",
+      "candidates": "Aktif aday"
+    },
     "activeCandidates": "{{count}} aktif aday",
     "add": "Ekle",
     "addCandidate": "Aday ekle",
@@ -31,7 +39,17 @@
       "mine": "Benim",
       "searchPlaceholder": "Pozisyon ara",
       "status": "Durum",
-      "title": "Pozisyonlar"
+      "title": "Pozisyonlar",
+      "subtitle": "{{count}} açık iş emri; açık kalma günü ve aktif adaylar tek bakışta.",
+      "subtitleFiltered": "{{count}} iş emri filtrelerle eşleşiyor.",
+      "new": "Yeni iş emri",
+      "newPickClient": "Önce müşteriyi seçin",
+      "newPickHint": "İş emri her zaman bir müşteriye bağlıdır.",
+      "pickClient": "Müşteri",
+      "filters": "Filtreler",
+      "openings": "Açık pozisyon",
+      "continue": "Devam",
+      "emptyHint": "İş emri, bir müşteri sizden bir pozisyonu doldurmanızı istediğinde başlar. İlkini ekleyin."
     },
     "loadFailed": "Süreç yüklenemedi.",
     "logActivity": "Hareket ekle",
@@ -95,7 +113,12 @@
     "warn": {
       "PREVIOUSLY_PRESENTED_TO_ACCOUNT": "Bu müşteriye daha önce sunuldu ({{count}}).",
       "ACTIVE_IN_OTHER_PROCESS": "Ayrıca {{count}} başka süreçte aktif."
-    }
+    },
+    "loadErrorHint": "Bağlantınızı kontrol edip yeniden deneyin.",
+    "undoRemove": "Geri al",
+    "removedToast": "{{name}} bu hattan çıkarıldı.",
+    "notFoundHint": "Silinmiş olabilir veya bağlantı hatalı olabilir.",
+    "backToList": "İş emirlerine dön"
   },
   "quickAdd": {
     "account": "Müşteri",

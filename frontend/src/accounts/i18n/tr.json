@@ -122,6 +122,50 @@
       "until": "{{date}} tarihine kadar",
       "hint": "Bu şirkette çalışan adaylar, yönetici onayı olmadan sürece alınamaz.",
       "manage": "Yasaklı şirket kurallarını yönet"
-    }
+    },
+    "subtitle": "Çalıştığınız şirketler, sahipleri ve açık olanlar.",
+    "err": {
+      "name": "Müşteri adını girin.",
+      "sector": "Bir sektör seçin veya yazın.",
+      "person": "Listeden bir kişi seçin.",
+      "title": "Bir başlık girin.",
+      "due": "Bir bitiş tarihi seçin.",
+      "client": "Bir müşteri seçin.",
+      "note": "Kısa bir not yazın.",
+      "fee": "Yalnızca rakam kullanın, örneğin 25000.00.",
+      "currency": "3 harfli para birimi kodu kullanın, örneğin TRY."
+    },
+    "help": {
+      "name": "Sözleşmelerde göründüğü şekliyle.",
+      "sector": "Bilinen sektörleri görmek için yazmaya başlayın.",
+      "city": "Biliniyorsa merkez ofisin şehri.",
+      "person": "Ada göre arayın. Listede yoksa önce kişiyi ağa ekleyin.",
+      "role": "Örneğin Finans Direktörü veya İK Direktörü.",
+      "primary": "Bu müşteride ilk aradığımız kişi.",
+      "actionTitle": "Bir fiille başlayın, örneğin Teklif için ara.",
+      "due": "Varsayılan yarındır.",
+      "jobTitle": "Aranan pozisyon, örneğin Finans Direktörü.",
+      "openings": "Müşterinin işe almak istediği kişi sayısı.",
+      "terms": "Ücret esası, garanti ve şimdiye kadar anlaşılan her şey.",
+      "fee": "Binlik ayırıcı olmadan tutar.",
+      "note": "Ne konuşuldu veya ne kararlaştırıldı."
+    },
+    "section": {
+      "company": "Şirket",
+      "location": "Konum",
+      "who": "Kim",
+      "about": "Kişi bilgisi",
+      "what": "Ne",
+      "when": "Ne zaman ve nerede",
+      "role": "Pozisyon",
+      "proposal": "Teklif",
+      "fees": "Ücretler"
+    },
+    "endContactTitle": "Bu kişi sonlandırılsın mı?",
+    "endContactBody": "{{name}} geçmişte kalır, ancak artık aktif kişi olarak listelenmez. Daha sonra yeniden ekleyebilirsiniz.",
+    "endContactFailed": "Kişi sonlandırılamadı. Tekrar deneyin.",
+    "loadErrorTitle": "Bu müşteri yüklenemedi",
+    "emptyJobsAction": "Bu müşteri için ilk iş emrini ekleyin.",
+    "relationshipsEmpty": "İlişki kapsamını görmek için bir kişi ekleyin."
   }
 }

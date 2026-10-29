@@ -11,7 +11,7 @@ export type Toast = { text: string; kind: 'info' | 'error'; undo?: () => void; r
 /** A stage move the server refused with CONSENT_REQUIRED or OFF_LIMITS; the dialog decides what to do next. */
 export type PendingGuard = Guard & { app: Application; to: Stage; reason?: string };
 
-export function useBoardMoves(initial: Application[] | undefined, onChanged: () => void) {
+export function useBoardMoves(initial: Application[] | undefined, onChanged: () => void, reloadApps?: () => void) {
   const { t } = useTranslation();
   const { ref, label } = useLabel();
   const [apps, setApps] = useState<Application[]>([]);
@@ -80,7 +80,25 @@ export function useBoardMoves(initial: Application[] | undefined, onChanged: () 
   const remove = async (app: Application) => {
     const r = await api.DELETE('/applications/{id}', { params: { path: { id: app.id } } });
     if (r.error) show({ kind: 'error', text: problemText(r.error, t('pipeline.moveFailed')) });
-    else update(appsRef.current.filter((a) => a.id !== app.id));
+    else {
+      update(appsRef.current.filter((a) => a.id !== app.id));
+      // Removing is reversible: Undo adds the person back to the job (they return to Sourced).
+      show({
+        kind: 'info',
+        text: t('pipeline.removedToast', { name: app.person.name }),
+        undo: () => {
+          void api.POST('/job-orders/{id}/applications', { params: { path: { id: app.jobOrder.id } }, body: { personId: app.person.id } }).then((u) => {
+            if (u.error) show({ kind: 'error', text: problemText(u.error, t('pipeline.addFailed')) });
+            else {
+              setToast(undefined);
+              reloadApps?.();
+              onChanged();
+            }
+          });
+        },
+      });
+      onChanged();
+    }
   };
 
   return { guard, clearGuard: () => setGuard(undefined), apps, move, remove, toast, setToast, show, suggestFilled, setSuggestFilled };

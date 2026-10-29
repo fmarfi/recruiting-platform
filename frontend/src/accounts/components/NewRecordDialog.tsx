@@ -2,6 +2,7 @@ import { Alert, Button, Group, Modal, Stack, Textarea, TextInput, NumberInput } 
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
+import { FormSection, RequiredNote } from '../../shell/components/FormSection';
 import { problemText } from '../../shell/lib/problem';
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
   onDone: () => void;
 }
 
+const FEE = /^\d+(\.\d{1,2})?$/;
+
 /** "New job" / "New proposal" on the account page (A-05, A-06). Minimal fields; the rest is edited on the record. */
 export function NewRecordDialog({ kind, opened, onClose, accountId, onDone }: Props) {
   const { t } = useTranslation();
@@ -21,12 +24,16 @@ export function NewRecordDialog({ kind, opened, onClose, accountId, onDone }: Pr
   const [terms, setTerms] = useState('');
   const [fee, setFee] = useState('');
   const [currency, setCurrency] = useState('TRY');
+  const [titleErr, setTitleErr] = useState<string>();
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const feeErr = fee && !FEE.test(fee) ? t('accounts.err.fee') : undefined;
+  const curErr = fee && currency.trim().length !== 3 ? t('accounts.err.currency') : undefined;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return setErr(t('accounts.fillRequired'));
+    if (!title.trim()) return setTitleErr(t('accounts.err.title'));
+    if (kind === 'proposal' && (feeErr || curErr)) return;
     setBusy(true);
     const orNull = (v: string) => (v.trim() ? v.trim() : null);
     const { error } =
@@ -38,6 +45,7 @@ export function NewRecordDialog({ kind, opened, onClose, accountId, onDone }: Pr
     setBusy(false);
     if (error) return setErr(problemText(error, t('shell.saveError')));
     setTitle('');
+    setTitleErr(undefined);
     setErr(null);
     onClose();
     onDone();
@@ -45,24 +53,45 @@ export function NewRecordDialog({ kind, opened, onClose, accountId, onDone }: Pr
 
   return (
     <Modal opened={opened} onClose={onClose} title={t(kind === 'job' ? 'accounts.newJob' : 'accounts.newProposal')}>
-      <form onSubmit={(e) => void submit(e)}>
+      <form onSubmit={(e) => void submit(e)} noValidate>
         <Stack>
-          <TextInput label={t(kind === 'job' ? 'accounts.jobTitle' : 'accounts.proposalTitle')} value={title} onChange={(e) => setTitle(e.currentTarget.value)} maxLength={200} required data-autofocus />
-          {kind === 'job' ? (
-            <>
-              <TextInput label={t('accounts.location')} value={location} onChange={(e) => setLocation(e.currentTarget.value)} maxLength={200} />
-              <NumberInput label={t('accounts.openings')} min={1} value={openings} onChange={setOpenings} />
-            </>
-          ) : (
-            <>
-              <Textarea label={t('accounts.terms')} value={terms} onChange={(e) => setTerms(e.currentTarget.value)} maxLength={10000} autosize minRows={2} />
+          <RequiredNote text={t('shell.requiredNote')} />
+          <FormSection title={t(kind === 'job' ? 'accounts.section.role' : 'accounts.section.proposal')}>
+            <TextInput
+              label={t(kind === 'job' ? 'accounts.jobTitle' : 'accounts.proposalTitle')}
+              description={kind === 'job' ? t('accounts.help.jobTitle') : undefined}
+              value={title}
+              onChange={(e) => {
+                setTitle(e.currentTarget.value);
+                setTitleErr(undefined);
+              }}
+              error={titleErr}
+              maxLength={200}
+              withAsterisk
+              data-autofocus
+            />
+            {kind === 'job' ? (
+              <>
+                <TextInput label={t('accounts.location')} value={location} onChange={(e) => setLocation(e.currentTarget.value)} maxLength={200} />
+                <NumberInput label={t('accounts.openings')} description={t('accounts.help.openings')} min={1} value={openings} onChange={setOpenings} styles={{ input: { fontVariantNumeric: 'tabular-nums' } }} />
+              </>
+            ) : (
+              <Textarea label={t('accounts.terms')} description={t('accounts.help.terms')} value={terms} onChange={(e) => setTerms(e.currentTarget.value)} maxLength={10000} autosize minRows={2} />
+            )}
+          </FormSection>
+          {kind === 'proposal' && (
+            <FormSection title={t('accounts.section.fees')}>
               <Group grow align="flex-start">
-                <TextInput label={t('accounts.fee')} value={fee} onChange={(e) => setFee(e.currentTarget.value)} placeholder="25000.00" error={fee && !/^\d+(\.\d{1,2})?$/.test(fee) ? ' ' : undefined} />
-                <TextInput label={t('accounts.currency')} value={currency} onChange={(e) => setCurrency(e.currentTarget.value)} maxLength={3} />
+                <TextInput label={t('accounts.fee')} description={t('accounts.help.fee')} value={fee} onChange={(e) => setFee(e.currentTarget.value)} placeholder="25000.00" error={feeErr} styles={{ input: { textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }} />
+                <TextInput label={t('accounts.currency')} value={currency} onChange={(e) => setCurrency(e.currentTarget.value)} maxLength={3} error={curErr} />
               </Group>
-            </>
+            </FormSection>
           )}
-          {err && <Alert color="red">{err}</Alert>}
+          {err && (
+            <Alert color="red" role="alert">
+              {err}
+            </Alert>
+          )}
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
               {t('shell.cancel')}

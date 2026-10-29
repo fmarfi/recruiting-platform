@@ -1,5 +1,6 @@
 import { Button, Card, Group, Select, Stack, Table, Text, TextInput } from '@mantine/core';
 import { useState } from 'react';
+import { ConfirmDialog } from '../../shell/components/ConfirmDialog';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
@@ -17,6 +18,7 @@ export function UsersSection() {
   const [q, setQ] = useState('');
   const [invite, setInvite] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [disabling, setDisabling] = useState<User | null>(null);
   const { data, error, loading, reload } = useUsers(q);
 
   async function change(u: User, body: Parameters<typeof patchUser>[1]) {
@@ -40,22 +42,40 @@ export function UsersSection() {
   const stateBadge = (u: User) => <ToneBadge size="sm" tone={u.active ? 'GOOD' : 'NEUTRAL'} label={t(u.active ? 'settings.state.active' : 'settings.state.disabled')} />;
   const toggle = (u: User) =>
     isAdmin && u.id !== me?.id ? (
-      <Button size="xs" variant="subtle" onClick={() => void change(u, { active: !u.active })}>
-        {t(u.active ? 'settings.state.disabled' : 'settings.state.active')}
+      <Button
+        size="xs"
+        variant="subtle"
+        color={u.active ? 'red' : undefined}
+        aria-label={`${t(u.active ? 'settings.users.disable' : 'settings.users.enable')}: ${u.name}`}
+        onClick={() => (u.active ? setDisabling(u) : void change(u, { active: true }))}
+      >
+        {t(u.active ? 'settings.users.disable' : 'settings.users.enable')}
       </Button>
     ) : null;
 
   return (
     <Stack>
-      <Group justify="space-between">
+      <Group justify="space-between" wrap="wrap">
         <TextInput aria-label={t('settings.users.search')} placeholder={t('settings.users.search')} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
-        {isAdmin && <Button onClick={() => setInvite(true)}>{t('settings.users.invite')}</Button>}
+        {isAdmin && <Button onClick={() => setInvite(true)}>+ {t('settings.users.invite')}</Button>}
       </Group>
       {!isAdmin && <Text c="dimmed" size="sm">{t('settings.users.adminOnly')}</Text>}
       {err && <Text c="red" role="alert">{err}</Text>}
       {loading && !data && <SkeletonRows n={4} />}
       {error !== undefined && <ErrorBanner onRetry={reload} />}
-      {data && users.length === 0 && <EmptyState title={t('settings.users.empty')} />}
+      <ConfirmDialog
+        opened={!!disabling}
+        title={t('settings.users.disableTitle', { name: disabling?.name ?? '' })}
+        body={t('settings.users.disableBody')}
+        confirmLabel={t('settings.users.disable')}
+        danger
+        onConfirm={() => {
+          if (disabling) void change(disabling, { active: false });
+          setDisabling(null);
+        }}
+        onCancel={() => setDisabling(null)}
+      />
+      {data && users.length === 0 && <EmptyState title={t('settings.users.empty')} hint={isAdmin ? t('settings.users.emptyHint') : undefined} actions={isAdmin ? <Button onClick={() => setInvite(true)}>+ {t('settings.users.invite')}</Button> : undefined} />}
       {users.length > 0 && (
         <>
           <Table visibleFrom="sm" withTableBorder>

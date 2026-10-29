@@ -37,6 +37,12 @@ export function QuickAdd({ opened, onClose, context, initialMode = 'activity', o
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') void f.save();
       }}
     >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void f.save();
+        }}
+      >
       <Stack>
         <QuickAddFields f={f} context={context} />
         {f.error && (
@@ -48,11 +54,12 @@ export function QuickAdd({ opened, onClose, context, initialMode = 'activity', o
           <Button variant="default" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={() => void f.save()} disabled={!f.canSave || f.done} loading={f.busy}>
+          <Button type="submit" disabled={!f.canSave || f.done} loading={f.busy}>
             {t('quickAdd.save')}
           </Button>
         </Group>
       </Stack>
+      </form>
     </Modal>
   );
 }

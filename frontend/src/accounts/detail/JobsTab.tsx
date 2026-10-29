@@ -1,4 +1,4 @@
-import { Anchor, Group, Stack, Text } from '@mantine/core';
+import { Anchor, Button, Group, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { components } from '../../api';
@@ -7,9 +7,9 @@ import { StatusBadge } from '../../shell/components/StatusBadge';
 
 type JobOrder = components['schemas']['JobOrder'];
 
-export function JobsTab({ jobs }: { jobs: JobOrder[] }) {
+export function JobsTab({ jobs, onAdd }: { jobs: JobOrder[]; onAdd: () => void }) {
   const { t } = useTranslation();
-  if (jobs.length === 0) return <EmptyState title={t('accounts.emptyJobs')} hint={t('accounts.emptyJobsHint')} />;
+  if (jobs.length === 0) return <EmptyState title={t('accounts.emptyJobs')} hint={t('accounts.emptyJobsHint')} actions={<Button onClick={onAdd}>+ {t('accounts.newJob')}</Button>} />;
   return (
     <Stack gap="xs">
       {jobs.map((j) => (

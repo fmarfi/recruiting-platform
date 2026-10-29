@@ -11,11 +11,17 @@ export function EntityPicker({
   label,
   value,
   onChange,
+  description,
+  error,
+  required,
 }: {
   kind: 'account' | 'person';
   label: string;
   value: Option | null;
   onChange: (v: Option | null) => void;
+  description?: string;
+  error?: string;
+  required?: boolean;
 }) {
   const [search, setSearch] = useState('');
   const [q] = useDebouncedValue(search, 200);
@@ -36,6 +42,9 @@ export function EntityPicker({
   return (
     <Select
       label={label}
+      description={description}
+      error={error}
+      withAsterisk={required}
       searchable
       clearable
       data={data}

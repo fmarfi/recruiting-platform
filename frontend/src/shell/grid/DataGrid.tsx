@@ -156,9 +156,9 @@ export function DataGrid<T>(p: DataGridProps<T>) {
               const field = c.sortKey ?? c.id;
               const active = p.sort?.field === field;
               return (
-                <Table.Th key={c.id} style={{ minWidth: c.minWidth, textAlign: c.numeric ? 'right' : undefined }} aria-sort={c.sortable ? (active ? (p.sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}>
+                <Table.Th key={c.id} title={c.header} style={{ minWidth: c.minWidth, textAlign: c.numeric ? 'right' : undefined, whiteSpace: 'normal', overflowWrap: 'anywhere', verticalAlign: 'bottom' }} aria-sort={c.sortable ? (active ? (p.sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}>
                   {c.sortable && p.onSort ? (
-                    <UnstyledButton fw={600} fz="inherit" onClick={() => p.onSort!(nextSort(p.sort ?? null, field, c.firstSortDir))} aria-label={t('grid.sortBy', { col: c.header })}>
+                    <UnstyledButton fw={600} fz="inherit" ta={c.numeric ? 'right' : 'left'} onClick={() => p.onSort!(nextSort(p.sort ?? null, field, c.firstSortDir))} aria-label={t('grid.sortBy', { col: c.header })}>
                       {c.header} {active ? (p.sort!.dir === 'asc' ? '\u25B2' : '\u25BC') : ''}
                     </UnstyledButton>
                   ) : (
