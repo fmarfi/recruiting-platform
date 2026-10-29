@@ -1,5 +1,5 @@
 {
   "app": { "title": "Recruiting Platform", "placeholder": "This screen is not built yet." },
-  "nav": { "myDay": "Home", "accounts": "Clients", "jobOrders": "Searches", "network": "Candidates", "settings": "Admin", "search": "Search", "login": "Sign in" },
-  "screen": { "account": "Account", "jobOrder": "Job order", "person": "Person", "settingsSection": "Settings" }
+  "nav": { "myDay": "Home", "accounts": "Clients", "jobOrders": "Searches", "network": "Candidates", "settings": "Admin", "search": "Search", "login": "Sign in", "pinned": "My open searches", "noPinned": "No open searches" },
+  "screen": { "account": "Client", "jobOrder": "Search", "person": "Candidate", "settingsSection": "Settings" }
 }

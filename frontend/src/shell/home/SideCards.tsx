@@ -48,7 +48,7 @@ export function OpenJobsCard({ jobs: own, openTotal }: { jobs: JobOrder[]; openT
       ) : (
         jobs.map((j) => (
           <Stack key={j.id} gap={2} py={8} style={{ borderTop: '1px solid var(--color-border)' }}>
-            <Anchor component={Link} to={`/job-orders/${j.id}`} fw={600}>
+            <Anchor component={Link} to={`/searches/${j.id}`} fw={600}>
               {j.title} - {j.account.name}
             </Anchor>
             <Group gap="xs">
@@ -78,7 +78,7 @@ export function RecentAccountsCard({ accounts, today }: { accounts: Account[]; t
       </Group>
       {accounts.map((a) => (
         <Group key={a.id} justify="space-between" py={8} wrap="nowrap" style={{ borderTop: '1px solid var(--color-border)' }}>
-          <Anchor component={Link} to={`/accounts/${a.id}`}>
+          <Anchor component={Link} to={`/clients/${a.id}`}>
             {a.name}
           </Anchor>
           <Group gap="xs" wrap="nowrap">
