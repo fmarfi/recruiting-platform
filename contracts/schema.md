@@ -103,7 +103,42 @@ Since 1.2.0 (ADR 0011) the non-AI candidate profile lives **on `person` in `acco
 | open_job_count | int | not null default 0; derived: `count(*) from account_open_job where account_id = ? and open`, refreshed after each projection upsert |
 | last_activity_at | timestamptz | null; maintained from `ActivityLogged`; index desc |
 | tags | varchar(50)[] | not null default `'{}'`; lower-case, at most 20 (`CHECK (cardinality(tags) <= 20)`); GIN index; written by `ADD_TAG`/`REMOVE_TAG` bulk actions (ADR 0010) |
+| archived_at, archived_by, archive_reason, archive_note | timestamptz, uuid FK app_user, varchar(40), varchar(500) | all null (1.3.0, ADR 0013); see "Archive columns" below |
+| merged_into_id | uuid FK account | null (1.3.0); index; `CHECK ((merged_into_id IS NULL) = (archive_reason IS DISTINCT FROM 'MERGED'))` |
+| legal_name | varchar(300) | null (1.3.0); invoice name |
+| tax_id | varchar(20) | null (1.3.0); plain string, no format CHECK; index on `tax_id` (duplicate warning by the service) |
+| tax_office | varchar(100) | null (1.3.0) |
+| mersis_no | varchar(16) | null (1.3.0); no format CHECK |
+| einvoice_status | varchar(40) | `EInvoiceStatus`, not null default `UNKNOWN` (1.3.0) |
+| einvoice_alias | varchar(100) | null (1.3.0) |
+| billing_address | varchar(500) | null (1.3.0) |
+| billing_emails | varchar(254)[] | not null default `'{}'`; `CHECK (cardinality(billing_emails) <= 5)` (1.3.0) |
+| billing_currency | char(3) | null (1.3.0) |
+| vat_exempt, withholding_applies | boolean | not null default false (1.3.0) |
+| parent_account_id | uuid FK account | null (1.3.0); index; `CHECK (parent_account_id <> id)`; no cycles and depth at most 5 checked by the service |
+| group_name | varchar(200) | null (1.3.0) |
+| employee_band | varchar(40) | null; `EmployeeBand` (1.3.0) |
+| hq_country | char(2) | null (1.3.0); `city` is the HQ city |
+| confidentiality_level | varchar(40) | `ConfidentialityLevel`, not null default `NORMAL` (1.3.0) |
+| preferred_language | varchar(2) | null; `Language` (1.3.0) |
 | audit columns | | |
+
+**Archive columns (1.3.0, ADR 0013)** on `account`, `person`, `job_order`, `proposal`: `archived_at timestamptz null`, `archived_by uuid FK app_user null`, `archive_reason varchar(40) null` (`ArchiveReason`), `archive_note varchar(500) null`, with `CHECK ((archived_at IS NULL) = (archive_reason IS NULL))` and `CHECK ((archived_at IS NULL) = (archived_by IS NULL))`. Index: partial `(archived_at) where archived_at is not null` (the Archived view); list queries add `archived_at is null`. All four columns are audited (Envers gives who/when for archive and restore). Existing rows: all null, so the default list behaviour is unchanged.
+
+**account_merge** — append-only, not audited (1.3.0): `id uuid PK`, `survivor_id uuid FK account not null` (index), `merged_id uuid FK account not null` (unique; the merged account stays as an archived row, so a normal FK works), `moved jsonb not null` (counts per kind, no names), `merged_at timestamptz not null`, `merged_by uuid FK app_user not null`. No personal data.
+
+**tag_definition** — audited (1.3.0, ADR 0013)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| name | varchar(50) | not null; unique; lower-case, same rule as the `tags` arrays |
+| colour | varchar(40) | `TagColour`, not null default `GREY` |
+| description | varchar(200) | null; no personal data |
+| talent_pool | boolean | not null default false; a talent pool is a tag with this flag (`GET /people?tag=`) |
+| audit columns | | |
+
+A tag exists when any record carries it, with or without a definition row; `GET /tags` unions the distinct values of the four `tags` arrays with `tag_definition`. Rename, merge and delete rewrite the arrays with one set-based `UPDATE ... SET tags = <array op>, version = version + 1` per table (accounts: `account`, `person`; pipeline: `job_order`, `proposal`, through `TagChanged`). These bulk rewrites write **no** Envers revision per record (tags are not personal data; the `tag_definition` revision and the `TagChanged` event are the audit), and bumping `version` makes open editors get `VERSION_CONFLICT` instead of writing the old tag back.
 
 **person** — audited (except `last_contact_at`, `consent_status`, `retention_status`)
 
@@ -133,7 +168,13 @@ Since 1.2.0 (ADR 0011) the non-AI candidate profile lives **on `person` in `acco
 | languages | jsonb | not null default `'[]'`; `[{language, level}]`, at most 20, validated by the service (1.2.0) |
 | phone_normalized | varchar(20) | null; digits with country code (`+90` default), written by the service on every phone change; index (duplicate check, 1.2.0) |
 | linkedin_url_normalized | varchar(300) | null; lower case, `https://www.linkedin.com/in/<slug>` form, no query, no trailing slash; index (1.2.0) |
+| archived_at, archived_by, archive_reason, archive_note | | archive columns (1.3.0); `archive_note` is personal data (scrubbed on anonymisation) |
+| skills | varchar(50)[] | not null default `'{}'`; lower-case; `CHECK (cardinality(skills) <= 30)`; GIN index (1.3.0, `skill` filter) |
+| function_area | varchar(40) | null; `JobFunction`; index (1.3.0) |
+| seniority | varchar(40) | null; `Seniority`; index (1.3.0) |
 | audit columns | | |
+
+Pool filters (1.3.0): `skill` uses `skills && :skills` (GIN), `language` uses `languages @> '[{"language":"en"}]'` (GIN `jsonb_path_ops` index on `languages`, new), `noticeMaxDays` and `mobility` use the plain columns. The salary filter cannot use SQL because `compensation_enc` is encrypted: the service applies it in memory after the SQL filters (ADR 0013, max 5,000 rows before the salary step).
 
 Full-text support (1.2.0): a text search configuration `tr_unaccent` (`COPY = pg_catalog.turkish`, mapping `asciiword, word, hword, hword_part, asciihword, hword_asciipart` to `unaccent, turkish_stem`). Duplicate name match uses `immutable_unaccent(lower(trim(name)))` and the same on `company` (expression index on the pair).
 
@@ -287,6 +328,8 @@ Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold id
 | opened_on | date | not null |
 | closed_on | date | null; set on FILLED or CANCELLED |
 | tags | varchar(50)[] | not null default `'{}'`; lower-case, at most 20 (`CHECK (cardinality(tags) <= 20)`); GIN index; written by `ADD_TAG`/`REMOVE_TAG` bulk actions (ADR 0010) |
+| archived_at, archived_by, archive_reason, archive_note | | archive columns (1.3.0) |
+| confidentiality_level | varchar(40) | `ConfidentialityLevel`, not null default `NORMAL` (1.3.0) |
 | audit columns | | |
 
 `stageCounts`, `activeCandidates` and `daysOpen` are computed by query (`group by stage`), not stored.
@@ -337,6 +380,7 @@ Written by `pipeline` in the transaction of the first move into a client-facing 
 | decided_on | date | null |
 | owner_id | uuid FK app_user | not null |
 | tags | varchar(50)[] | not null default `'{}'`; lower-case, at most 20 (`CHECK (cardinality(tags) <= 20)`); GIN index; written by `ADD_TAG`/`REMOVE_TAG` bulk actions (ADR 0010) |
+| archived_at, archived_by, archive_reason, archive_note | | archive columns (1.3.0) |
 | audit columns | | |
 
 **activity** — audited
