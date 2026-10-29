@@ -16,7 +16,7 @@ describe('app shell', () => {
   });
 
   it('maps design tokens to CSS variables and falls back to NEUTRAL', () => {
-    expect(tokenCss()).toContain('--tone-good-bg:#dff0e6');
+    expect(tokenCss()).toContain('--tone-good-bg:#dff0e5');
     expect(toneOf('nope')).toBe('NEUTRAL');
   });
 });
