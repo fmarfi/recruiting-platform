@@ -1,6 +1,7 @@
--- 03: 81 people (Turkish and English names), employment history, 30 account contacts, network links.
+-- 03: 86 people (Turkish and English names), employment history, 30 account contacts, network links.
 -- Person id uid(3, n): 1-30 CLIENT_CONTACT (n = account n for 1-25; 26-30 second contacts of accounts 11-15),
--- 31-64 CANDIDATE, 65-74 EXECUTIVE, 75-79 REFERRER, 80 CANDIDATE already anonymised, 81 CANDIDATE with surname Öztürk.
+-- 31-64 CANDIDATE, 65-74 EXECUTIVE, 75-79 REFERRER, 80 CANDIDATE already anonymised, 81 CANDIDATE with surname Öztürk,
+-- 82-86 CANDIDATE of the CFO search (job order 4, see p_career below).
 -- Contact id uid(4, n) = contact of person n. Network link ids uid(11, n).
 CREATE TEMP TABLE p_seed AS
 WITH nm AS (SELECT
@@ -13,7 +14,7 @@ SELECT g.n,
             WHEN g.n <= 79 THEN 'REFERRER' ELSE 'CANDIDATE' END AS type,
        nm.f[(g.n * 11) % 40 + 1] AS first_name,
        CASE WHEN g.n = 81 THEN 'Öztürk' ELSE nm.l[(g.n * 9 + (g.n / 40) * 3) % 40 + 1] END AS last_name
-FROM generate_series(1, 81) AS g(n) CROSS JOIN nm;
+FROM generate_series(1, 86) AS g(n) CROSS JOIN nm;
 
 -- derived columns; consent_status mix and retention flags are decided here and reused by 08_privacy.sql
 CREATE TEMP TABLE p_full AS
@@ -44,6 +45,25 @@ SELECT p.n, p.type, p.first_name || ' ' || p.last_name AS name, p.first_name, p.
 FROM p_seed p CROSS JOIN emp
 LEFT JOIN acct_seed a ON a.n = CASE WHEN p.n <= 25 THEN p.n WHEN p.n <= 30 THEN p.n - 15 END;
 
+-- CFO search (job order 4, client Lale Yapı Holding): 8 candidates with a real career story.
+-- A and B are presented, C and D screened, E refused consent, F works at a company under an off-limits rule,
+-- G was presented to the same client before (exposure, job order 11), H is sourced and has not answered yet.
+-- prev_* is the previous role (sort 1). Current role and prev role replace the generated ones below.
+CREATE TEMP TABLE p_career (n int, first_name text, last_name text, title text, company text, city text,
+                            prev_title text, prev_company text, consent_status text);
+INSERT INTO p_career VALUES
+ (36, 'Selin',  'Aksoy',   'Chief Financial Officer',      'Vesta Industries',    'İstanbul', 'Finance Director',        'Mercury Foods',       'GIVEN'),
+ (37, 'Emre',   'Kaya',    'Finance Director',            'Nimbus Logistics',    'Ankara',   'Financial Controller',    'Alder & Wray',        'GIVEN'),
+ (38, 'Zeynep', 'Demir',   'Group Financial Controller',  'Kıyıbaşı Teknoloji',  'Bursa',    'Senior Audit Manager',    'Alder & Wray',        'GIVEN'),
+ (82, 'Onur',   'Tekin',   'Head of Treasury',            'Orchid Pharma',       'İstanbul', 'Treasury Manager',        'Mercury Foods',       'GIVEN'),
+ (83, 'Deniz',  'Erdem',   'Finance Director',            'Bozkır Yapı',         'Ankara',   'Head of FP&A',            'Vesta Industries',    'REFUSED'),
+ (84, 'Burak',  'Aydın',   'Operations Director',         'Delta Vadisi Enerji', 'Kocaeli',  'Plant Manager',           'Nimbus Logistics',    'GIVEN'),
+ (85, 'Merve',  'Çelik',   'Chief Operating Officer',     'Grayfield Retail',    'İstanbul', 'Head of Procurement',     'Tepeören Gıda',       'GIVEN'),
+ (86, 'Henry',  'Walker',  'Head of Business Development','Sarıçam Otomotiv',    'Ankara',   'Commercial Manager',      'Ekinoks Holding',     'SENT');
+UPDATE p_full p SET first_name = c.first_name, last_name = c.last_name, name = c.first_name || ' ' || c.last_name,
+                    title = c.title, company = c.company, city = c.city, consent_status = c.consent_status
+FROM p_career c WHERE c.n = p.n;
+
 INSERT INTO person (id, name, type, title, company, email, phone, city, linkedin_url, how_we_know, notes, owner_id,
                     last_contact_at, consent_status, retention_status, anonymised_at, created_at, created_by, updated_at, updated_by)
 SELECT pg_temp.uid(3, n), name, type, title, company,
@@ -68,10 +88,11 @@ INSERT INTO person_employment (id, person_id, company, title, start_date, end_da
 SELECT pg_temp.uid(12, n * 10 + 1), pg_temp.uid(3, n), company, title, current_date - ((n * 37) % 1500 + 200), NULL, 0
 FROM p_full WHERE n <> 80;
 INSERT INTO person_employment (id, person_id, company, title, start_date, end_date, sort_order)
-SELECT pg_temp.uid(12, n * 10 + 2), pg_temp.uid(3, n),
-       (ARRAY['Ekinoks Holding','Vesta Industries','Kıyıbaşı Teknoloji','Mercury Foods','Bozkır Yapı','Alder & Wray'])[(n * 5) % 6 + 1],
-       'Senior Manager', current_date - ((n * 37) % 1500 + 200) - 1500, current_date - ((n * 37) % 1500 + 200) - 1, 1
-FROM p_full WHERE n <> 80;
+SELECT pg_temp.uid(12, p.n * 10 + 2), pg_temp.uid(3, p.n),
+       coalesce(c.prev_company, (ARRAY['Ekinoks Holding','Vesta Industries','Kıyıbaşı Teknoloji','Mercury Foods','Bozkır Yapı','Alder & Wray'])[(p.n * 5) % 6 + 1]),
+       coalesce(c.prev_title, 'Senior Manager'),
+       current_date - ((p.n * 37) % 1500 + 200) - 1500, current_date - ((p.n * 37) % 1500 + 200) - 1, 1
+FROM p_full p LEFT JOIN p_career c ON c.n = p.n WHERE p.n <> 80;
 
 -- contacts: persons 1-25 are the primary contact of accounts 1-25; 26-29 extra contacts; 30 has left (ended)
 INSERT INTO contact (id, account_id, person_id, role, is_primary, ended_on, created_at, created_by, updated_at, updated_by)
