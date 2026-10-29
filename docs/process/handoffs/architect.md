@@ -10,24 +10,25 @@
 
 **Others must know**
 - `ListEntity.PROPOSALS` **kept**: it is a 1.2 value (saved views, bulk actions). Only exports reject it (400).
-- `Account.sector` is now nullable (non-client organisations); `GET /accounts` without `role` = CLIENT/PROSPECT.
+- **frontends:** `Account.sector` is now nullable (non-client organisations), so every account view and form must handle null; `GET /accounts` without `role` = CLIENT/PROSPECT.
 - Placement `person`/`applicationId` are nullable (they outlive an erased person).
 
 **Migration checklist (db-engineer)**
 - `account`: `is_client/is_prospect/is_target/is_employer bool` + backfill + CHECK at least one; `aliases text[]` CHECK ≤20 + GIN on `normalize_org_names(aliases)`; functions `normalize_org_name`, `normalize_org_names`; `normalized_name` generated stored, read-only, `@NotAudited`; drop unique `lower(name)`, add unique `(normalized_name) where archived_at is null` (pre-check duplicates); `sector` nullable + CHECK.
 - `person_employment.organisation_id` FK account + index. `off_limits_rule.include_subsidiaries` + CHECK.
-- `application.close_reason` (backfill OTHER, then CHECK `(stage='REJECTED') = (close_reason IS NOT NULL)`, enum CHECK); re-create `outreach_status` CHECK (SCREENED).
+- `application.close_reason` (backfill OTHER, then CHECK `(stage='REJECTED') = (close_reason IS NOT NULL)`, enum CHECK, index `(job_order_id, close_reason)`); re-create `outreach_status` CHECK (SCREENED).
 - `activity`: `outcome`, `direction`, `duration_min`, `source` (default MANUAL), `external_message_id` (unique partial) + CHECKs; new audited `activity_attendee` (both FKs cascade).
 - `search_brief`: `comp_band_enc bytea` instead of `comp_min/max/currency/period/bonus_note` (drop their CHECKs), `team_size`.
 - `agreement`: `signatory_contact_id` **on delete set null** + index; `guarantee_start_basis` (CHECK); `signed_file_id/name/size/uploaded_at/uploaded_by` + CHECKs. `fee_schedule_item.vat_applies`.
 - `placement`: `person_id` and `application_id` nullable, **on delete set null**, partial unique on `application_id`.
 - Drop from the 1.3 plan: `proposal` archive columns + `archive_reason` CHECK, `conflict_check.proposal_id`. Index `candidate_reference (lower(referee_email))`.
+- `_aud` columns (same migration): `account_aud` 4 role flags + `aliases` (not `normalized_name`); `person_employment_aud.organisation_id`; `off_limits_rule_aud.include_subsidiaries`; `application_aud.close_reason`; `activity_aud` outcome/direction/duration_min/source/external_message_id; new `activity_attendee_aud`; `search_brief_aud` `comp_band_enc`, `team_size` (drop the clear comp columns); `agreement_aud` guarantee_start_basis + 5 signed_file columns; `fee_schedule_item_aud.vat_applies`; `placement_aud` person_id/application_id nullable.
 - MigrationIT `ENUM_COLUMNS`/`_aud` list per schema.md line 19; `PersonDeleteIT` indirect-FK walk; new `PersonalDataClassificationIT`, `OrganisationNameNormalisationIT`.
 
 **Change requests**
-- backend-accounts · roles/aliases/match (`OrganisationApi.match`), employment link, off-limits subsidiary match, `TargetCompanyAdded` listener, merge unions, `ThirdPartyErasure` (billing e-mails).
-- backend-pipeline · close reason, outreach SCREENED, activity fields + attendees, encrypted band, signed-file endpoints, guarantee basis, VAT flag, placement erasure nulling, `ThirdPartyErasure` (referees), VIEW rows, 409 `ARCHIVED`.
-- security-privacy · call `ThirdPartyErasure` beans in DSRs; purge additions (`activity_attendee_aud`, `placement_aud` keep-current rule).
+- backend-accounts · roles/aliases/match (`OrganisationApi.match`), CLIENT on `JobOrderCreated` + 409 on removing CLIENT with open job orders, `ActivityLogged.attendeePersonIds` → `last_contact_at`, `eraseTaxId`, employment link, off-limits subsidiary match, `TargetCompanyAdded` listener, merge unions, `ThirdPartyErasure` (billing e-mails).
+- backend-pipeline · publish `ActivityLogged` with `attendeePersonIds` (new canonical constructor; the 1.2 one stays), close reason, outreach SCREENED, activity fields + attendees, encrypted band, signed-file endpoints, guarantee basis, VAT flag, placement erasure nulling, `ThirdPartyErasure` (referees), VIEW rows, 409 `ARCHIVED`.
+- security-privacy · call `ThirdPartyErasure` beans in DSRs (e-mail, TCKN); retention clock for `ActivityLogged.attendeePersonIds`; purge additions (`activity_attendee_aud`, `placement_aud` keep-current rule).
 - frontends · `npm run gen:api`; nullable `sector`, placement `person`.
 
 **Verified with**

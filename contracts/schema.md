@@ -139,7 +139,7 @@ A nightly job in `security` deletes the bytes of READY exports past `expires_at`
 | archived_at, archived_by, archive_reason, archive_note | timestamptz, uuid FK app_user, varchar(40), varchar(500) | all null (1.3.0, ADR 0013); see "Archive columns" below |
 | merged_into_id | uuid FK account | null (1.3.0); index; `CHECK ((merged_into_id IS NULL) = (archive_reason IS DISTINCT FROM 'MERGED'))` |
 | legal_name | varchar(300) | null (1.3.0); invoice name |
-| tax_id | varchar(20) | null (1.3.0); plain string, no format CHECK; index on `tax_id` (duplicate warning by the service) |
+| tax_id | varchar(20) | null (1.3.0); plain string, no format CHECK; index on `tax_id` (duplicate warning by the service). Personal data when the organisation is a sole trader (an 11-digit TCKN): erased on that person's DSR (`personal-data.md`) |
 | tax_office | varchar(100) | null (1.3.0) |
 | mersis_no | varchar(16) | null (1.3.0); no format CHECK |
 | einvoice_status | varchar(40) | `EInvoiceStatus`, not null default `UNKNOWN` (1.3.0) |
@@ -154,7 +154,7 @@ A nightly job in `security` deletes the bytes of READY exports past `expires_at`
 | hq_country | char(2) | null (1.3.0); `city` is the HQ city |
 | confidentiality_level | varchar(40) | `ConfidentialityLevel`, not null default `NORMAL` (1.3.0) |
 | preferred_language | varchar(2) | null; `Language` (1.3.0) |
-| is_client, is_prospect, is_target, is_employer | boolean | not null default false (1.3.0, R63; `OrganisationRole`); `CHECK (is_client OR is_prospect OR is_target OR is_employer)`; partial indexes `where is_client`, `where is_target`, `where is_employer`. Backfill: `is_client = status IN ('ACTIVE','ON_HOLD','CLOSED')`, `is_prospect = status IN ('LEAD','PROPOSAL_SENT')`; `is_target` true where a `target_company.account_id` points at it; `is_employer` false |
+| is_client, is_prospect, is_target, is_employer | boolean | not null default false (1.3.0, R63; `OrganisationRole`); `CHECK (is_client OR is_prospect OR is_target OR is_employer)`; partial indexes `where is_client`, `where is_target`, `where is_employer`. Set by the service: `is_client` on status ACTIVE and on `JobOrderCreated`; clearing `is_client` while `account_open_job` has an open row → 409 `TRANSITION_GUARD_FAILED`. Backfill: `is_client = status IN ('ACTIVE','ON_HOLD','CLOSED') OR EXISTS (a job_order of the account)`, `is_prospect = status IN ('LEAD','PROPOSAL_SENT')`; `is_target` true where a `target_company.account_id` points at it; `is_employer` false |
 | aliases | text[] | not null default `'{}'` (1.3.0, R63); former names, brands, abbreviations; `CHECK (cardinality(aliases) <= 20)`; each 1..200 characters (service); GIN expression index on `normalize_org_names(aliases)` |
 | normalized_name | varchar(200) | 1.3.0, R63: `generated always as (normalize_org_name(name)) stored`; **unique partial index `(normalized_name) where archived_at is null`** (merged and archived rows may share a name); btree index for matching. JPA maps it read-only (`insertable = false, updatable = false`) and `@NotAudited`; `account_aud` has no such column |
 | audit columns | | |
@@ -469,7 +469,7 @@ Written by `pipeline` in the transaction of the first move into a client-facing 
 | person_id | uuid FK person | not null; `on delete cascade` (ADR 0009 rule); copy of the application's person, for the purge match |
 | round | smallint | not null; `CHECK (round BETWEEN 1 AND 20)`; unique `(application_id, round)` |
 | feedback_on | date | not null |
-| participants | varchar(500) | null; client contacts' names (business contacts) |
+| participants | varchar(500) | null; **roles** of the client people present (e.g. `CFO, HR director`), never names (UI hint and field label); third-party data, see `personal-data.md` |
 | outcome | varchar(40) | `ClientFeedbackOutcome` |
 | decline_reason | varchar(40) | null; `DeclineReason`; `CHECK ((outcome = 'DECLINE') = (decline_reason IS NOT NULL))` |
 | reason_text | varchar(1000) | null; personal data (scrubbed) |
@@ -816,7 +816,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 | Column | Type | Notes |
 | --- | --- | --- |
 | id | uuid PK | |
-| person_id | uuid FK person | null until identified; `on delete set null` (the only FK to person that is not cascade, ADR 0009) |
+| person_id | uuid FK person | null until identified; `on delete set null` (one of the two FKs to person that are not cascade, with `placement.person_id` since 1.3.0; ADR 0009) |
 | requester_name | varchar(200) | |
 | requester_email | varchar(254) | |
 | type | varchar(40) | `DataSubjectRequestType` |
@@ -835,7 +835,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
 
 **Classification:** every person-linked column is classified for erasure, audit and blind-report redaction in `contracts/personal-data.md`; `PersonalDataClassificationIT` fails on an unclassified column (plan rule, review 1.3).
 
-**Third-party data (1.3.0, review):** a completed DELETION request carrying the requester's e-mail also runs, before step 1 and whether or not the requester is a `person`: every `ThirdPartyErasure` bean (SPI in `contracts/spi`) runs `eraseEmail(email)`: `accounts` removes the address (lower case) from `account.billing_emails` and from every `account_aud` row (`array_remove`); `pipeline` sets `referee_name = '[removed]'`, nulls `referee_relationship, referee_company, referee_email, referee_phone` of every `candidate_reference` with `lower(referee_email) = lower(:email)` (through JPA) and purges those references' `_aud` rows like step 4 ANONYMISE. Index: `candidate_reference (lower(referee_email))`. ACCESS requests list the same matches.
+**Third-party data (1.3.0, review):** a completed DELETION request carrying the requester's e-mail also runs, before step 1 and whether or not the requester is a `person`: every `ThirdPartyErasure` bean (SPI in `contracts/spi`) runs `eraseEmail(email)`: `accounts` removes the address (lower case) from `account.billing_emails` and from every `account_aud` row (`array_remove`), and `eraseTaxId(tckn)` (called when the DSR handler enters the requester's TCKN because they trade as a sole trader) nulls `account.tax_id` with that value, also in every `account_aud` row; `pipeline` sets `referee_name = '[removed]'`, nulls `referee_relationship, referee_company, referee_email, referee_phone` of every `candidate_reference` with `lower(referee_email) = lower(:email)` (through JPA) and purges those references' `_aud` rows like step 4 ANONYMISE. Index: `candidate_reference (lower(referee_email))`. ACCESS requests list the same matches.
 
 **Order (one retention or DSR action, run by `privacy`):**
 
@@ -865,7 +865,7 @@ A withdrawal is a new record with decision `WITHDRAWN`; its `recorded_at` is the
    - DELETE: `DELETE` all matching rows except two (three since 1.3.0: the current `placement_aud` row of each surviving placement stays with `person_id, application_id, compensation_enc, status_reason` set to null, because the live row outlives the person). Keep the `person_aud` row with `revtype = 2` (id only; the NFR-03 deletion record). Keep the current `data_subject_request_aud` row (`revend IS NULL`, already minimised), and set its `person_id` to null, because the database's SET NULL is not audited.
    - Imports: set `import_job.file_content` and `errors` to null for every import that has ended (`status IN ('COMPLETED','FAILED','DISCARDED')`). A committed CSV would otherwise still hold the person's data.
    - Since 1.3.0, ANONYMISE placeholders in the current revision: `person_aud` also `skills = '{}'`, `function_area = null`, `seniority = null`, `archive_note = null`; `application_aud` `rationale = '[removed]'`, `rating = null`; `activity_aud` `external_message_id = null` (with the `note` placeholder); `client_feedback_aud` `participants, reason_text, candidate_feedback = '[removed]'`; `placement_aud` `compensation_enc = null`, `status_reason = null`. The current revisions of `candidate_evaluation_aud`, `interview_note_aud` and `candidate_reference_aud` are DEL rows after the listener's delete, so all their rows are deleted.
-   - `account_aud`, `job_order_aud`, `proposal_aud`, `app_user_aud` and `retention_settings_aud` hold no person data; since 1.3.0 neither do `tag_definition_aud`, `search_brief_aud`, `search_criterion_aud`, `job_order_team_member_aud`, `target_company_aud` (company-level notes, no-personal-data hint in the UI), `agreement_aud` and `fee_schedule_item_aud`. Not audited and person-free: `account_merge`, `conflict_check` (no names in `hits`), `import_job_record`, `export_job` (no `q`/`cv`). `client_report` is handled by the listener above. Any new audited table that holds person data must be added to this table. Otherwise the history keeps the personal data.
+   - `account_aud` holds person data only in `billing_emails` and, for a sole trader, `tax_id` (1.3.0): both are erased by value through `ThirdPartyErasure` ("Third-party data" above), not by this person purge. `job_order_aud`, `proposal_aud`, `app_user_aud` and `retention_settings_aud` hold no person data; since 1.3.0 neither do `tag_definition_aud`, `search_brief_aud`, `search_criterion_aud`, `job_order_team_member_aud`, `target_company_aud` (company-level notes, no-personal-data hint in the UI), `agreement_aud` and `fee_schedule_item_aud`. Not audited and person-free: `account_merge`, `conflict_check` (no names in `hits`), `import_job_record`, `export_job` (no `q`/`cv`). `client_report` is handled by the listener above. Any new audited table that holds person data must be added to this table. Otherwise the history keeps the personal data.
 
 **File retention (1.2.0):** person files live as long as the person (no separate clock): they go with anonymisation or deletion (step 2). Pending CV intake items are deleted with their bytes 14 days after upload. A weekly sweep in `accounts` deletes `FileStore` objects under `person/` and `intake/` that no row references (bytes written for a transaction that rolled back). Since 1.3.0 `pipeline` runs the same sweep for `agreement/` (`agreement.signed_file_id`) and `report/` (`client_report.storage_key`); deleting a DRAFT agreement deletes its signed-file bytes after the commit.
 

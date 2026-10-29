@@ -31,7 +31,7 @@ Erasure is written `anonymise / delete`. A row may list several columns with the
 
 ## Scope of the test (`PersonalDataClassificationIT`)
 
-1. **Tables in scope** (from `pg_constraint` and `information_schema`, live schema after all migrations): every table with an FK to `person`; every table with an FK to `contact`, `application`, `activity` or `person_file`; and the fixed list `account`, `access_log`, `timeline_entry`, `import_job`, `cv_intake_item`, `person_merge`, `client_report`, `export_job`. `_aud` tables are out of scope (the Audit field covers them).
+1. **Tables in scope** (from `pg_constraint` and `information_schema`, live schema after all migrations): every table with an FK to `person`; every table with an FK to `contact`, `application`, `activity` or `person_file`; and the fixed list `person`, `account`, `access_log`, `timeline_entry`, `import_job`, `cv_intake_item`, `person_merge`, `client_report`, `export_job`. `_aud` tables are out of scope (the Audit field covers them).
 2. **Every column** of a table in scope must match a row below by `table` and column name, or the `*` row (shared audit columns). Unmatched columns → the test fails and lists `table.column`.
 3. **No stale rows:** every `table.column` named here must exist (catches renames).
 4. **Consistency:** a `PD`, `SPD` or `TP` column may not have Audit `HIST`; a `PD`, `SPD` or `TP` row whose Erasure starts with `KEEP / KEEP` must give the reason after a `;` in the same cell (retention rule, DSR path or UI rule).
@@ -44,8 +44,9 @@ Erasure is written `anonymise / delete`. A row may list several columns with the
 | * | id, created_at, created_by, updated_at, updated_by, version | ID | KEEP / row rule | HIST | — |
 | access_log | user_id, action, entity_type, entity_id, at | ID | KEEP / KEEP (no FK) | NA | — |
 | access_log | ip_address | PD | KEEP / KEEP; user's own IP, 1-year log retention (NFR-05) | NA | — |
-| account | name, sector, city, website, owner_id, status, status_changed_at, opened_on, open_job_count, last_activity_at, tags, archived_at, archived_by, archive_reason, merged_into_id, legal_name, tax_id, tax_office, mersis_no, einvoice_status, einvoice_alias, billing_address, billing_currency, vat_exempt, withholding_applies, parent_account_id, group_name, employee_band, hq_country, confidentiality_level, preferred_language, is_client, is_prospect, is_target, is_employer, aliases, normalized_name | BIZ | KEEP / KEEP | HIST | GEN (client name only in non-blind reports) |
+| account | name, sector, city, website, owner_id, status, status_changed_at, opened_on, open_job_count, last_activity_at, tags, archived_at, archived_by, archive_reason, merged_into_id, legal_name, tax_office, mersis_no, einvoice_status, einvoice_alias, billing_address, billing_currency, vat_exempt, withholding_applies, parent_account_id, group_name, employee_band, hq_country, confidentiality_level, preferred_language, is_client, is_prospect, is_target, is_employer, aliases, normalized_name | BIZ | KEEP / KEEP | HIST | GEN (client name only in non-blind reports) |
 | account | notes, archive_note | BIZ | KEEP / KEEP; UI hint "no personal data" | HIST | — |
+| account | tax_id | PD | KEEP / KEEP; a sole trader's TCKN is personal data: **DSR** of that person nulls it in `account` and every `account_aud` row (`ThirdPartyErasure`, matched by value) | PURGE (by value) | NEVER |
 | account | billing_emails | TP | KEEP / KEEP; **DSR**: the address is removed from the array (`array_remove`, lower case) in `account` and every `account_aud` row | PURGE (by value) | — |
 | activity | type, occurred_at, account_id, job_order_id, user_id, outcome, direction, duration_min, source | BIZ | KEEP / CASC | HIST | — |
 | activity | person_id | ID | KEEP / CASC | HIST | — |
@@ -68,7 +69,7 @@ Erasure is written `anonymise / delete`. A row may list several columns with the
 | candidate_reference | referee_name, referee_relationship, referee_company, referee_email, referee_phone | TP | DEL / CASC; **DSR**: a request whose e-mail equals `lower(referee_email)` sets these to `[removed]`/null and purges the `_aud` rows of those references | PURGE | NEVER |
 | client_feedback | application_id, person_id, round, feedback_on, outcome, decline_reason, recorded_by, recorded_at | BIZ | KEEP / CASC | HIST | — |
 | client_feedback | reason_text, candidate_feedback | SPD | PH / CASC | PURGE | NEVER |
-| client_feedback | participants | TP | PH / CASC; roles only, no names (UI hint), so not matched on a contact's own DSR (residual risk) | PURGE | NEVER |
+| client_feedback | participants | TP | PH / CASC; holds **roles** of the client people present, never names (field label and UI hint), so there is nothing to match on a contact's own DSR | PURGE | NEVER |
 | client_report | job_order_id, kind, version, language, blind, storage_key, size_bytes, generated_by, generated_at, sent_on, sent_by | ID | DEL (row and PDF) when `person_ids` overlaps / same | NA | — |
 | client_report | person_ids | ID | DEL / DEL | NA | — |
 | consent_record | person_id, decision, channel, notice_id, consent_request_id, recorded_at, recorded_by | EVID | KEEP / CASC | NA | — |
@@ -119,4 +120,5 @@ Erasure is written `anonymise / delete`. A row may list several columns with the
 ## Residual risks (accepted for the pilot)
 
 - Free text written about a third person in a field of another record (an activity note naming an attendee, an interview note naming a former boss) cannot be found by that person's id. Mitigation: UI hints, and attendee and participant fields hold ids or roles, not names.
-- `client_feedback.participants` and the signed agreement PDF name client contacts; they are business contact data kept with the commercial record.
+- `client_feedback.participants` holds roles, not names; a consultant may still type a name by mistake (scrubbed with the candidate only).
+- The signed agreement PDF names the client's signatory: business contact data kept with the commercial record.

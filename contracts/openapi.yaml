@@ -463,7 +463,9 @@ paths:
           description: |
             Since 1.3.0 (R63). Organisations with any of these roles (repeat the parameter). Omitted =
             CLIENT or PROSPECT, which is the 1.2 client list (every 1.2 row is backfilled into one of
-            them). The organisation picker (employment, targets, off-limits) sends all four. Since 1.3.0
+            them). Creating a job order for an organisation adds CLIENT to it (accounts, on
+            `JobOrderCreated`), so an organisation with a search always shows in the default list; CLIENT
+            cannot be removed while it has open job orders (409). The organisation picker (employment, targets, off-limits) sends all four. Since 1.3.0
             `q` also matches `aliases` (normalised, ADR 0013).
           schema:
             type: array
@@ -5421,7 +5423,7 @@ components:
           oneOf: [{ $ref: '#/components/schemas/Language' }, { type: 'null' }]
     AccountUpdateRequest:
       type: object
-      description: Since 1.3.0 also takes the profile fields, `roles` and `aliases` of `AccountCreateRequest` (same rules; `aliases` replaces the whole list). CLIENT is also set by the server when the status becomes ACTIVE, TARGET when the organisation becomes a target company, EMPLOYER on an employment link; removing a role a record still depends on is allowed (flags are labels, not guards).
+      description: Since 1.3.0 also takes the profile fields, `roles` and `aliases` of `AccountCreateRequest` (same rules; `aliases` replaces the whole list). CLIENT is also set by the server when the status becomes ACTIVE or when a job order is created for the organisation, TARGET when it becomes a target company, EMPLOYER on an employment link. Removing CLIENT while the organisation has open job orders gives 409 `TRANSITION_GUARD_FAILED` with the job orders as `blockingItems`; removing the other roles is always allowed.
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         sector: { type: [string, 'null'], minLength: 1, maxLength: 100 }
