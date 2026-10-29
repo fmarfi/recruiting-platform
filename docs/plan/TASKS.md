@@ -127,11 +127,11 @@ Source: `docs/plan/Mihenk — Plan, Design and Agent-Crew Strategy.md`. Decision
 
 | ID | Slice | Owner | Status | Blocked by |
 | --- | --- | --- | --- | --- |
-| C13-R | Review `contract-1-3` against plan v3 (R63, R65, R70 gaps) | code-reviewer | in progress | – |
-| S3 | Glossary TR/EN (R4), four-area routes (R1), pinned live searches | frontend-shell | in progress | – |
-| S6 | Edit everywhere for client, candidate, search with F0 primitives | frontend-pipeline | in progress | – |
-| C13-F | Fix review blockers + add R63 organisation, R65 longlist_status, R70 activity fields | architect | todo | C13-R |
+| C13-R | Review `contract-1-3` against plan v3 (R63, R65, R70 gaps) | code-reviewer | done | – |
+| S3 | Glossary TR/EN (R4), four-area routes (R1), pinned live searches | frontend-shell | done | – |
+| S6 | Edit everywhere for client, candidate, search with F0 primitives | frontend-pipeline | done | – |
+| C13-F | Fix review blockers (role gating deferred post-pilot) + add R63 organisation, R65 longlist_status, R70 activity fields | architect | in progress | C13-R |
 | S4 | Quick log composer (R70) | – | todo | C13-F |
 | S5 | Longlist table, bulk add, pool filters (R65) | – | todo | C13-F |
 | S2 | Organisation identity + import (synthetic file) (R63) | – | todo | C13-F |
-| S1 | Auth hardening only: dev-login guard, TOTP (hosting/DPA parked) | – | todo | – |
+| S1 | Dev-login guard only (TOTP, roles, hosting/DPA parked: post-pilot) | – | todo | – |
