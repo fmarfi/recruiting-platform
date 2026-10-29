@@ -60,16 +60,33 @@ export function useRecordSave<R extends { version: number }, F extends Record<st
   const [latest, setLatest] = useState<R | null>(null);
   const changedKeys = useCallback(() => (Object.keys(c.initial) as (keyof F & string)[]).filter((k) => c.values[k] !== c.initial[k]), [c.initial, c.values]);
 
-  const done = (saved: R | undefined, keys: (keyof F & string)[], previous: F) => {
+  /** Applies the non-PATCH part (tags). If the PATCH already succeeded, a failure still refreshes the record so the version is not stale. */
+  const applyExtra = async (patched: boolean) => {
+    try {
+      await c.extra!.apply();
+    } catch (e) {
+      if (patched) {
+        c.onSaved();
+        throw { detail: t('accounts.edit.tagsFailed') };
+      }
+      throw e;
+    }
+  };
+
+  const done = (keys: (keyof F & string)[], previous: F, savedValues: F, extra: SaveConfig<R, F>['extra']) => {
     c.onSaved();
     showUndo({
       message: c.message,
       onUndo: async () => {
-        if (saved && keys.length) {
-          const r = await c.patch(c.toBody(previous, keys), saved.version);
+        // Tag calls bump the person's version, so revert them first and read the version afterwards.
+        if (extra?.changed) await extra.revert();
+        if (keys.length) {
+          const cur = (await c.fetchLatest()).data;
+          if (!cur) throw new Error('reload failed');
+          if (JSON.stringify(c.toBody(c.toForm(cur), keys)) !== JSON.stringify(c.toBody(savedValues, keys))) throw new Error('changed since');
+          const r = await c.patch(c.toBody(previous, keys), cur.version);
           if (r.error) throw r.error;
         }
-        if (c.extra?.changed) await c.extra.revert();
         c.onSaved();
       },
     });
@@ -79,7 +96,7 @@ export function useRecordSave<R extends { version: number }, F extends Record<st
     const keys = changedKeys();
     const extra = !!c.extra?.changed;
     if (keys.length === 0 && !extra) return;
-    let saved: R | undefined;
+    let patched = false;
     if (keys.length) {
       const r = await c.patch(c.toBody(c.values, keys), c.record.version);
       if (r.error) {
@@ -94,10 +111,10 @@ export function useRecordSave<R extends { version: number }, F extends Record<st
             // nothing of mine clashes: retry once on top of the new version
             const retry = await c.patch(c.toBody(c.values, keys), cur.version);
             if (retry.error) throw retry.error;
-            saved = retry.data;
+            patched = true;
           }
         }
-        if (!saved) {
+        if (!patched) {
           const fe = fieldErrors(r.error);
           if (Object.keys(fe).length) {
             c.setErrors(fe);
@@ -105,10 +122,10 @@ export function useRecordSave<R extends { version: number }, F extends Record<st
           }
           throw r.error;
         }
-      } else saved = r.data;
+      } else patched = true;
     }
-    if (extra) await c.extra!.apply();
-    done(saved, keys, c.initial);
+    if (extra) await applyExtra(patched);
+    done(keys, c.initial, c.values, c.extra);
   };
 
   const onResolveConflict = async (choice: 'mine' | 'theirs') => {
@@ -116,7 +133,8 @@ export function useRecordSave<R extends { version: number }, F extends Record<st
     const keys = changedKeys();
     const r = await c.patch(c.toBody(c.values, keys), latest.version);
     if (r.error) throw r.error;
-    c.onSaved();
+    if (c.extra?.changed) await applyExtra(true);
+    done(keys, c.initial, c.values, c.extra);
   };
 
   return { onSave, onResolveConflict };

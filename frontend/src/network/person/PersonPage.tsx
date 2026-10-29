@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api';
-import { HistoryPanel, UndoToastProvider } from '../../shell/edit';
+import { HistoryPanel } from '../../shell/edit';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 import { problemText, type Schemas } from '../../pipeline/shared';
 import { ExposureTab } from './ExposureTab';
@@ -86,7 +86,6 @@ export function PersonPage() {
   const blocked = p.consentStatus === 'REFUSED' || p.consentStatus === 'WITHDRAWN';
 
   return (
-    <UndoToastProvider>
     <Container maw="var(--content-max-width)" fluid>
       <Anchor component={Link} to="/network" size="sm">
         {t('nav.network')}
@@ -168,6 +167,5 @@ export function PersonPage() {
       <AddToJobDialog personId={id} exclude={apps.map((a) => a.jobOrder.id)} opened={dialog === 'job'} onClose={close} onSaved={d.applications.reload} />
       <SendConsentDialog person={p} opened={dialog === 'consent'} onClose={close} onSent={d.reloadAll} />
     </Container>
-    </UndoToastProvider>
   );
 }

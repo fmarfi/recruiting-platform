@@ -6,7 +6,7 @@ import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
 import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { SkeletonRows } from '../../shell/components/SkeletonRows';
-import { HistoryPanel, UndoToastProvider } from '../../shell/edit';
+import { HistoryPanel } from '../../shell/edit';
 import { AddContactDialog } from '../components/AddContactDialog';
 import { NewRecordDialog } from '../components/NewRecordDialog';
 import { NewJobForm } from '../../pipeline/joborders/list/NewJobForm';
@@ -67,7 +67,6 @@ export function AccountPage() {
   );
 
   return (
-    <UndoToastProvider>
     <Container maw="var(--content-max-width)" p={0}>
       <Stack>
         <Text size="sm">
@@ -145,6 +144,5 @@ export function AccountPage() {
       <NewJobForm opened={dialog === 'job'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
       <NewRecordDialog kind="proposal" opened={dialog === 'proposal'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
     </Container>
-    </UndoToastProvider>
   );
 }

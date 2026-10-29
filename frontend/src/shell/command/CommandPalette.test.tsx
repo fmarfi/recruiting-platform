@@ -84,7 +84,7 @@ describe('CommandPalette', () => {
     expect(screen.getByRole('group', { name: 'Clients' })).toBeInTheDocument();
     fireEvent.mouseEnter(screen.getByRole('option', { name: /Acme Holding/ }));
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(screen.getByTestId('where')).toHaveTextContent('/accounts/a1');
+    expect(screen.getByTestId('where')).toHaveTextContent('/clients/a1');
     // KVKK: only kind and id are stored, under a per-user key
     const raw = localStorage.getItem('command.recent.u1')!;
     expect(JSON.parse(raw)[0]).toMatchObject({ kind: 'account', id: 'a1' });
@@ -95,7 +95,7 @@ describe('CommandPalette', () => {
     const { input } = setup();
     fireEvent.change(input, { target: { value: 'candidates' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(screen.getByTestId('where')).toHaveTextContent('/network');
+    expect(screen.getByTestId('where')).toHaveTextContent('/candidates');
   });
 });
 

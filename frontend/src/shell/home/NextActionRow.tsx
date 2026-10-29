@@ -19,7 +19,7 @@ export function NextActionRow({ action: a, today, onDone, onSnooze }: Props) {
       <Checkbox label={a.title} checked={false} onChange={onDone} aria-label={a.title} style={{ flex: '1 1 220px', minWidth: 0 }} styles={{ label: { overflowWrap: 'anywhere' } }} />
       <Group gap="xs" wrap="wrap">
         {a.account && (
-          <Anchor component={Link} to={`/accounts/${a.account.id}`} size="sm">
+          <Anchor component={Link} to={`/clients/${a.account.id}`} size="sm">
             {a.account.name}
           </Anchor>
         )}

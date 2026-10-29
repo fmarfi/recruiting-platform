@@ -55,3 +55,13 @@
 - Shell: midnight 232px rail (collapses to 64px, remembered in localStorage), 56px midnight header, inline Logo component (accessible name "Mihenk"), brass "+ New" as the single primary header action, bottom bar on phone. Nav labels Home/Clients/Searches/Candidates/Admin (TR: Ana sayfa/Müsteriler/Aramalar/Adaylar/Yönetim); routes unchanged.
 - src/theme/contrast.test.ts checks the token pairs (WCAG AA).
 - Still off: screen titles still say "Job orders", "Network" tabs etc. (other agent's scope); Admin page title "Settings"; phone widths not re-checked.
+
+## Slice S3 (branch s3-nav): glossary, four-area nav, pinned searches
+- Visible i18n values use search-firm words in all modules (keys unchanged); table in docs/product/glossary.md.
+- Rail has four areas (Home, Searches, Candidates, Clients); Settings/Admin is in the user menu for managers and admins.
+- Routes /clients, /searches, /candidates (+ /:id, cv-intake, duplicates); old paths redirect and keep the query string.
+- Shell links, command palette and recent items use the new paths.
+- Rail lists up to 5 of my open searches (GET /job-orders, open, ownerId=me); sidebar and drawer only, not the phone tab bar.
+- New keys nav.pinned, nav.noPinned. Checks: tsc, vitest 236/236, vite build green.
+- For S6: links inside accounts/network/pipeline pages still use old paths and work via redirect. I edited wording in two pipeline tests.
+- No Longlist/Shortlist/Placement strings exist in the UI yet.
