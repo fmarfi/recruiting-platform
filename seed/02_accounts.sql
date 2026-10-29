@@ -35,8 +35,12 @@ UPDATE acct_seed SET slug = pg_temp.slug(name);
 INSERT INTO account (id, name, sector, city, website, notes, owner_id, status, status_changed_at, opened_on,
                      created_at, created_by, updated_at, updated_by)
 SELECT pg_temp.uid(2, n), name, sector, city, 'https://www.' || left(slug, 20) || '.example',
-       CASE WHEN n % 4 = 0 THEN 'Synthetic demo account. Prefers e-mail first, phone second.'
-            WHEN n % 5 = 0 THEN 'Synthetic demo account. Decision maker is the board; allow two weeks for feedback.' END,
+       (ARRAY['Prefers e-mail first, phone second.',
+              'Board approves senior hires; allow two weeks for feedback.',
+              'Hiring budgets are set by the CFO; price-sensitive but values speed.',
+              'Family-owned group moving to professional management; discreet about searches.',
+              'Fast decision maker; weekly call on open roles.',
+              'Wants every shortlist to state consent status clearly.'])[n % 6 + 1],
        pg_temp.uid(1, owner), status, now() - make_interval(days => status_days),
        current_date - opened_days, now() - make_interval(days => opened_days), pg_temp.uid(1, owner),
        now() - make_interval(days => status_days), pg_temp.uid(1, owner)
