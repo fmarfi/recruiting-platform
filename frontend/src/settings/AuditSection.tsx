@@ -1,4 +1,5 @@
 import { Select, Stack, Table, Text } from '@mantine/core';
+import { EmptyState } from '../shell/components/EmptyState';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../api';
@@ -33,8 +34,9 @@ export function AuditSection() {
       />
       {log.loading && !log.data && <SkeletonRows n={4} />}
       {log.error !== undefined && <ErrorBanner onRetry={log.reload} />}
-      {log.data && rows.length === 0 && <Text c="dimmed">{t('settings.common.none')}</Text>}
+      {log.data && rows.length === 0 && <EmptyState title={t('settings.common.none')} />}
       {rows.length > 0 && (
+        <Table.ScrollContainer minWidth={560}>
         <Table withTableBorder>
           <Table.Thead>
             <Table.Tr>
@@ -45,12 +47,13 @@ export function AuditSection() {
           <Table.Tbody>
             {rows.map((r) => (
               <Table.Tr key={r.id}>
-                <Table.Td>{fmtDate(r.at, i18n.language)}</Table.Td><Table.Td>{r.user.name}</Table.Td>
+                <Table.Td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtDate(r.at, i18n.language)}</Table.Td><Table.Td>{r.user.name}</Table.Td>
                 <Table.Td>{t(`settings.audit.${r.action}`)}</Table.Td><Table.Td>{r.entityType}</Table.Td><Table.Td>{r.ipAddress ?? '-'}</Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
       )}
     </Stack>
   );

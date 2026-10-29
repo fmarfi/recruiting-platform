@@ -224,7 +224,8 @@
         "PIPELINE": "Pipeline",
         "REPORT": "Report",
         "SHARE_LINK": "Share link"
-      }
+      },
+      "emptyHint": "Once this person is presented to a client, it is recorded here."
     },
     "dup": {
       "nav": "Duplicates",
@@ -323,6 +324,10 @@
     },
     "noConnectionsAction": "Connections show who can introduce this person.",
     "loadErrorHint": "Check your connection, then try again.",
-    "emptyHint": "Add the first person, or import CVs, to start building your network."
+    "emptyHint": "Add the first person, or import CVs, to start building your network.",
+    "backToList": "Back to the network",
+    "notFoundHint": "It may have been deleted or merged, or the link is wrong.",
+    "noActivityHint": "Log calls, meetings and notes so the next person knows where things stand.",
+    "noPipelinesHint": "Add this person to a job order to start a pipeline."
   }
 }

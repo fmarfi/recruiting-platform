@@ -99,7 +99,26 @@
       "password": "Initial password",
       "search": "Search users",
       "adminOnly": "Only administrators can change users.",
-      "empty": "No users found."
+      "empty": "No users found.",
+      "disable": "Disable",
+      "enable": "Enable",
+      "disableTitle": "Disable {{name}}?",
+      "disableBody": "They can no longer sign in. Their records stay, and you can enable them again at any time.",
+      "emptyHint": "Invite the first colleague to get started.",
+      "err": {
+        "name": "Enter the name.",
+        "email": "Enter a valid e-mail address, for example name@company.com.",
+        "password": "Enter an initial password of at least 8 characters."
+      },
+      "help": {
+        "email": "They sign in with this address.",
+        "role": "Consultants work their own records; managers also see the whole firm.",
+        "password": "Share it with them privately; they should change it after signing in."
+      },
+      "section": {
+        "person": "Person",
+        "access": "Access"
+      }
     },
     "role": {
       "CONSULTANT": "Consultant",
@@ -178,6 +197,15 @@
         "generic": "Could not save. Try again."
       },
       "endsToday": "Ends today"
+    },
+    "sub": {
+      "users": "Who can sign in and what they may do.",
+      "roles": "What each role is allowed to do. Fixed in this version.",
+      "statuses": "The status flows used across clients, proposals, jobs and candidates.",
+      "import": "Bring clients and people in from a CSV file, with a preview before anything is saved.",
+      "retention": "How long personal data is kept and how deletion requests are handled.",
+      "offlimits": "Companies we must not approach for candidates.",
+      "audit": "Who viewed, exported or downloaded personal data."
     }
   }
 }

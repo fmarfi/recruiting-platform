@@ -116,7 +116,9 @@
     },
     "loadErrorHint": "Bağlantınızı kontrol edip yeniden deneyin.",
     "undoRemove": "Geri al",
-    "removedToast": "{{name}} bu hattan çıkarıldı."
+    "removedToast": "{{name}} bu hattan çıkarıldı.",
+    "notFoundHint": "Silinmiş olabilir veya bağlantı hatalı olabilir.",
+    "backToList": "İş emirlerine dön"
   },
   "quickAdd": {
     "account": "Müşteri",

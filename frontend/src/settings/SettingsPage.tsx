@@ -1,4 +1,5 @@
 import { Anchor, Group, NavLink as MNavLink, Stack, Text, Title } from '@mantine/core';
+import { PageHeader } from '../shell/components/PageHeader';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../shell/auth/useAuth';
@@ -29,7 +30,7 @@ export function SettingsPage() {
 
   return (
     <Stack>
-      <Title order={1}>{t('settings.title')}</Title>
+      <PageHeader title={t('settings.title')} subtitle={t(`settings.sub.${section}`)} />
       <Group align="flex-start" wrap="wrap" gap="lg">
         <Stack gap={0} miw={180} component="nav" aria-label={t('settings.title')}>
           {SECTIONS.map((s) => (
