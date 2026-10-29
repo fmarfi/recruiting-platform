@@ -93,7 +93,7 @@ describe('CommandPalette', () => {
 
   it('runs a navigation quick action', () => {
     const { input } = setup();
-    fireEvent.change(input, { target: { value: 'network' } });
+    fireEvent.change(input, { target: { value: 'candidates' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(screen.getByTestId('where')).toHaveTextContent('/network');
   });
