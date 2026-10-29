@@ -334,6 +334,48 @@ Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold id
 
 `stageCounts`, `activeCandidates` and `daysOpen` are computed by query (`group by stage`), not stored.
 
+**search_brief** — audited (1.3.0, SX-001); one row per job order, created on the first `PUT .../brief`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| job_order_id | uuid PK, FK job_order | |
+| reporting_line | varchar(200) | null |
+| purpose, ideal_profile, notes | text | null; at most 4000 each (service) |
+| seniority_level | varchar(40) | null; `Seniority` |
+| function_area | varchar(40) | null; `JobFunction` |
+| comp_min, comp_max | numeric(14,2) | null; `CHECK (comp_min IS NULL OR comp_max IS NULL OR comp_min <= comp_max)` |
+| comp_currency | char(3) | null; `CHECK ((comp_min IS NULL AND comp_max IS NULL) OR comp_currency IS NOT NULL)` |
+| comp_period | varchar(40) | null; `CompensationPeriod` |
+| comp_bonus_note | varchar(300) | null |
+| languages | jsonb | not null default `'[]'`; `[{language, level}]`, at most 10 |
+| kickoff_on, longlist_due_on, shortlist_due_on, target_start_on | date | null |
+| brief_version | int | not null default 1; +1 when criteria, band or timeline change |
+| audit columns | | `version` is the optimistic lock of the PUT |
+
+The band is the client's budget for the role, not a candidate's pay, so it is stored in clear (ADR 0013).
+
+**search_criterion** — audited (1.3.0): `id uuid PK`, `job_order_id uuid FK job_order not null` (index `(job_order_id, kind, sort_order)`), `kind varchar(40)` (`CriterionKind`), `text varchar(300) not null`, `sort_order int not null`, `removed_at timestamptz null` (never hard-deleted: `candidate_evaluation.scores` refer to the id), audit columns.
+
+**job_order_team_member** — audited (1.3.0): `job_order_id uuid FK job_order` + `user_id uuid FK app_user`, PK `(job_order_id, user_id)`, `role varchar(40)` (`SearchTeamRole`), `added_at timestamptz not null`. Replaced as a whole by `PUT .../team`; the owner is always a LEAD row (the service adds it). Index on `user_id` (later visibility rule).
+
+**target_company** — audited (1.3.0, SX-003)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| job_order_id | uuid FK job_order | not null; index |
+| account_id | uuid FK account | null; partial unique `(job_order_id, account_id) where account_id is not null` |
+| company_name | varchar(200) | null; `CHECK ((account_id IS NULL) <> (company_name IS NULL))`; unique `(job_order_id, immutable_unaccent(lower(trim(company_name))))` where not null |
+| sector | varchar(100) | null |
+| tier | varchar(40) | `TargetTier` |
+| status | varchar(40) | `TargetCompanyStatus`, default `TO_MAP` |
+| rationale | varchar(1000) | null |
+| source | varchar(200) | null |
+| notes | varchar(2000) | null; no personal data (hint in the UI) |
+| owner_id | uuid FK app_user | not null |
+| off_limits_override_reason | varchar(500) | null; set by a manager approaching an off-limits company |
+| audit columns | | at most 300 rows per job order (service) |
+
 **application** — audited
 
 | Column | Type | Notes |
