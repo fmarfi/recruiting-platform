@@ -1246,6 +1246,10 @@ paths:
             items: { $ref: '#/components/schemas/PipelineStage' }
           style: form
           explode: true
+        - name: list
+          in: query
+          description: Since 1.3.0. Only applications on this list (derived from the stage, see `CandidateList`), ordered by `rank`.
+          schema: { $ref: '#/components/schemas/CandidateList' }
       responses:
         '200':
           description: Applications
@@ -1330,6 +1334,28 @@ paths:
               schema: { $ref: '#/components/schemas/Application' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Longlist and shortlist]
+      operationId: updateApplication
+      summary: Change rating, rationale or outreach status (not the stage, not the rank)
+      description: Since 1.3.0. On the shortlist the rationale cannot be shortened below 20 characters or cleared, and the rating cannot be cleared (409 `TRANSITION_GUARD_FAILED` with `errors`). Envers keeps the history.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
     delete:
       tags: [Pipeline]
       operationId: removeApplication
@@ -1372,6 +1398,17 @@ paths:
           cover applications, and any later bulk stage move must apply the same guards per record.
         - **Warnings.** The response may carry `warnings` (non-blocking), e.g. the person was already
           presented to this account for another job order.
+
+        Since 1.3.0 (ADR 0013, SX-014):
+        - **Shortlist entry.** A move from the longlist (SOURCED, SCREENED) into a client-facing stage
+          puts the person on the SHORTLIST and needs `rating` (1-5) and a `rationale` of at least 20
+          characters, either already on the application or sent in this request. Missing values give
+          409 `TRANSITION_GUARD_FAILED` with `errors` (`field` rating or rationale, `code` REQUIRED or
+          SIZE). Checked after the sharing guard, before the off-limits guard.
+        - **Rank.** Changing list appends the application at the end of the new list and closes the gap
+          in the old one; REJECTED and PLACED clear `rank` (PLACED keeps its rank on the shortlist report
+          history only). Warning `SHORTLIST_LONG` when the shortlist then has more than 7 people.
+        - Archived job orders and archived people reject stage moves with 409 `ARCHIVED`.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -3417,6 +3454,366 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  # ---------- 1.3.0: longlist and shortlist (ADR 0013) ----------
+  /job-orders/{id}/ranking:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    put:
+      tags: [Longlist and shortlist]
+      operationId: rankJobOrderList
+      summary: Set the order of one list (keyboard reordering, Alt+Up/Down)
+      description: |
+        `applicationIds` must be exactly the applications currently on `list` for this job order, in the
+        new order (else 409 `STATE_CONFLICT`, reload and retry). Ranks become 1..n (unique, gapless). The
+        service locks the job order row for every rank change, so concurrent reorders serialise. Envers
+        records each changed application.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RankingRequest' }
+      responses:
+        '200':
+          description: The list in its new order
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Application' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /applications/{id}/client-feedback:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Longlist and shortlist]
+      operationId: listClientFeedback
+      summary: Client feedback rounds for one shortlisted candidate, newest first
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Feedback rounds
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClientFeedback' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Longlist and shortlist]
+      operationId: recordClientFeedback
+      summary: Record one round of client feedback (SX-019)
+      description: |
+        Only for applications on the SHORTLIST (409 `STATE_CONFLICT` otherwise). `round` defaults to the
+        last round + 1. DECLINE needs `declineReason` (400 `REASON_REQUIRED`) and, in the same
+        transaction, moves the application to REJECTED with reason `Client declined: <reason>` (the
+        normal stage-move rules, event and timeline apply). `recordedBy` is the current user ("entered on
+        the client's behalf").
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientFeedbackCreateRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientFeedback' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /client-feedback/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Longlist and shortlist]
+      operationId: updateClientFeedback
+      summary: Correct a feedback round (the outcome cannot change; record a new round instead)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientFeedbackUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientFeedback' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Longlist and shortlist]
+      operationId: deleteClientFeedback
+      summary: Delete a round entered by mistake (Envers keeps the history; does not undo a stage move)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  # ---------- 1.3.0: candidate evaluation (ADR 0013) ----------
+  /people/{id}/evaluations:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Evaluation]
+      operationId: listEvaluations
+      summary: Evaluations of a person, newest first (Evaluations tab)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+      responses:
+        '200':
+          description: Evaluations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Evaluation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Evaluation]
+      operationId: createEvaluation
+      summary: Evaluate a person, for one search or in general (SX-008)
+      description: |
+        One evaluation per person and job order (409 `DUPLICATE` with `existingId`); `jobOrderId` null =
+        a general evaluation (any number). Recommendation SHORTLIST needs `overallRating`, `summary` and
+        `concerns` (400 `VALIDATION_FAILED`) and consent GIVEN (409 `CONSENT_REQUIRED`); REJECT needs
+        `recommendationReason` (400 `REASON_REQUIRED`). `scores` refer to the job order's criteria
+        (unknown or removed criterion → 400). The evaluation does not move the stage.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EvaluationCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /evaluations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Evaluation]
+      operationId: getEvaluation
+      summary: One evaluation
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: Evaluation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Evaluation]
+      operationId: updateEvaluation
+      summary: Change an evaluation (same rules as create; `scores` replace the whole list)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EvaluationUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Evaluation]
+      operationId: deleteEvaluation
+      summary: Delete an evaluation (Envers keeps the history until the person is anonymised)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /people/{id}/interview-notes:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Evaluation]
+      operationId: listInterviewNotes
+      summary: Interview notes of a person, newest first
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+      responses:
+        '200':
+          description: Notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/InterviewNote' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Evaluation]
+      operationId: createInterviewNote
+      summary: Add interview notes (SX-009; template headings Career, Motivation, Fit, Concerns are client-side)
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InterviewNoteRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InterviewNote' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /interview-notes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Evaluation]
+      operationId: updateInterviewNote
+      summary: Change interview notes
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InterviewNoteUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InterviewNote' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Evaluation]
+      operationId: deleteInterviewNote
+      summary: Delete interview notes
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /people/{id}/references:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Evaluation]
+      operationId: listReferences
+      summary: Reference checks of a person
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      parameters:
+        - $ref: '#/components/parameters/JobOrderIdQuery'
+      responses:
+        '200':
+          description: References
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CandidateReference' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Evaluation]
+      operationId: createReference
+      summary: Add a reference check
+      description: The referee's name and contact details are a third person's data (ADR 0013); they are deleted with the candidate's anonymisation and never put into reports (only status and summary).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CandidateReferenceRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateReference' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /references/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Evaluation]
+      operationId: updateReference
+      summary: Change a reference check
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CandidateReferenceUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateReference' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Evaluation]
+      operationId: deleteReference
+      summary: Delete a reference check
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 components:
   securitySchemes:
     sessionCookie:
@@ -4458,6 +4855,21 @@ components:
           type: array
           description: Since 1.2.0. Only in the responses of `POST /job-orders/{id}/applications` and `PATCH /applications/{id}/stage`; non-blocking.
           items: { $ref: '#/components/schemas/PipelineWarning' }
+        list:
+          oneOf: [{ $ref: '#/components/schemas/CandidateList' }, { type: 'null' }]
+          description: Since 1.3.0. Derived from `stage` (`PipelineStage.candidateList()`); null when REJECTED.
+        rank:
+          type: [integer, 'null']
+          minimum: 1
+          description: Since 1.3.0. Position on its list, unique and gapless per job order and list; null when REJECTED or PLACED.
+        rating: { type: [integer, 'null'], minimum: 1, maximum: 5, description: 'Since 1.3.0. 1 reject, 3 maybe, 5 outstanding.' }
+        rationale: { type: [string, 'null'], maxLength: 2000, description: Since 1.3.0. Why this person is on the list; internal unless put in a report. }
+        outreachStatus:
+          $ref: '#/components/schemas/OutreachStatus'
+          description: Since 1.3.0. Longlist call status (SX-013); default TO_CALL.
+        latestClientFeedback:
+          oneOf: [{ $ref: '#/components/schemas/ClientFeedback' }, { type: 'null' }]
+          description: Since 1.3.0. The newest feedback round, if any.
     ApplicationCreateRequest:
       type: object
       required: [personId]
@@ -4481,6 +4893,15 @@ components:
             audited by Envers). Only lifts the off-limits check on the first move into a client-facing
             stage (e.g. a rule created after the person was added); ignored when the application already
             has an override. It never lifts `CONSENT_REQUIRED`, which cannot be overridden.
+        rating:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 5
+          description: Since 1.3.0. Saved on the application with the move (needed to enter the shortlist).
+        rationale:
+          type: [string, 'null']
+          maxLength: 2000
+          description: Since 1.3.0. Saved with the move; at least 20 characters to enter the shortlist.
     Proposal:
       type: object
       required: [id, account, title, status, statusChangedAt, owner, createdAt, updatedAt, version]
@@ -5371,7 +5792,7 @@ components:
       enum: [CLIENT_AGREEMENT, GUARANTEE_PERIOD, CLIENT_REQUEST, OTHER]
     PipelineWarningCode:
       type: string
-      enum: [PREVIOUSLY_PRESENTED_TO_ACCOUNT, ACTIVE_IN_OTHER_PROCESS]
+      enum: [PREVIOUSLY_PRESENTED_TO_ACCOUNT, ACTIVE_IN_OTHER_PROCESS, SHORTLIST_LONG]
     Compensation:
       type: object
       description: |
@@ -5816,3 +6237,245 @@ components:
           type: object
           description: Records rewritten synchronously (PEOPLE, ACCOUNTS, views); JOB_ORDERS and PROPOSALS follow through `TagChanged` within seconds.
           additionalProperties: { type: integer, minimum: 0 }
+    # ---------- 1.3.0: longlist and shortlist ----------
+    CandidateList:
+      type: string
+      description: '`contracts/enums/CandidateList.java`; derived from the stage: SOURCED, SCREENED = LONGLIST; PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED = SHORTLIST.'
+      enum: [LONGLIST, SHORTLIST]
+    OutreachStatus:
+      type: string
+      enum: [TO_CALL, CALLED, INTERESTED, NOT_INTERESTED, NOT_NOW]
+    ClientFeedbackOutcome:
+      type: string
+      enum: [ADVANCE, HOLD, DECLINE]
+    DeclineReason:
+      type: string
+      enum: [EXPERIENCE, COMPENSATION, CULTURE_FIT, LOCATION, TIMING, OTHER_CANDIDATE, OTHER]
+    ApplicationUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        rating: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        rationale: { type: [string, 'null'], maxLength: 2000 }
+        outreachStatus: { $ref: '#/components/schemas/OutreachStatus' }
+        version: { $ref: '#/components/schemas/Version' }
+    RankingRequest:
+      type: object
+      required: [list, applicationIds]
+      properties:
+        list: { $ref: '#/components/schemas/CandidateList' }
+        applicationIds:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          description: Every application on the list, first = rank 1.
+          items: { $ref: '#/components/schemas/Id' }
+    ClientFeedback:
+      type: object
+      required: [id, applicationId, round, feedbackOn, outcome, recordedBy, recordedAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        applicationId: { $ref: '#/components/schemas/Id' }
+        round: { type: integer, minimum: 1 }
+        feedbackOn: { type: string, format: date }
+        participants: { type: [string, 'null'], description: Client people present (free text)., examples: ['CFO, HR director'] }
+        outcome: { $ref: '#/components/schemas/ClientFeedbackOutcome' }
+        declineReason:
+          oneOf: [{ $ref: '#/components/schemas/DeclineReason' }, { type: 'null' }]
+        reasonText: { type: [string, 'null'] }
+        candidateFeedback: { type: [string, 'null'], description: What to relay to the candidate. }
+        recordedBy: { $ref: '#/components/schemas/UserRef' }
+        recordedAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    ClientFeedbackCreateRequest:
+      type: object
+      required: [feedbackOn, outcome]
+      properties:
+        round: { type: integer, minimum: 1, maximum: 20 }
+        feedbackOn: { type: string, format: date }
+        participants: { type: [string, 'null'], maxLength: 500 }
+        outcome: { $ref: '#/components/schemas/ClientFeedbackOutcome' }
+        declineReason:
+          oneOf: [{ $ref: '#/components/schemas/DeclineReason' }, { type: 'null' }]
+        reasonText: { type: [string, 'null'], maxLength: 1000, description: Required when `declineReason` is OTHER. }
+        candidateFeedback: { type: [string, 'null'], maxLength: 2000 }
+    ClientFeedbackUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        feedbackOn: { type: string, format: date }
+        participants: { type: [string, 'null'], maxLength: 500 }
+        declineReason:
+          oneOf: [{ $ref: '#/components/schemas/DeclineReason' }, { type: 'null' }]
+        reasonText: { type: [string, 'null'], maxLength: 1000 }
+        candidateFeedback: { type: [string, 'null'], maxLength: 2000 }
+        version: { $ref: '#/components/schemas/Version' }
+    # ---------- 1.3.0: evaluation ----------
+    InterviewType:
+      type: string
+      enum: [PHONE, VIDEO, IN_PERSON]
+    Recommendation:
+      type: string
+      enum: [SHORTLIST, HOLD, REJECT]
+    MotivationTag:
+      type: string
+      enum: [GROWTH, PAY, STABILITY, RELOCATION, PUSH_FACTOR]
+    EvaluationBlock:
+      type: string
+      description: Blocks that may go into a client report; private notes never do.
+      enum: [SUMMARY, ACHIEVEMENTS, MOTIVATION, CONCERNS, CRITERIA, REFERENCES]
+    ReferenceStatus:
+      type: string
+      enum: [TO_REQUEST, REQUESTED, RECEIVED, DECLINED]
+    CriterionScore:
+      type: object
+      required: [criterionId, score]
+      properties:
+        criterionId: { $ref: '#/components/schemas/Id' }
+        criterionText: { type: string, readOnly: true, description: In responses only (the criterion as it is now). }
+        score: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: [string, 'null'], maxLength: 500 }
+    EvaluationFields:
+      type: object
+      properties:
+        evaluatedOn: { type: string, format: date, description: Defaults to today. }
+        interviewType: { $ref: '#/components/schemas/InterviewType' }
+        overallRating: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        recommendation: { $ref: '#/components/schemas/Recommendation' }
+        recommendationReason: { type: [string, 'null'], maxLength: 500 }
+        summary: { type: [string, 'null'], maxLength: 600 }
+        keyAchievements:
+          type: array
+          maxItems: 5
+          items: { type: string, minLength: 1, maxLength: 200 }
+        motivation: { type: [string, 'null'], maxLength: 400 }
+        motivationTags:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/MotivationTag' }
+        concerns: { type: [string, 'null'], maxLength: 400 }
+        otherProcesses: { type: [string, 'null'], maxLength: 1000, description: Competing offers or processes. }
+        scores:
+          type: array
+          maxItems: 30
+          description: One per brief criterion (SX-017); replaces the whole list when sent.
+          items: { $ref: '#/components/schemas/CriterionScore' }
+        privateNotes: { type: [string, 'null'], maxLength: 4000, description: Never in reports. }
+        internalOnly: { type: boolean, description: When true no block of this evaluation goes into a report. }
+        reportBlocks:
+          type: array
+          uniqueItems: true
+          description: Default SUMMARY, ACHIEVEMENTS, MOTIVATION, CONCERNS.
+          items: { $ref: '#/components/schemas/EvaluationBlock' }
+    Evaluation:
+      allOf:
+        - $ref: '#/components/schemas/EvaluationFields'
+        - type: object
+          required: [id, person, evaluator, evaluatedOn, interviewType, recommendation, createdAt, updatedAt, version]
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            person: { $ref: '#/components/schemas/PersonRef' }
+            jobOrder:
+              oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+            applicationId:
+              oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+              description: Set by the server when the person is on the job order.
+            evaluator: { $ref: '#/components/schemas/UserRef' }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            version: { $ref: '#/components/schemas/Version' }
+    EvaluationCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/EvaluationFields'
+        - type: object
+          required: [interviewType, recommendation]
+          properties:
+            jobOrderId:
+              oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+            evaluatorId:
+              $ref: '#/components/schemas/Id'
+              description: Defaults to the current user.
+    EvaluationUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/EvaluationFields'
+        - type: object
+          properties:
+            version: { $ref: '#/components/schemas/Version' }
+    InterviewNote:
+      type: object
+      required: [id, person, interviewer, heldOn, interviewType, body, includeInReport, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        person: { $ref: '#/components/schemas/PersonRef' }
+        jobOrder:
+          oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+        interviewer: { $ref: '#/components/schemas/UserRef' }
+        heldOn: { type: string, format: date }
+        interviewType: { $ref: '#/components/schemas/InterviewType' }
+        body: { type: string }
+        includeInReport: { type: boolean, description: Default false; notes reach a report only when true (SX-009). }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    InterviewNoteRequest:
+      type: object
+      required: [interviewType, body]
+      properties:
+        jobOrderId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        interviewerId: { $ref: '#/components/schemas/Id' }
+        heldOn: { type: string, format: date, description: Defaults to today. }
+        interviewType: { $ref: '#/components/schemas/InterviewType' }
+        body: { type: string, minLength: 1, maxLength: 20000 }
+        includeInReport: { type: boolean, default: false }
+    InterviewNoteUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        heldOn: { type: string, format: date }
+        interviewType: { $ref: '#/components/schemas/InterviewType' }
+        body: { type: string, minLength: 1, maxLength: 20000 }
+        includeInReport: { type: boolean }
+        version: { $ref: '#/components/schemas/Version' }
+    CandidateReference:
+      type: object
+      required: [id, person, refereeName, status, includeInReport, createdAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        person: { $ref: '#/components/schemas/PersonRef' }
+        jobOrder:
+          oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+        refereeName: { type: string }
+        refereeRelationship: { type: [string, 'null'], examples: [Former line manager] }
+        refereeCompany: { type: [string, 'null'] }
+        refereeEmail: { type: [string, 'null'], format: email }
+        refereePhone: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ReferenceStatus' }
+        summary: { type: [string, 'null'] }
+        checkedOn: { type: [string, 'null'], format: date }
+        checkedBy:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+        includeInReport: { type: boolean, description: 'Only status and summary go into a report, never the referee details.' }
+        createdAt: { type: string, format: date-time }
+        version: { $ref: '#/components/schemas/Version' }
+    CandidateReferenceRequest:
+      type: object
+      required: [refereeName]
+      properties:
+        jobOrderId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+        refereeName: { type: string, minLength: 1, maxLength: 200 }
+        refereeRelationship: { type: [string, 'null'], maxLength: 200 }
+        refereeCompany: { type: [string, 'null'], maxLength: 200 }
+        refereeEmail: { type: [string, 'null'], format: email, maxLength: 254 }
+        refereePhone: { type: [string, 'null'], maxLength: 50 }
+        status: { $ref: '#/components/schemas/ReferenceStatus' }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        checkedOn: { type: [string, 'null'], format: date }
+        includeInReport: { type: boolean, default: false }
+    CandidateReferenceUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/CandidateReferenceRequest'
+        - type: object
+          properties:
+            version: { $ref: '#/components/schemas/Version' }

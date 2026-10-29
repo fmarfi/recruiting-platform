@@ -345,7 +345,13 @@ Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold id
 | rejection_reason | text | not null when stage = REJECTED (`CHECK`) |
 | stage_changed_at | timestamptz | not null |
 | off_limits_override_reason | text | null (1.2.0); set when a manager added the person despite an off-limits rule; scrubbed like `rejection_reason` |
+| rank | int | null (1.3.0); `CHECK (rank >= 1)`; position on the list (`PipelineStage.candidateList()`), gapless per `(job_order_id, list)`; null when REJECTED or PLACED. No unique index (reorders would collide mid-statement): the service locks the `job_order` row (`PESSIMISTIC_WRITE`) for every rank change. Index `(job_order_id, rank)` |
+| rating | smallint | null (1.3.0); `CHECK (rating BETWEEN 1 AND 5)` |
+| rationale | text | null (1.3.0); at most 2000 characters (service); personal data, scrubbed like `rejection_reason` |
+| outreach_status | varchar(40) | `OutreachStatus`, not null default `TO_CALL` (1.3.0) |
 | audit columns | | unique `(job_order_id, person_id)`; index `(job_order_id, stage)` |
+
+Rank backfill (1.3.0 migration): for each job order and list, number the active applications by `stage_changed_at, created_at` (1..n); REJECTED and PLACED stay null.
 
 **candidate_exposure** — append-only, not audited (1.2.0, ADR 0011; B-05 exposure history)
 
@@ -362,6 +368,70 @@ Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold id
 | | | unique `(application_id, channel) where channel = 'PIPELINE'` (first move into a client-facing stage only; idempotent) |
 
 Written by `pipeline` in the transaction of the first move into a client-facing stage (PRESENTED, CLIENT_INTERVIEW, OFFER or PLACED, `PipelineStage.sharedWithClient()`; forward moves may skip PRESENTED). Holds ids and dates only, so it is kept on anonymisation and cascades on delete. Backfill migration: one PIPELINE row per application whose current stage is PRESENTED, CLIENT_INTERVIEW, OFFER or PLACED, or that reached PRESENTED in `application_aud` (`presented_at` = the earliest such revision time, else `stage_changed_at`).
+
+**client_feedback** — audited (1.3.0, SX-019)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| application_id | uuid FK application | not null; `on delete cascade`; index `(application_id, round desc)` |
+| person_id | uuid FK person | not null; `on delete cascade` (ADR 0009 rule); copy of the application's person, for the purge match |
+| round | smallint | not null; `CHECK (round BETWEEN 1 AND 20)`; unique `(application_id, round)` |
+| feedback_on | date | not null |
+| participants | varchar(500) | null; client contacts' names (business contacts) |
+| outcome | varchar(40) | `ClientFeedbackOutcome` |
+| decline_reason | varchar(40) | null; `DeclineReason`; `CHECK ((outcome = 'DECLINE') = (decline_reason IS NOT NULL))` |
+| reason_text | varchar(1000) | null; personal data (scrubbed) |
+| candidate_feedback | varchar(2000) | null; personal data (scrubbed) |
+| recorded_by | uuid FK app_user | not null |
+| recorded_at | timestamptz | not null |
+| audit columns | | |
+
+**candidate_evaluation** — audited (1.3.0, SX-008/017)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| person_id | uuid FK person | not null; `on delete cascade`; index `(person_id, evaluated_on desc)` |
+| job_order_id | uuid FK job_order | null; partial unique `(person_id, job_order_id) where job_order_id is not null` (one per search) |
+| application_id | uuid FK application | null; `on delete set null` (not a person FK) |
+| evaluator_id | uuid FK app_user | not null |
+| evaluated_on | date | not null |
+| interview_type | varchar(40) | `InterviewType` |
+| overall_rating | smallint | null; `CHECK (overall_rating BETWEEN 1 AND 5)` |
+| recommendation | varchar(40) | `Recommendation` |
+| recommendation_reason | varchar(500) | null; required for REJECT (service) |
+| summary | varchar(600) | null |
+| key_achievements | jsonb | not null default `'[]'`; array of at most 5 strings |
+| motivation | varchar(400) | null |
+| motivation_tags | varchar(40)[] | not null default `'{}'`; `MotivationTag` values (array CHECK `motivation_tags <@ ARRAY[...]`) |
+| concerns | varchar(400) | null |
+| other_processes | varchar(1000) | null |
+| scores | jsonb | not null default `'[]'`; `[{criterionId, score 1-5, comment}]`, at most 30; criterion ids of `search_criterion` of the same job order (service check; criteria are never hard-deleted, so ids stay valid) |
+| private_notes | text | null; at most 4000; never in reports |
+| internal_only | boolean | not null default false |
+| report_blocks | varchar(40)[] | not null default `'{SUMMARY,ACHIEVEMENTS,MOTIVATION,CONCERNS}'`; `EvaluationBlock` values (array CHECK) |
+| audit columns | | |
+
+**interview_note** — audited (1.3.0, SX-009): `id uuid PK`, `person_id uuid FK person not null on delete cascade` (index `(person_id, held_on desc)`), `job_order_id uuid FK job_order null`, `application_id uuid FK application null on delete set null`, `interviewer_id uuid FK app_user not null`, `held_on date not null`, `interview_type varchar(40)` (`InterviewType`), `body text not null` (at most 20,000), `include_in_report boolean not null default false`, audit columns.
+
+**candidate_reference** — audited (1.3.0, SX-010)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| id | uuid PK | |
+| person_id | uuid FK person | not null; `on delete cascade`; index |
+| job_order_id | uuid FK job_order | null |
+| referee_name | varchar(200) | not null; a third person's data |
+| referee_relationship, referee_company | varchar(200) | null |
+| referee_email | varchar(254) | null |
+| referee_phone | varchar(50) | null |
+| status | varchar(40) | `ReferenceStatus`, default `TO_REQUEST` |
+| summary | text | null; at most 4000 |
+| checked_on | date | null |
+| checked_by | uuid FK app_user | null |
+| include_in_report | boolean | not null default false |
+| audit columns | | |
 
 **proposal** — audited
 
