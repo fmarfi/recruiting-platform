@@ -1,0 +1,119 @@
+{
+  "edit": {
+    "close": "Close",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "saveError": "Could not save. Try again.",
+    "saveHint": "Ctrl+Enter to save",
+    "guard": {
+      "title": "Discard unsaved changes?",
+      "body": "Your edits to this record have not been saved.",
+      "keep": "Keep editing",
+      "discard": "Discard changes"
+    },
+    "conflict": {
+      "title": "Compare and save",
+      "body": "Someone else changed this record while you were editing. Choose which values to keep.",
+      "field": "Field",
+      "mine": "Your value",
+      "theirs": "Current value",
+      "keepMine": "Keep my changes and save",
+      "useTheirs": "Use current values",
+      "empty": "(empty)"
+    },
+    "inline": {
+      "edit": "Edit {{label}}",
+      "save": "Save {{label}}",
+      "cancel": "Cancel editing {{label}}",
+      "empty": "Not set",
+      "hint": "Enter to save, Esc to cancel",
+      "saved": "{{label}} updated"
+    },
+    "undo": {
+      "action": "Undo",
+      "done": "Undone",
+      "failed": "Could not undo. Try again."
+    },
+    "tags": {
+      "add": "Add tag",
+      "hint": "Press Enter or comma to add a tag",
+      "remove": "Remove tag {{tag}}",
+      "list": "Selected tags",
+      "none": "No tags",
+      "max": "At most {{n}} tags"
+    },
+    "archive": {
+      "action": "Archive",
+      "restore": "Restore",
+      "unavailable": "Archive is not available yet",
+      "done": "{{name}} archived",
+      "restored": "{{name}} restored",
+      "error": "Could not archive. Try again."
+    }
+  },
+  "bulk": {
+    "bar": "Bulk actions",
+    "actions": "Actions",
+    "run": "Apply",
+    "cancel": "Cancel",
+    "running": "Applying...",
+    "error": "Bulk action failed. Try again.",
+    "action": {
+      "REASSIGN_OWNER": "Change owner",
+      "CHANGE_STATUS": "Change status",
+      "ADD_TAG": "Add tag",
+      "REMOVE_TAG": "Remove tag",
+      "SET_NEXT_ACTION": "Set next action",
+      "REQUEST_CONSENT": "Request consent"
+    },
+    "field": {
+      "owner": "Owner",
+      "ownerId": "Owner id",
+      "status": "Status",
+      "reason": "Reason (optional)",
+      "tag": "Tag",
+      "title": "Next action",
+      "dueOn": "Due date"
+    },
+    "summary": "{{ok}} done, {{skipped}} skipped, {{failed}} failed",
+    "details": "Details",
+    "dismiss": "Dismiss",
+    "undone": "{{n}} changes undone",
+    "undoLabel": "{{action}}: {{ok}} done",
+    "code": {
+      "NO_CHANGE": "No change needed",
+      "NOT_FOUND": "Not found",
+      "FORBIDDEN": "Not allowed",
+      "ILLEGAL_TRANSITION": "Status change not allowed",
+      "TRANSITION_GUARD_FAILED": "Status change blocked by a rule",
+      "REASON_REQUIRED": "A reason is required",
+      "STATE_CONFLICT": "Record is in a state that does not allow this",
+      "VERSION_CONFLICT": "Changed by someone else",
+      "NO_EMAIL": "No e-mail address",
+      "CONSENT_GIVEN": "Consent already given",
+      "CONSENT_REFUSED": "Consent was refused",
+      "CONSENT_WITHDRAWN": "Consent was withdrawn",
+      "REQUEST_PENDING": "Request already pending",
+      "ANONYMISED": "Record is anonymised",
+      "NO_CONSENT_BASIS": "No consent basis",
+      "TOO_MANY_TAGS": "Too many tags",
+      "INTERNAL_ERROR": "Unexpected error"
+    }
+  },
+  "history": {
+    "title": "History",
+    "loading": "Loading history",
+    "error": "Could not load history.",
+    "empty": "No changes recorded yet.",
+    "more": "Load more",
+    "system": "System",
+    "type": {
+      "ADD": "Created",
+      "MOD": "Changed",
+      "DEL": "Deleted"
+    },
+    "change": "{{field}}: {{from}} to {{to}}",
+    "none": "(empty)"
+  }
+}

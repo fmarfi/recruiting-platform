@@ -97,7 +97,7 @@ export function DataGrid<T>(p: DataGridProps<T>) {
   const bulk =
     p.selectable && selected.size > 0 ? (
       <Group justify="space-between" p="xs" role="region" aria-label={t('grid.bulkBar')} style={{ background: 'var(--color-accentSoft)', borderRadius: 'var(--radius-md)' }}>
-        <Text size="sm" fw={600}>
+        <Text size="sm" fw={600} role="status">
           {t('grid.selected', { n: selected.size })}
         </Text>
         <Group gap="xs">
