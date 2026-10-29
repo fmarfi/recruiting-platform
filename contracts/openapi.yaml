@@ -729,6 +729,74 @@ paths:
           description: '`true`: only people who may be shared with a client (consent GIVEN, not anonymised); `false`: only the others. Since 1.2.0.'
           schema: { type: boolean }
         - $ref: '#/components/parameters/Archived'
+        - name: skill
+          in: query
+          description: Since 1.3.0. Has at least one of these skills (lower-case match on `skills`).
+          schema:
+            type: array
+            maxItems: 20
+            items: { $ref: '#/components/schemas/Tag' }
+          style: form
+          explode: true
+        - name: functionArea
+          in: query
+          description: Since 1.3.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/JobFunction' }
+          style: form
+          explode: true
+        - name: seniority
+          in: query
+          description: Since 1.3.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/Seniority' }
+          style: form
+          explode: true
+        - name: language
+          in: query
+          description: Since 1.3.0. Speaks all of these languages (ISO 639-1), any level.
+          schema:
+            type: array
+            maxItems: 5
+            items: { type: string, pattern: '^[a-z]{2}$' }
+          style: form
+          explode: true
+        - name: noticeMaxDays
+          in: query
+          description: Since 1.3.0. Notice period at most this many days (unknown notice does not match).
+          schema: { type: integer, minimum: 0, maximum: 365 }
+        - name: mobility
+          in: query
+          description: Since 1.3.0.
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/Mobility' }
+          style: form
+          explode: true
+        - name: salaryMin
+          in: query
+          description: |
+            Since 1.3.0. Expected pay (`compensation.expected`, per year: MONTHLY × 12) at least this
+            amount in `salaryCurrency`. Compensation is encrypted, so the service decrypts and filters
+            after the SQL filters, over at most 5,000 rows (else 400 `VALIDATION_FAILED`, code `TOO_BROAD`:
+            narrow the other filters). No currency conversion: people with another currency or no
+            compensation never match. Only people whose compensation the caller may read are matched
+            (MANAGER/ADMIN: all; others: people they own), so the filter reveals nothing new.
+          schema: { type: number, minimum: 0 }
+        - name: salaryMax
+          in: query
+          description: Since 1.3.0. Expected pay at most this amount; same rules as `salaryMin`.
+          schema: { type: number, minimum: 0 }
+        - name: salaryCurrency
+          in: query
+          description: Since 1.3.0. Required with `salaryMin` or `salaryMax` (400).
+          schema: { type: string, pattern: '^[A-Z]{3}$' }
+        - name: hasCv
+          in: query
+          description: 'Since 1.3.0. `true`: has a current CV whose text is searchable (`textStatus` DONE); `false`: no CV or not searchable (the "not searchable" count of SX-026).'
+          schema: { type: boolean }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -6037,10 +6105,12 @@ components:
         that endpoint's query parameters except `page`, `size` and `sort`:
         - PEOPLE: `q`, `type`, `ownerId`, `consentStatus`, `lastContactBefore`, `lastContactAfter`, `city`,
           `company` (since 1.1.1), `tag`, `sourceChannel`, `cv`, `shareable` (since 1.2.0). A saved search
-          is a PEOPLE view; a talent pool is a tag plus a SHARED view with `tag` (ADR 0011).
-        - ACCOUNTS: `q`, `status`, `sector`, `ownerId`
-        - JOB_ORDERS: `q`, `accountId`, `status`, `open`, `ownerId`
-        - PROPOSALS: `accountId`, `status`, `ownerId`
+          is a PEOPLE view; a talent pool is a tag plus a SHARED view with `tag` (ADR 0011). Since 1.3.0
+          also `archived`, `skill`, `functionArea`, `seniority`, `language`, `noticeMaxDays`, `mobility`,
+          `hasCv`; the salary filters are never stored in SHARED views (they would expose pay ranges).
+        - ACCOUNTS: `q`, `status`, `sector`, `ownerId`; since 1.3.0 `archived`, `parentAccountId`
+        - JOB_ORDERS: `q`, `accountId`, `status`, `open`, `ownerId`; since 1.3.0 `archived`
+        - PROPOSALS: `accountId`, `status`, `ownerId`; since 1.3.0 `archived`
         Values are validated like the query parameters (enum names, UUIDs, dates). `ownerId` may also be
         `"me"`, which the client replaces with the current user's id when it runs the view (so one shared
         "My accounts" view works for everybody). The server rejects unknown keys and bad values with 400
