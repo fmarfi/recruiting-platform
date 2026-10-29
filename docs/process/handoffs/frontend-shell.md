@@ -47,3 +47,11 @@
 - `GET /home` returns `openJobOrders: []` for users who own no jobs while `stats.openJobOrders` is 8.
 - `GET /search?q=Rüzgârgülü` returned 500 via curl (works from the browser with `Rüzgâr`): check long accented terms.
 - Search for "energy" (sector text) finds nothing; only names match.
+
+## T1 brand shell (branch ux-brand-shell)
+- Mihenk brand applied: `frontend/src/theme/design-tokens-v2.json` is a copy of docs/product/brand/design-tokens-v2.json; tokens.ts/theme.ts now read it. contracts/design-tokens.json is untouched.
+- **Change request (architect):** adopt tokens v2 as the contract (replace contracts/design-tokens.json v1.1 and point vite fs.allow/tokens import back to it), then delete the frontend copy.
+- Fonts: Source Serif 4 (h1, KPI) and Inter via Google Fonts in index.html with Georgia/system fallbacks.
+- Shell: midnight 232px rail (collapses to 64px, remembered in localStorage), 56px midnight header, inline Logo component (accessible name "Mihenk"), brass "+ New" as the single primary header action, bottom bar on phone. Nav labels Home/Clients/Searches/Candidates/Admin (TR: Ana sayfa/M�steriler/Aramalar/Adaylar/Y�netim); routes unchanged.
+- src/theme/contrast.test.ts checks the token pairs (WCAG AA).
+- Still off: screen titles still say "Job orders", "Network" tabs etc. (other agent's scope); Admin page title "Settings"; phone widths not re-checked.
