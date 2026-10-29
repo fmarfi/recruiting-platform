@@ -4261,6 +4261,65 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /agreements/{id}/signed-file:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    put:
+      tags: [Commercial]
+      operationId: uploadAgreementSignedFile
+      summary: Upload or replace the signed copy of an agreement (R67)
+      description: |
+        PDF only, max 20 MB (detected from the bytes; else 415 `UNSUPPORTED_MEDIA_TYPE`). Stored in the
+        `FileStore` under `agreement/<agreementId>/<signedFileId>`; a replaced file's bytes are deleted
+        after the commit (Envers keeps the old id and name). Does not change `status` (set SIGNED with
+        `signedOn` as before). The PDF holds the signatory's name and signature (business contact data,
+        see `contracts/personal-data.md`).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/pdf
+                  description: The signed PDF; its name is kept as `signedFile.fileName`.
+                version: { $ref: '#/components/schemas/Version' }
+      responses:
+        '200':
+          description: Stored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agreement' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+    get:
+      tags: [Commercial]
+      operationId: downloadAgreementSignedFile
+      summary: Download the signed copy
+      description: Access-log DOWNLOAD row (entity AGREEMENT). Served as an attachment with `X-Content-Type-Options nosniff`. 404 when no file was uploaded.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      responses:
+        '200':
+          description: PDF bytes
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename*=UTF-8''<fileName>
+          content:
+            application/pdf:
+              schema: { type: string, contentMediaType: application/pdf }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /fee-schedule-items:
     get:
       tags: [Commercial]
@@ -4338,7 +4397,7 @@ paths:
         `feeBasis` components of `compensation`, clamped to `feeMinimum`/`feeCap`; or `flatFeeAmount`);
         sending `feeAmount` overrides it and is MANAGER/ADMIN only (403); with no agreement `feeAmount` is
         required (400). `guaranteeEndOn` = `startDate` + the agreement's `guaranteeMonths` (override
-        allowed). Makes OFFER_ACCEPTED items DUE, publishes `PlacementCreated` (accounts adds a
+        allowed; since R67 the agreement's `guaranteeStartBasis` picks `startDate` or `offerAcceptedOn`). Makes OFFER_ACCEPTED items DUE, publishes `PlacementCreated` (accounts adds a
         GUARANTEE_PERIOD off-limits rule on the client until `guaranteeEndOn`), timeline PLACEMENT.
         Moving to PLACED through the stage endpoint still works (1.2 clients) but creates no placement.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
@@ -7630,7 +7689,8 @@ components:
           oneOf: [{ $ref: '#/components/schemas/Seniority' }, { type: 'null' }]
         functionArea:
           oneOf: [{ $ref: '#/components/schemas/JobFunction' }, { type: 'null' }]
-        compMin: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$', description: Decimal as string. }
+        teamSize: { type: [integer, 'null'], minimum: 0, maximum: 100000, description: 'Since R73. People in the team the hire will lead (0 = individual contributor).' }
+        compMin: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$', description: 'Decimal as string. Since R73 the band (`compMin`, `compMax`, `compCurrency`, `compPeriod`, `compBonusNote`) is stored encrypted as one value (`search_brief.comp_band_enc`, like person compensation); read access is unchanged.' }
         compMax: { type: [string, 'null'], pattern: '^\d+(\.\d{1,2})?$' }
         compCurrency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
         compPeriod:
@@ -7781,6 +7841,10 @@ components:
     InvoiceState:
       type: string
       enum: [NOT_DUE, DUE, INVOICED, PAID, CANCELLED]
+    GuaranteeStartBasis:
+      type: string
+      description: '`contracts/enums/GuaranteeStartBasis.java` (R67). The date the guarantee months count from.'
+      enum: [START_DATE, OFFER_ACCEPTED]
     PlacementStatus:
       type: string
       enum: [ACTIVE, LEFT_IN_GUARANTEE, GUARANTEE_ENDED, REPLACED, CANCELLED]
@@ -7799,6 +7863,7 @@ components:
         percent: { type: [string, 'null'], pattern: '^\d{1,3}(\.\d{1,2})?$', description: 'Percent of the fee (estimated fee before placement, placement fee after).' }
         amount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
         dueDays: { type: integer, minimum: 0, maximum: 180, description: Payment term in days after the trigger (default 30). }
+        vatApplies: { type: boolean, description: 'Since R67. VAT (KDV) is added to this item; default `not account.vatExempt`. Amounts are always net.' }
     FeeScheduleItem:
       allOf:
         - $ref: '#/components/schemas/FeeScheduleItemFields'
@@ -7874,6 +7939,9 @@ components:
         currency: { type: string, pattern: '^[A-Z]{3}$', examples: [TRY] }
         paymentTermsDays: { type: integer, minimum: 0, maximum: 180, description: Default 30. }
         guaranteeMonths: { type: integer, minimum: 0, maximum: 36, description: Default 6. }
+        guaranteeStartBasis:
+          $ref: '#/components/schemas/GuaranteeStartBasis'
+          description: Since R67. Default START_DATE; a placement's `guaranteeEndOn` = that date + `guaranteeMonths`.
         guaranteeTerms: { type: [string, 'null'], maxLength: 2000, description: 'Triggers, exclusions, client obligations (PB-011).' }
         expensePolicy: { type: [string, 'null'], maxLength: 1000 }
         offLimitsMonths: { type: [integer, 'null'], minimum: 0, maximum: 60, description: Non-solicitation term after the engagement. }
@@ -7897,6 +7965,18 @@ components:
               oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
             kind: { $ref: '#/components/schemas/AgreementKind' }
             billingAccount: { $ref: '#/components/schemas/AccountRef' }
+            signedFile:
+              description: Since R67. Set by `PUT /agreements/{id}/signed-file`.
+              oneOf:
+                - type: object
+                  required: [id, fileName, sizeBytes, uploadedAt, uploadedBy]
+                  properties:
+                    id: { $ref: '#/components/schemas/Id' }
+                    fileName: { type: string }
+                    sizeBytes: { type: integer, minimum: 1 }
+                    uploadedAt: { type: string, format: date-time }
+                    uploadedBy: { $ref: '#/components/schemas/UserRef' }
+                - type: 'null'
             signatory:
               oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }]
               description: Null when not set or when the signatory's contact was removed by a person deletion (`on delete set null`).
