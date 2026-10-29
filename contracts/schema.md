@@ -50,6 +50,7 @@ person   *─* person via duplicate_candidate; person 1─* person_merge (B-04)
 account  0..1─* off_limits_rule                                      (off-limits guard)
 person   1─* candidate_exposure *─1 account, job_order, application? (exposure history, B-05)
 account  0..1─* account.parent_account_id; account 1─* account_merge   (group, merge; 1.3.0)
+account  0..1─* person_employment.organisation_id; off_limits_rule.include_subsidiaries walks the parent tree (R63, 1.3.0)
 application 1─* client_feedback; person 1─* candidate_evaluation, interview_note, candidate_reference (1.3.0)
 job_order 1─0..1 search_brief; job_order 1─* search_criterion, job_order_team_member, target_company, client_report (1.3.0)
 account  1─* agreement 1─* fee_schedule_item; job_order 0..1─* agreement (engagement)               (1.3.0)
@@ -118,13 +119,13 @@ A nightly job in `security` deletes the bytes of READY exports past `expires_at`
 
 ### accounts
 
-**account** — audited (except `open_job_count`, `last_activity_at`)
+**account** — audited (except `open_job_count`, `last_activity_at`, `normalized_name`); the organisation table since 1.3.0 (R63)
 
 | Column | Type | Notes |
 | --- | --- | --- |
 | id | uuid PK | |
-| name | varchar(200) | not null; unique on `lower(name)`; trigram index |
-| sector | varchar(100) | not null; index |
+| name | varchar(200) | not null; trigram index. Since 1.3.0 the uniqueness moves to `normalized_name` (the old unique index on `lower(name)` is dropped) |
+| sector | varchar(100) | null since 1.3.0 (was not null); `CHECK (sector IS NOT NULL OR NOT (is_client OR is_prospect))`; index |
 | city | varchar(100) | null |
 | website | varchar(300) | null |
 | notes | text | null |
@@ -153,7 +154,17 @@ A nightly job in `security` deletes the bytes of READY exports past `expires_at`
 | hq_country | char(2) | null (1.3.0); `city` is the HQ city |
 | confidentiality_level | varchar(40) | `ConfidentialityLevel`, not null default `NORMAL` (1.3.0) |
 | preferred_language | varchar(2) | null; `Language` (1.3.0) |
+| is_client, is_prospect, is_target, is_employer | boolean | not null default false (1.3.0, R63; `OrganisationRole`); `CHECK (is_client OR is_prospect OR is_target OR is_employer)`; partial indexes `where is_client`, `where is_target`, `where is_employer`. Backfill: `is_client = status IN ('ACTIVE','ON_HOLD','CLOSED')`, `is_prospect = status IN ('LEAD','PROPOSAL_SENT')`; `is_target` true where a `target_company.account_id` points at it; `is_employer` false |
+| aliases | text[] | not null default `'{}'` (1.3.0, R63); former names, brands, abbreviations; `CHECK (cardinality(aliases) <= 20)`; each 1..200 characters (service); GIN expression index on `normalize_org_names(aliases)` |
+| normalized_name | varchar(200) | 1.3.0, R63: `generated always as (normalize_org_name(name)) stored`; **unique partial index `(normalized_name) where archived_at is null`** (merged and archived rows may share a name); btree index for matching. JPA maps it read-only (`insertable = false, updatable = false`) and `@NotAudited`; `account_aud` has no such column |
 | audit columns | | |
+
+**Organisation identity (1.3.0, R63, ADR 0013):** `account` is the organisation table; it is not renamed. Roles are the four flags; `status` stays the client lifecycle. `parent_account_id` is the group tree (depth at most 5, no cycles; service). Two immutable SQL functions are created by the accounts migration (before the generated column):
+- `normalize_org_name(text) returns text`: (1) `lower(immutable_unaccent(x))` with `ı` → `i`; (2) `regexp_replace(_, '[^a-z0-9]+', ' ', 'g')`; (3) remove `\m(sanayi|san) ve (ticaret|tic)\M`; (4) remove the legal-form tokens `\m(a s|as|ltd|sti|limited|sirketi|anonim|sanayi|ticaret|san|tic|inc|llc|gmbh|plc|bv|nv|ag|co|corp)\M`; (5) collapse spaces and trim; if the result is empty, return the step-2 result. Example: `Örnek Gıda Sanayi ve Ticaret A.Ş.` → `ornek gida`.
+- `normalize_org_names(text[]) returns text[]`: the same per element.
+
+Matching (`OrganisationApi.match(name)`, used by import, employment entry, target companies and off-limits): `normalize_org_name(:name)` equals a non-archived row's `normalized_name` or is in its `normalize_org_names(aliases)`; one hit = match, several = ambiguous (no link, the UI asks). An alias equal to another non-archived organisation's normalized name or alias gives 409 `DUPLICATE` (service check). Migration pre-check: the migration fails with the list of clashing ids if two non-archived rows normalise to the same value (synthetic seed: rename one). Test `OrganisationNameNormalisationIT`: the example above, `ACME Ltd. Şti.` = `Acme`, `Marmara Holding` keeps `holding`, dotless `ı`, and the unique index rejects a second active `Örnek Gıda A.Ş.`.
+Account merge (1.3.0) also ORs the four flags into the survivor, adds the merged name and aliases to the survivor's aliases (de-duplicated, at most 20, longest dropped first), and moves `person_employment.organisation_id`.
 
 **Archive columns (1.3.0, ADR 0013)** on `account`, `person`, `job_order`, `proposal`: `archived_at timestamptz null`, `archived_by uuid FK app_user null`, `archive_reason varchar(40) null` (`ArchiveReason`), `archive_note varchar(500) null`, with `CHECK ((archived_at IS NULL) = (archive_reason IS NULL))` and `CHECK ((archived_at IS NULL) = (archived_by IS NULL))`. Index: partial `(archived_at) where archived_at is not null` (the Archived view); list queries add `archived_at is null`. All four columns are audited (Envers gives who/when for archive and restore). Existing rows: all null, so the default list behaviour is unchanged.
 
@@ -281,9 +292,12 @@ Written on person create/update, CV attach and by a nightly scan in `accounts`. 
 | note | varchar(500) | null; no personal data |
 | starts_on | date | not null default today |
 | ends_on | date | null; `CHECK (ends_on IS NULL OR ends_on >= starts_on)` |
+| include_subsidiaries | boolean | not null default false (1.3.0, R63); `CHECK (NOT include_subsidiaries OR account_id IS NOT NULL)`; the rule then also covers every organisation below `account_id` in the `parent_account_id` tree |
 | audit columns | | partial unique on the target `where ends_on is null` (the service also rejects overlapping open rules) |
 
-**person_employment** — audited; `id uuid PK`, `person_id FK person on delete cascade`, `company varchar(200) not null`, `title varchar(200)`, `start_date date`, `end_date date`, `sort_order int not null`. Replaced as a whole on update.
+**Off-limits match (1.3.0, R63):** a person is covered by a rule when one of their current employments (`end_date is null`) has `organisation_id` = the rule's `account_id`, or a descendant of it (up to depth 5) when `include_subsidiaries`; otherwise, as in 1.2, when the normalised current company text (`person.company` or a current `person_employment.company` without `organisation_id`) equals `normalize_org_name` of the rule's `company_name`, or of the rule account's name or an alias.
+
+**person_employment** — audited; `id uuid PK`, `person_id FK person on delete cascade`, `company varchar(200) not null`, `title varchar(200)`, `start_date date`, `end_date date`, `sort_order int not null`. Replaced as a whole on update. Since 1.3.0 (R63): `organisation_id uuid FK account null` (`no action`, accounts are never deleted; index). When set, the service copies the organisation's name into `company` (the free text stays the fallback and the display value as entered at that time) and sets `account.is_employer = true`. Import and the person form call `OrganisationApi.match(company)` and set `organisation_id` only on a single match. Backfill: none (null = free text only); a one-off admin job may link later.
 
 **contact** — audited
 
