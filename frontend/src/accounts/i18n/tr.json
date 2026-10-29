@@ -48,7 +48,8 @@
       "contacts": "Kişiler",
       "relationships": "İlişkiler",
       "proposals": "Teklifler",
-      "timeline": "Zaman çizelgesi"
+      "timeline": "Zaman çizelgesi",
+      "history": "Geçmiş"
     },
     "rel": {
       "coverage": "Kişi kapsamı",
@@ -166,6 +167,22 @@
     "endContactFailed": "Kişi sonlandırılamadı. Tekrar deneyin.",
     "loadErrorTitle": "Bu müşteri yüklenemedi",
     "emptyJobsAction": "Bu müşteri için ilk iş emrini ekleyin.",
-    "relationshipsEmpty": "İlişki kapsamını görmek için bir kişi ekleyin."
+    "relationshipsEmpty": "İlişki kapsamını görmek için bir kişi ekleyin.",
+    "edit": {
+      "title": "{{name}} düzenle",
+      "action": "Düzenle",
+      "sectionMain": "Müşteri",
+      "sectionContact": "İletişim ve notlar",
+      "name": "Müşteri adı",
+      "sector": "Sektör",
+      "city": "Şehir",
+      "website": "Web sitesi",
+      "notes": "Notlar",
+      "owner": "Sahip",
+      "nameRequired": "Müşteri adını girin.",
+      "fixFields": "Bazı alanlar düzeltilmeli. İşaretli alanları kontrol edin.",
+      "saved": "{{name}} güncellendi",
+      "statusChanged": "Durum {{status}} olarak değiştirildi"
+    }
   }
 }

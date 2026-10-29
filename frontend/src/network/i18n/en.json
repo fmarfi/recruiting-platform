@@ -328,6 +328,36 @@
     "backToList": "Back to the network",
     "notFoundHint": "It may have been deleted or merged, or the link is wrong.",
     "noActivityHint": "Log calls, meetings and notes so the next person knows where things stand.",
-    "noPipelinesHint": "Add this person to a job order to start a pipeline."
+    "noPipelinesHint": "Add this person to a job order to start a pipeline.",
+    "edit": {
+      "title": "Edit {{name}}",
+      "action": "Edit",
+      "history": "History",
+      "sectionMain": "Person",
+      "sectionContact": "Contact and notes",
+      "phone": "Phone",
+      "notes": "Notes",
+      "noticeHint": "Days, 0 to 365",
+      "startDate": "Start date",
+      "endDate": "End date (empty = current)",
+      "langCode": "Language code (for example en)",
+      "langLevel": "Level",
+      "school": "School",
+      "degree": "Degree",
+      "studyField": "Field of study",
+      "startYear": "Start year",
+      "endYear": "End year",
+      "currency": "Currency",
+      "period": "Period",
+      "basis": "Basis",
+      "benefits": "Benefits",
+      "noRows": "None added",
+      "addEmployment": "Add position",
+      "addLanguage": "Add language",
+      "addEducation": "Add education",
+      "removeRow": "Remove row {{n}}",
+      "tooManyTags": "At most 20 tags per person.",
+      "saved": "{{name}} updated"
+    }
   }
 }

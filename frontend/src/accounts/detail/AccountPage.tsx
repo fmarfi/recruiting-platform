@@ -6,11 +6,14 @@ import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
 import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { SkeletonRows } from '../../shell/components/SkeletonRows';
+import { HistoryPanel, UndoToastProvider } from '../../shell/edit';
 import { AddContactDialog } from '../components/AddContactDialog';
 import { NewRecordDialog } from '../components/NewRecordDialog';
+import { NewJobForm } from '../../pipeline/joborders/list/NewJobForm';
 import { AddActionDialog } from '../components/AddActionDialog';
 import { LogActivityDialog } from '../components/LogActivityDialog';
 import { OffLimitsBanner } from './OffLimitsBanner';
+import { AccountEditDrawer } from './AccountEditDrawer';
 import { AccountHeader } from './AccountHeader';
 import { ContactsTab } from './ContactsTab';
 import { DashboardStrip } from './DashboardStrip';
@@ -33,7 +36,7 @@ export function AccountPage() {
   const { id = '' } = useParams();
   const { isManager } = useAuth();
   const page = useAccountPage(id);
-  const [dialog, setDialog] = useState<null | 'log' | 'action' | 'contact' | 'job' | 'proposal'>(null);
+  const [dialog, setDialog] = useState<null | 'edit' | 'log' | 'action' | 'contact' | 'job' | 'proposal'>(null);
   const a = page.account.data;
 
   if (page.account.status === 404)
@@ -64,6 +67,7 @@ export function AccountPage() {
   );
 
   return (
+    <UndoToastProvider>
     <Container maw="var(--content-max-width)" p={0}>
       <Stack>
         <Text size="sm">
@@ -73,7 +77,7 @@ export function AccountPage() {
           / {a.name}
         </Text>
         <OffLimitsBanner accountId={a.id} canManage={isManager} />
-        <AccountHeader account={a} onLog={() => setDialog('log')} onAddAction={() => setDialog('action')} onChanged={page.reloadAll} />
+        <AccountHeader account={a} onLog={() => setDialog('log')} onAddAction={() => setDialog('action')} onChanged={page.reloadAll} onEdit={() => setDialog('edit')} />
         <DashboardStrip dashboard={page.dashboard.data} onAddAction={() => setDialog('action')} />
         <Grid>
           <Grid.Col span={{ base: 12, md: 8 }}>
@@ -83,6 +87,7 @@ export function AccountPage() {
                 <Tabs.Tab value="contacts" style={tabStyle} rightSection={<Count n={contacts.length} />}>{t('accounts.tab.contacts')}</Tabs.Tab>
                 <Tabs.Tab value="relationships" style={tabStyle}>{t('accounts.tab.relationships')}</Tabs.Tab>
                 <Tabs.Tab value="proposals" style={tabStyle} rightSection={<Count n={proposals.length} />}>{t('accounts.tab.proposals')}</Tabs.Tab>
+                <Tabs.Tab value="history" style={tabStyle}>{t('accounts.tab.history')}</Tabs.Tab>
                 <Tabs.Tab value="timeline" hiddenFrom="md" style={tabStyle}>
                   {t('accounts.tab.timeline')}
                 </Tabs.Tab>
@@ -120,6 +125,9 @@ export function AccountPage() {
                 )}
                 <ProposalsTab proposals={proposals} onChanged={page.reloadAll} onAdd={() => setDialog('proposal')} />
               </Tabs.Panel>
+              <Tabs.Panel value="history" pt="md">
+                <HistoryPanel entityType="ACCOUNT" entityId={a.id} />
+              </Tabs.Panel>
               <Tabs.Panel value="timeline" pt="md" hiddenFrom="md">
                 {timeline}
               </Tabs.Panel>
@@ -130,11 +138,13 @@ export function AccountPage() {
           </Grid.Col>
         </Grid>
       </Stack>
+      <AccountEditDrawer account={a} opened={dialog === 'edit'} onClose={() => setDialog(null)} onSaved={page.reloadAll} />
       <LogActivityDialog opened={dialog === 'log'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
       <AddActionDialog opened={dialog === 'action'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
       <AddContactDialog opened={dialog === 'contact'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
-      <NewRecordDialog kind="job" opened={dialog === 'job'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
+      <NewJobForm opened={dialog === 'job'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
       <NewRecordDialog kind="proposal" opened={dialog === 'proposal'} onClose={() => setDialog(null)} accountId={a.id} onDone={page.reloadAll} />
     </Container>
+    </UndoToastProvider>
   );
 }
