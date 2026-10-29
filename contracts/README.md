@@ -11,6 +11,7 @@ The shared interfaces every agent builds against. Owner: architect (`design-toke
 | `spi/*.java` | Plain-JDK service interfaces shared by several modules, implemented in `platform-app`: `FileStore` (CV and document bytes; local volume now, S3-compatible later; since 1.2.0, ADR 0011). Since 1.3.0 (ADR 0013): `AccountMergeParticipant` (implemented by pipeline, called by the accounts merge) and `ExportSource` (implemented by accounts and pipeline, called by the security export job). | accounts, pipeline, security, devops |
 | `events.md` | Event catalogue: publisher, payload, listeners, delivery rules, main flows. | backend agents, security-privacy |
 | `schema.md` | Tables, keys, indexes, module ownership, Envers scope, anonymisation. | db-engineer, backend agents |
+| `personal-data.md` | Per-column personal-data classification: erasure, audit and blind-report redaction; source of `PersonalDataClassificationIT`. | db-engineer, security-privacy, backend agents |
 | `design-tokens.json` | Colours, spacing, type, one badge style per status tone (ux-designer). | frontends |
 
 All Java files are in package `com.recruiting.platform.contracts` (one package on purpose, ADR 0001) and need only the JDK. The `contracts` Maven module compiles every `*.java` under `contracts/`.
