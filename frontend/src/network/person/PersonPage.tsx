@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api';
+import { HistoryPanel, UndoToastProvider } from '../../shell/edit';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 import { problemText, type Schemas } from '../../pipeline/shared';
 import { ExposureTab } from './ExposureTab';
@@ -16,6 +17,7 @@ import { AddToJobDialog } from './AddToJobDialog';
 import { ConnectionsTab } from './ConnectionsTab';
 import { JobsTab } from './JobsTab';
 import { OverviewTab } from './OverviewTab';
+import { PersonEditDrawer } from './PersonEditDrawer';
 import { PersonHeader } from './PersonHeader';
 import { PrivacyTab } from './PrivacyTab';
 import { RelationshipMap } from './RelationshipMap';
@@ -34,7 +36,7 @@ export function PersonPage() {
   const { id = '' } = useParams();
   const { t, i18n } = useTranslation();
   const d = usePerson(id);
-  const [dialog, setDialog] = useState<'log' | 'action' | 'connection' | 'job' | 'consent'>();
+  const [dialog, setDialog] = useState<'edit' | 'log' | 'action' | 'connection' | 'job' | 'consent'>();
   const close = () => setDialog(undefined);
   const [resending, setResending] = useState(false);
   const [notice, setNotice] = useState<{ color: string; text: string }>();
@@ -84,6 +86,7 @@ export function PersonPage() {
   const blocked = p.consentStatus === 'REFUSED' || p.consentStatus === 'WITHDRAWN';
 
   return (
+    <UndoToastProvider>
     <Container maw="var(--content-max-width)" fluid>
       <Anchor component={Link} to="/network" size="sm">
         {t('nav.network')}
@@ -101,7 +104,7 @@ export function PersonPage() {
           {notice.text}
         </Alert>
       )}
-      <PersonHeader person={p} onLog={() => setDialog('log')} onAction={() => setDialog('action')} onResend={() => void resend(p)} resending={resending} />
+      <PersonHeader person={p} onLog={() => setDialog('log')} onAction={() => setDialog('action')} onResend={() => void resend(p)} onEdit={() => setDialog('edit')} resending={resending} />
       <Tabs defaultValue="overview" keepMounted={false}>
         <Tabs.List mb="md" style={{ flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden' }}>
           <Tabs.Tab value="overview" style={tabStyle}>{t('network.tabs.overview')}</Tabs.Tab>
@@ -118,6 +121,7 @@ export function PersonPage() {
           <Tabs.Tab value="files" style={tabStyle}>{t('network.tabs.files')}</Tabs.Tab>
           <Tabs.Tab value="exposure" style={tabStyle}>{t('network.tabs.exposure')}</Tabs.Tab>
           <Tabs.Tab value="privacy" style={tabStyle}>{t('network.tabs.privacy')}</Tabs.Tab>
+          <Tabs.Tab value="history" style={tabStyle}>{t('network.edit.history')}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="overview">
           <Stack gap="md">
@@ -147,8 +151,12 @@ export function PersonPage() {
         <Tabs.Panel value="privacy">
           <PrivacyTab consent={d.consent.data} onSend={() => setDialog('consent')} />
         </Tabs.Panel>
+        <Tabs.Panel value="history">
+          <HistoryPanel entityType="PERSON" entityId={id} />
+        </Tabs.Panel>
       </Tabs>
 
+      <PersonEditDrawer person={p} opened={dialog === 'edit'} onClose={close} onSaved={d.reloadAll} />
       <QuickAdd
         opened={dialog === 'log' || dialog === 'action'}
         initialMode={dialog === 'action' ? 'action' : 'activity'}
@@ -160,5 +168,6 @@ export function PersonPage() {
       <AddToJobDialog personId={id} exclude={apps.map((a) => a.jobOrder.id)} opened={dialog === 'job'} onClose={close} onSaved={d.applications.reload} />
       <SendConsentDialog person={p} opened={dialog === 'consent'} onClose={close} onSent={d.reloadAll} />
     </Container>
+    </UndoToastProvider>
   );
 }

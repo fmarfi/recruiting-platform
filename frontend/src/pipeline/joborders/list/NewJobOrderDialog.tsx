@@ -2,7 +2,7 @@ import { Button, Group, Modal, Stack, Text } from '@mantine/core';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccountPicker } from '../../../accounts/components/AccountPicker';
-import { NewRecordDialog } from '../../../accounts/components/NewRecordDialog';
+import { NewJobForm } from './NewJobForm';
 
 /** "New job order" from the list: a job order always belongs to a client, so pick it first, then fill the usual job form. */
 export function NewJobOrderDialog({ opened, onClose, onDone }: { opened: boolean; onClose: () => void; onDone: () => void }) {
@@ -45,8 +45,7 @@ export function NewJobOrderDialog({ opened, onClose, onDone }: { opened: boolean
         </form>
       </Modal>
       {client && (
-        <NewRecordDialog
-          kind="job"
+        <NewJobForm
           opened={opened && step === 'job'}
           onClose={close}
           accountId={client}

@@ -1,7 +1,9 @@
 import { Alert, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../../api';
 import { StatusMenu } from '../../shell/components/StatusMenu';
+import { InlineEditField, useUndoToast } from '../../shell/edit';
 import { fmtDate } from '../../shell/lib/format';
 import { useReference } from '../../shell/refdata/useReference';
 import { ReasonDialog } from '../components/ReasonDialog';
@@ -15,28 +17,64 @@ interface Props {
   onLog: () => void;
   onAddAction: () => void;
   onChanged: () => void;
+  onEdit: () => void;
 }
 
 /** Name, editable status badge, owner line and the two quick actions (A-02, UX-06). */
-export function AccountHeader({ account: a, onLog, onAddAction, onChanged }: Props) {
+export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdit }: Props) {
   const { t, i18n } = useTranslation();
   const ref = useReference();
+  const showUndo = useUndoToast();
+  const version = useRef(a.version);
+  version.current = a.version;
+  const statusPath = { params: { path: { id: a.id } } };
   const change = useStatusChange(
-    (status, reason) => api.PATCH('/accounts/{id}/status', { params: { path: { id: a.id } }, body: { status: status as Account['status'], reason, version: a.version } }),
+    async (status, reason) => {
+      const previous = a.status;
+      const r = await api.PATCH('/accounts/{id}/status', { ...statusPath, body: { status: status as Account['status'], reason, version: a.version } });
+      if (!r.error && r.data)
+        showUndo({
+          message: t('accounts.edit.statusChanged', { status: ref.label('account', status) }),
+          onUndo: async () => {
+            const u = await api.PATCH('/accounts/{id}/status', { ...statusPath, body: { status: previous, version: r.data!.version } });
+            if (u.error) throw u.error;
+            onChanged();
+          },
+        });
+      return r;
+    },
     onChanged,
     t('shell.saveError'),
   );
+  const rename = async (name: string, expect: number) => {
+    const r = await api.PATCH('/accounts/{id}', { ...statusPath, body: { name: name.trim(), version: expect } });
+    if (r.error) throw r.error;
+    version.current = r.data!.version;
+    onChanged();
+  };
   return (
     <Card withBorder>
       <Stack gap="xs">
         <Group justify="space-between" align="flex-start">
           <Group>
-            <Title order={1} data-testid="screen-title">
-              {a.name}
-            </Title>
+            <InlineEditField
+              label={t('accounts.edit.name')}
+              value={a.name}
+              validate={(v) => (v.trim() ? null : t('accounts.edit.nameRequired'))}
+              display={(v) => (
+                <Title order={1} data-testid="screen-title">
+                  {v}
+                </Title>
+              )}
+              onSave={(v) => rename(v, version.current)}
+              onUndo={(prev) => rename(prev, version.current)}
+            />
             <StatusMenu kind="account" value={a.status} onMove={change.move} />
           </Group>
           <Group visibleFrom="sm">
+            <Button variant="subtle" onClick={onEdit}>
+              {t('accounts.edit.action')}
+            </Button>
             <Button onClick={onLog}>
               {t('accounts.logActivity')}
             </Button>

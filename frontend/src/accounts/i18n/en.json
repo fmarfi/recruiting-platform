@@ -48,7 +48,8 @@
       "contacts": "Contacts",
       "relationships": "Relationships",
       "proposals": "Proposals",
-      "timeline": "Timeline"
+      "timeline": "Timeline",
+      "history": "History"
     },
     "rel": {
       "coverage": "Contact coverage",
@@ -166,6 +167,22 @@
     "endContactFailed": "Could not end this contact. Try again.",
     "loadErrorTitle": "This client could not be loaded",
     "emptyJobsAction": "Add the first job order for this client.",
-    "relationshipsEmpty": "Add a contact to see relationship coverage."
+    "relationshipsEmpty": "Add a contact to see relationship coverage.",
+    "edit": {
+      "title": "Edit {{name}}",
+      "action": "Edit",
+      "sectionMain": "Client",
+      "sectionContact": "Contact and notes",
+      "name": "Client name",
+      "sector": "Sector",
+      "city": "City",
+      "website": "Website",
+      "notes": "Notes",
+      "owner": "Owner",
+      "nameRequired": "Enter a client name.",
+      "fixFields": "Some fields need attention. Check the highlighted fields.",
+      "saved": "{{name}} updated",
+      "statusChanged": "Status changed to {{status}}"
+    }
   }
 }
