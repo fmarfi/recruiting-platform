@@ -1,5 +1,5 @@
 {
   "app": { "title": "Danışmanlık Platformu", "placeholder": "Bu ekran henüz hazırlanmadı." },
-  "nav": { "myDay": "Ana sayfa", "accounts": "Müşteriler", "jobOrders": "Aramalar", "network": "Adaylar", "settings": "Yönetim", "search": "Arama", "login": "Giriş", "pinned": "Açık aramalarım", "noPinned": "Açık aramanız yok" },
+  "nav": { "myDay": "Ana sayfa", "accounts": "Müşteriler", "jobOrders": "Aramalar", "network": "Adaylar", "settings": "Yönetim", "search": "Arama", "login": "Giriş", "pinned": "Açık aramalarım", "noPinned": "Açık aramanız yok", "pinnedLoading": "Yükleniyor...", "pinnedError": "Aramalar yüklenemedi." },
   "screen": { "account": "Müşteri", "jobOrder": "Arama", "person": "Aday", "settingsSection": "Ayarlar" }
 }

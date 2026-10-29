@@ -40,9 +40,9 @@
       "searchPlaceholder": "Arama ara",
       "status": "Durum",
       "title": "Aramalar",
-      "subtitle": "{{count}} açık iş emri; açık kalma günü ve aktif adaylar tek bakışta.",
-      "subtitleFiltered": "{{count}} iş emri filtrelerle eşleşiyor.",
-      "new": "Yeni iş emri",
+      "subtitle": "{{count}} açık arama; açık kalma günü ve aktif adaylar tek bakışta.",
+      "subtitleFiltered": "{{count}} arama filtrelerle eşleşiyor.",
+      "new": "Yeni arama",
       "newPickClient": "Önce müşteriyi seçin",
       "newPickHint": "Arama her zaman bir müşteriye bağlıdır.",
       "pickClient": "Müşteri",
@@ -86,7 +86,7 @@
       "consentTitle": "Rıza gerekli",
       "consentBody": "{{name}}, rıza verilene kadar müşteriye sunulamaz.",
       "notOverridable": "Bu engel aşılamaz. Rıza isteğini gönderin ve rıza verildikten sonra adayı taşıyın.",
-      "consentSent": "{{name}} adaysine rıza isteği gönderildi.",
+      "consentSent": "{{name}} adayına rıza isteği gönderildi.",
       "share": {
         "CONSENT_NOT_REQUESTED": "rıza henüz istenmedi",
         "CONSENT_PENDING": "rıza isteği bekliyor",
@@ -118,7 +118,7 @@
     "undoRemove": "Geri al",
     "removedToast": "{{name}} bu hattan çıkarıldı.",
     "notFoundHint": "Silinmiş olabilir veya bağlantı hatalı olabilir.",
-    "backToList": "Aramalarne dön"
+    "backToList": "Aramalara dön"
   },
   "quickAdd": {
     "account": "Müşteri",
