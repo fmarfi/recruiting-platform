@@ -1,5 +1,6 @@
 // Person page (A-12, A-13, S-01): relationship, every pipeline the person is in, network links, consent status.
-import { Alert, Anchor, Button, Container, Skeleton, Stack, Tabs, Text } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Container, Skeleton, Stack, Tabs, Text } from '@mantine/core';
+import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -21,6 +22,13 @@ import { RelationshipMap } from './RelationshipMap';
 import { RelationshipSnapshot } from './RelationshipSnapshot';
 import { SendConsentDialog } from './SendConsentDialog';
 import { usePerson } from './usePerson';
+
+const tabStyle = { whiteSpace: 'nowrap' } as const;
+const Count = ({ n }: { n: number }) => (
+  <Badge size="sm" variant="light" style={{ fontVariantNumeric: 'tabular-nums' }}>
+    {n}
+  </Badge>
+);
 
 export function PersonPage() {
   const { id = '' } = useParams();
@@ -61,11 +69,12 @@ export function PersonPage() {
     const notFound = (d.person.error as { status?: number } | undefined)?.status === 404;
     return (
       <Container py="md">
-        <Alert color="red" role="alert" title={notFound ? t('network.notFound') : t('network.loadFailed')}>
-          <Button variant="light" onClick={d.person.reload}>
-            {t('common.retry')}
+        <ErrorBanner message={notFound ? t('network.notFound') : t('network.loadFailed')} hint={notFound ? t('network.notFoundHint') : t('network.loadErrorHint')} onRetry={notFound ? undefined : d.person.reload} />
+        {notFound && (
+          <Button component={Link} to="/network" mt="sm" variant="light">
+            {t('network.backToList')}
           </Button>
-        </Alert>
+        )}
       </Container>
     );
   }
@@ -94,21 +103,21 @@ export function PersonPage() {
       )}
       <PersonHeader person={p} onLog={() => setDialog('log')} onAction={() => setDialog('action')} onResend={() => void resend(p)} resending={resending} />
       <Tabs defaultValue="overview" keepMounted={false}>
-        <Tabs.List mb="md">
-          <Tabs.Tab value="overview">{t('network.tabs.overview')}</Tabs.Tab>
-          <Tabs.Tab value="connections">
-            {t('network.tabs.connections')} {links.length}
+        <Tabs.List mb="md" style={{ flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden' }}>
+          <Tabs.Tab value="overview" style={tabStyle}>{t('network.tabs.overview')}</Tabs.Tab>
+          <Tabs.Tab value="connections" style={tabStyle} rightSection={<Count n={links.length} />}>
+            {t('network.tabs.connections')}
           </Tabs.Tab>
-          <Tabs.Tab value="map">{t('network.tabs.map')}</Tabs.Tab>
-          <Tabs.Tab value="jobs">
-            {t('network.tabs.jobs')} {apps.length}
+          <Tabs.Tab value="map" style={tabStyle}>{t('network.tabs.map')}</Tabs.Tab>
+          <Tabs.Tab value="jobs" style={tabStyle} rightSection={<Count n={apps.length} />}>
+            {t('network.tabs.jobs')}
           </Tabs.Tab>
-          <Tabs.Tab value="activity">
-            {t('network.tabs.activity')} {activities.length}
+          <Tabs.Tab value="activity" style={tabStyle} rightSection={<Count n={activities.length} />}>
+            {t('network.tabs.activity')}
           </Tabs.Tab>
-          <Tabs.Tab value="files">{t('network.tabs.files')}</Tabs.Tab>
-          <Tabs.Tab value="exposure">{t('network.tabs.exposure')}</Tabs.Tab>
-          <Tabs.Tab value="privacy">{t('network.tabs.privacy')}</Tabs.Tab>
+          <Tabs.Tab value="files" style={tabStyle}>{t('network.tabs.files')}</Tabs.Tab>
+          <Tabs.Tab value="exposure" style={tabStyle}>{t('network.tabs.exposure')}</Tabs.Tab>
+          <Tabs.Tab value="privacy" style={tabStyle}>{t('network.tabs.privacy')}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="overview">
           <Stack gap="md">

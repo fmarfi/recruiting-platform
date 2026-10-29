@@ -116,7 +116,9 @@
     },
     "loadErrorHint": "Check your connection, then try again.",
     "undoRemove": "Undo",
-    "removedToast": "{{name}} removed from this pipeline."
+    "removedToast": "{{name}} removed from this pipeline.",
+    "notFoundHint": "It may have been deleted, or the link is wrong.",
+    "backToList": "Back to job orders"
   },
   "quickAdd": {
     "account": "Account",

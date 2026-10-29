@@ -1,5 +1,7 @@
 // Exposure history (B-05): which client accounts saw this person, for which job order, when, and the outcome so far.
-import { Alert, Anchor, Badge, Skeleton, Stack, Table, Text } from '@mantine/core';
+import { Anchor, Badge, Skeleton, Stack, Table, Text } from '@mantine/core';
+import { EmptyState } from '../../shell/components/EmptyState';
+import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
@@ -11,8 +13,8 @@ export function ExposureTab({ personId }: { personId: string }) {
   const { label } = useLabel();
   const res = useAsync(() => api.GET('/people/{id}/exposure', { params: { path: { id: personId } } }), [personId]);
   if (res.loading) return <Skeleton height={80} />;
-  if (res.error || !res.data) return <Alert color="red">{t('network.exposure.loadFailed')}</Alert>;
-  if (res.data.length === 0) return <Text c="dimmed">{t('network.exposure.empty')}</Text>;
+  if (res.error || !res.data) return <ErrorBanner message={t('network.exposure.loadFailed')} onRetry={res.reload} />;
+  if (res.data.length === 0) return <EmptyState title={t('network.exposure.empty')} hint={t('network.exposure.emptyHint')} />;
   return (
     <Stack>
       <Table.ScrollContainer minWidth={520}>
