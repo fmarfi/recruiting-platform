@@ -39,9 +39,9 @@ export function GlobalSearch() {
 
   const rows: Row[] = res
     ? [
-        ...res.accounts.map((a) => ({ key: `a${a.id}`, to: `/accounts/${a.id}`, title: a.name, sub: [a.sector, a.city].filter(Boolean).join(' - '), badge: <StatusBadge kind="account" value={a.status} size="sm" /> })),
-        ...res.people.map((p) => ({ key: `p${p.id}`, to: `/people/${p.id}`, title: p.name, sub: [p.title, p.company].filter(Boolean).join(', ') })),
-        ...res.jobOrders.map((j) => ({ key: `j${j.id}`, to: `/job-orders/${j.id}`, title: j.title, sub: j.account.name, badge: <StatusBadge kind="jobOrder" value={j.status} size="sm" /> })),
+        ...res.accounts.map((a) => ({ key: `a${a.id}`, to: `/clients/${a.id}`, title: a.name, sub: [a.sector, a.city].filter(Boolean).join(' - '), badge: <StatusBadge kind="account" value={a.status} size="sm" /> })),
+        ...res.people.map((p) => ({ key: `p${p.id}`, to: `/candidates/${p.id}`, title: p.name, sub: [p.title, p.company].filter(Boolean).join(', ') })),
+        ...res.jobOrders.map((j) => ({ key: `j${j.id}`, to: `/searches/${j.id}`, title: j.title, sub: j.account.name, badge: <StatusBadge kind="jobOrder" value={j.status} size="sm" /> })),
       ]
     : [];
 

@@ -26,7 +26,7 @@
     "managerOnly": "Only managers can {{action}}",
     "recentSearches": "Recent searches",
     "searchNone": "No results for \"{{q}}\"",
-    "searchPlaceholder": "Search clients, people, jobs",
+    "searchPlaceholder": "Search clients, candidates, searches",
     "seeAll": "See all results for \"{{q}}\"",
     "requiredNote": "Fields marked * are required.",
     "confirm": "Confirm",
@@ -67,7 +67,7 @@
     "qNotSaved": "Free-text search is not saved in shared views; only the filters are.",
     "notice": {
       "fallback": "Saved views are stored in this browser only while the server is unavailable.",
-      "migrated": "{{moved}} view(s) from this browser were copied to your account.",
+      "migrated": "{{moved}} view(s) from this browser were copied to your client.",
       "migratedLeft": " {{left}} could not be moved and stay in this browser.",
       "persist": "Views could not be saved in this browser; they last until you reload.",
       "migratedDropped": " {{dropped}} could not be stored on the server and were removed from this browser."
@@ -100,8 +100,8 @@
       "filter": "Filter",
       "actions": "Actions",
       "accounts": "Clients",
-      "people": "People",
-      "jobs": "Jobs",
+      "people": "Candidates",
+      "jobs": "Searches",
       "recent": "Recent",
       "search": "Search"
     },
@@ -152,15 +152,15 @@
     "doneToast": "Done: {{title}}",
     "stat": {
       "activeAccounts": "Active clients",
-      "openJobs": "Open jobs",
+      "openJobs": "Open searches",
       "inProcess": "Candidates in process",
       "placed": "Placed this year"
     },
-    "jobs": "Open job orders",
-    "noJobs": "No open job orders",
-    "noJobsHint": "Job orders appear here once a client opens one.",
+    "jobs": "Open searches",
+    "noJobs": "No open searches",
+    "noJobsHint": "Searches appear here once a client opens one.",
     "recent": "Recent clients",
-    "viewAllJobs": "View all job orders",
+    "viewAllJobs": "View all searches",
     "viewAllClients": "View all clients",
     "daysOpen": "{{n}} days open",
     "candidates": "{{n}} candidates",
@@ -181,8 +181,8 @@
     "status": "Status",
     "group": {
       "accounts": "Clients",
-      "people": "People",
-      "jobs": "Job orders"
+      "people": "Candidates",
+      "jobs": "Searches"
     }
   }
 }

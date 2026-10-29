@@ -145,7 +145,7 @@
       "lifecycle": {
         "account": "Clients",
         "proposal": "Proposals",
-        "jobOrder": "Job orders",
+        "jobOrder": "Searches",
         "pipelineStage": "Candidate stages",
         "consent": "Consent",
         "dataSubjectRequest": "Data requests"
@@ -172,9 +172,9 @@
       "delete": "Delete",
       "deleteConfirm": "Delete this rule? Use End today to keep the history; delete is for entries made by mistake.",
       "targetKind": "Type of company",
-      "targetAccount": "Client account",
+      "targetAccount": "Client client",
       "targetCompany": "Other company",
-      "account": "Client account",
+      "account": "Client client",
       "companyName": "Company name",
       "note": "Note",
       "noteHint": "No personal data.",
@@ -189,7 +189,7 @@
         "OTHER": "Other"
       },
       "err": {
-        "target": "Choose a client account or enter a company name.",
+        "target": "Choose a client client or enter a company name.",
         "dates": "The end date cannot be before the start date.",
         "duplicate": "This company already has an active rule.",
         "forbidden": "Only managers and administrators can change off-limits rules.",
@@ -201,7 +201,7 @@
     "sub": {
       "users": "Who can sign in and what they may do.",
       "roles": "What each role is allowed to do. Fixed in this version.",
-      "statuses": "The status flows used across clients, proposals, jobs and candidates.",
+      "statuses": "The status flows used across clients, proposals, searches and candidates.",
       "import": "Bring clients and people in from a CSV file, with a preview before anything is saved.",
       "retention": "How long personal data is kept and how deletion requests are handled.",
       "offlimits": "Companies we must not approach for candidates.",

@@ -33,7 +33,7 @@ export function NewMenu({ onChanged }: { onChanged: () => void }) {
         onClose={close}
         onSaved={onChanged}
       />
-      <NewAccountDialog opened={dialog === 'account'} onClose={close} onCreated={(id) => nav(`/accounts/${id}`)} />
+      <NewAccountDialog opened={dialog === 'account'} onClose={close} onCreated={(id) => nav(`/clients/${id}`)} />
       <NewPersonDialog opened={dialog === 'person'} onClose={close} onCreated={onChanged} />
     </>
   );

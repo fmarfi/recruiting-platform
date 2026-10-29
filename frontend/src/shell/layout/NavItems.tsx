@@ -1,7 +1,8 @@
-import { Group } from '@mantine/core';
-import type { ReactNode } from 'react';
+import { Group, Stack, Text } from '@mantine/core';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import { api } from '../../api';
 import { useAuth } from '../auth/useAuth';
 
 const icon = (d: ReactNode) => (
@@ -18,23 +19,98 @@ const ICONS: Record<string, ReactNode> = {
 };
 
 function useNavItems() {
-  const { isManager } = useAuth();
+  // Four areas only; Settings/Admin live in the user menu.
   const items: [string, string][] = [
     ['/', 'nav.myDay'],
-    ['/accounts', 'nav.accounts'],
-    ['/job-orders', 'nav.jobOrders'],
-    ['/network', 'nav.network'],
+    ['/searches', 'nav.jobOrders'],
+    ['/candidates', 'nav.network'],
+    ['/clients', 'nav.accounts'],
   ];
-  // Settings (Admin) is hidden from consultants (docs/product/ux/screens/settings.md).
-  if (isManager) items.push(['/settings/users', 'nav.settings']);
   return items;
+}
+
+/** Up to 5 open searches owned by the current user, one click each (laptop rail and drawer). */
+export function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const [rows, setRows] = useState<{ id: string; title: string }[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const uid = user?.id;
+  useEffect(() => {
+    if (!uid) return;
+    let live = true;
+    void api
+      .GET('/job-orders', { params: { query: { open: true, ownerId: uid, page: 0, size: 5, sort: ['openedOn,desc'] } } })
+      .then((r) => {
+        if (!live) return;
+        if (r.error || !r.data) {
+          setFailed(true);
+          setRows([]);
+          return;
+        }
+        setRows((r.data?.content ?? []).slice(0, 5).map((j) => ({ id: String(j.id), title: j.title })));
+      })
+      .catch(() => {
+        if (!live) return;
+        setFailed(true);
+        setRows([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [uid]);
+  if (collapsed) return null;
+  return (
+    <Stack gap={2} component="nav" aria-label={t('nav.pinned')} mt="md">
+      <Text size="xs" fw={700} tt="uppercase" px="var(--space-3)" style={{ color: 'var(--color-chromeInk2)' }}>
+        {t('nav.pinned')}
+      </Text>
+      {rows === null && (
+        <Text size="sm" px="var(--space-3)" role="status" style={{ color: 'var(--color-chromeInk2)' }}>
+          {t('nav.pinnedLoading')}
+        </Text>
+      )}
+      {rows && rows.length === 0 && failed && (
+        <Text size="sm" px="var(--space-3)" role="alert" style={{ color: 'var(--color-chromeInk2)' }}>
+          {t('nav.pinnedError')}
+        </Text>
+      )}
+      {rows && rows.length === 0 && !failed && (
+        <Text size="sm" px="var(--space-3)" style={{ color: 'var(--color-chromeInk2)' }}>
+          {t('nav.noPinned')}
+        </Text>
+      )}
+      {(rows ?? []).map((r) => (
+        <NavLink
+          key={r.id}
+          to={`/searches/${r.id}`}
+          onClick={onNavigate}
+          className="nav-link"
+          title={r.title}
+          style={({ isActive }) => ({
+            minHeight: 'var(--touch-target-min)',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 var(--space-3)',
+            borderRadius: 'var(--radius-md)',
+            textDecoration: 'none',
+            minWidth: 0,
+            color: isActive ? 'var(--color-chromeInk)' : 'var(--color-chromeInk2)',
+            background: isActive ? 'var(--color-chromeActive)' : 'transparent',
+          })}
+        >
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+        </NavLink>
+      ))}
+    </Stack>
+  );
 }
 
 /** Main navigation on midnight chrome: a column in the rail on laptop (icons only when collapsed), a row in the bottom bar on phone. */
 export function NavItems({ vertical, collapsed = false, onNavigate }: { vertical: boolean; collapsed?: boolean; onNavigate?: () => void }) {
   const { t } = useTranslation();
   const items = useNavItems();
-  return (
+  const main = (
     <Group
       component="nav"
       aria-label={t('shell.mainNav')}
@@ -61,6 +137,9 @@ export function NavItems({ vertical, collapsed = false, onNavigate }: { vertical
             padding: vertical ? (collapsed ? 0 : '0 var(--space-3)') : '4px 2px',
             fontSize: vertical ? '0.9375rem' : 12,
             whiteSpace: 'nowrap',
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
             textAlign: 'center',
             borderRadius: 'var(--radius-md)',
             textDecoration: 'none',
@@ -75,5 +154,12 @@ export function NavItems({ vertical, collapsed = false, onNavigate }: { vertical
         </NavLink>
       ))}
     </Group>
+  );
+  if (!vertical) return main;
+  return (
+    <>
+      {main}
+      <PinnedSearches collapsed={collapsed} onNavigate={onNavigate} />
+    </>
   );
 }

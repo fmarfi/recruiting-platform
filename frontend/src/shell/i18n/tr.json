@@ -26,7 +26,7 @@
     "managerOnly": "Yalnızca yöneticiler {{action}} yapabilir",
     "recentSearches": "Son aramalar",
     "searchNone": "\"{{q}}\" için sonuç yok",
-    "searchPlaceholder": "Müşteri, kişi, pozisyon ara",
+    "searchPlaceholder": "Müşteri, aday, arama ara",
     "seeAll": "\"{{q}}\" için tüm sonuçlar",
     "requiredNote": "* ile işaretli alanlar zorunludur.",
     "confirm": "Onayla",
@@ -100,8 +100,8 @@
       "filter": "Filtre",
       "actions": "İşlemler",
       "accounts": "Müşteriler",
-      "people": "Kişiler",
-      "jobs": "Pozisyonlar",
+      "people": "Adaylar",
+      "jobs": "Aramalar",
       "recent": "Son kullanılanlar",
       "search": "Arama"
     },
@@ -152,15 +152,15 @@
     "doneToast": "Tamamlandı: {{title}}",
     "stat": {
       "activeAccounts": "Aktif müşteri",
-      "openJobs": "Açık pozisyon",
+      "openJobs": "Açık arama",
       "inProcess": "Süreçteki aday",
       "placed": "Bu yıl yerleşen"
     },
-    "jobs": "Açık pozisyonlar",
-    "noJobs": "Açık pozisyon yok",
-    "noJobsHint": "Bir müşteri pozisyon açtığında burada görünür.",
+    "jobs": "Açık aramalar",
+    "noJobs": "Açık arama yok",
+    "noJobsHint": "Bir müşteri arama açtığında burada görünür.",
     "recent": "Son müşteriler",
-    "viewAllJobs": "Tüm pozisyonları gör",
+    "viewAllJobs": "Tüm aramaları gör",
     "viewAllClients": "Tüm müşterileri gör",
     "daysOpen": "{{n}} gündür açık",
     "candidates": "{{n}} aday",
@@ -181,8 +181,8 @@
     "status": "Durum",
     "group": {
       "accounts": "Müşteriler",
-      "people": "Kişiler",
-      "jobs": "Pozisyonlar"
+      "people": "Adaylar",
+      "jobs": "Aramalar"
     }
   }
 }

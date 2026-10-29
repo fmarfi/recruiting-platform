@@ -16,7 +16,7 @@ const KINDS: RecentKind[] = ['account', 'person', 'job'];
 const keyFor = (userId: string) => `${PREFIX}${userId}`;
 
 export function recentPath(r: Pick<RecentRef, 'kind' | 'id'>): string {
-  return r.kind === 'account' ? `/accounts/${r.id}` : r.kind === 'person' ? `/people/${r.id}` : `/job-orders/${r.id}`;
+  return r.kind === 'account' ? `/clients/${r.id}` : r.kind === 'person' ? `/candidates/${r.id}` : `/searches/${r.id}`;
 }
 
 /** Per user, newest first, entries older than 30 days dropped. Storage may be blocked, so every access is guarded. */

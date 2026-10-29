@@ -81,9 +81,9 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
         ['newPerson', t('network.newPerson'), open('person')],
         ['logActivity', t('accounts.logActivity'), open('activity')],
         ['goMyDay', t('command.goTo', { page: t('nav.myDay') }), go('/')],
-        ['goAccounts', t('command.goTo', { page: t('nav.accounts') }), go('/accounts')],
-        ['goNetwork', t('command.goTo', { page: t('nav.network') }), go('/network')],
-        ['goJobs', t('command.goTo', { page: t('nav.jobOrders') }), go('/job-orders')],
+        ['goAccounts', t('command.goTo', { page: t('nav.accounts') }), go('/clients')],
+        ['goNetwork', t('command.goTo', { page: t('nav.network') }), go('/candidates')],
+        ['goJobs', t('command.goTo', { page: t('nav.jobOrders') }), go('/searches')],
         ...(isManager ? ([['goSettings', t('command.goTo', { page: t('nav.settings') }), go('/settings/users')]] as [string, string, () => void][]) : []),
       ];
       for (const [id, label, run] of actions) if (!parsed.text || matchesText(label, parsed.text)) out.push({ id: `act-${id}`, group: 'actions', label, run });
@@ -92,13 +92,13 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
     if (res && parsed.text.length >= 2) {
       for (const a of res.accounts) {
         const sub = [a.sector, a.city].filter(Boolean).join(' - ');
-        out.push({ id: `a-${a.id}`, group: 'accounts', label: a.name, sub, badge: <StatusBadge kind="account" value={a.status} size="sm" />, run: go(`/accounts/${a.id}`, { kind: 'account', id: a.id }) });
+        out.push({ id: `a-${a.id}`, group: 'accounts', label: a.name, sub, badge: <StatusBadge kind="account" value={a.status} size="sm" />, run: go(`/clients/${a.id}`, { kind: 'account', id: a.id }) });
       }
       for (const p of res.people) {
         const sub = [p.title, p.company].filter(Boolean).join(', ');
-        out.push({ id: `p-${p.id}`, group: 'people', label: p.name, sub, run: go(`/people/${p.id}`, { kind: 'person', id: p.id }) });
+        out.push({ id: `p-${p.id}`, group: 'people', label: p.name, sub, run: go(`/candidates/${p.id}`, { kind: 'person', id: p.id }) });
       }
-      for (const j of res.jobOrders) out.push({ id: `j-${j.id}`, group: 'jobs', label: j.title, sub: j.account.name, badge: <StatusBadge kind="jobOrder" value={j.status} size="sm" />, run: go(`/job-orders/${j.id}`, { kind: 'job', id: j.id }) });
+      for (const j of res.jobOrders) out.push({ id: `j-${j.id}`, group: 'jobs', label: j.title, sub: j.account.name, badge: <StatusBadge kind="jobOrder" value={j.status} size="sm" />, run: go(`/searches/${j.id}`, { kind: 'job', id: j.id }) });
     }
 
     if (!q.trim()) for (const r of recents) out.push({ id: `r-${r.to}`, group: 'recent', label: r.title, sub: r.sub, run: go(r.to, r.ref) });
@@ -238,7 +238,7 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
         </Stack>
       </Modal>
       <QuickAdd opened={dialog === 'activity'} initialMode="activity" onClose={() => setDialog(null)} onSaved={onChanged} />
-      <NewAccountDialog opened={dialog === 'account'} onClose={() => setDialog(null)} onCreated={(id) => nav(`/accounts/${id}`)} />
+      <NewAccountDialog opened={dialog === 'account'} onClose={() => setDialog(null)} onCreated={(id) => nav(`/clients/${id}`)} />
       <NewPersonDialog opened={dialog === 'person'} onClose={() => setDialog(null)} onCreated={onChanged} />
     </>
   );

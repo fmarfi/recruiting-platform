@@ -43,6 +43,6 @@ describe('JobOrdersList', () => {
       </MantineProvider>,
     );
     expect(await screen.findByText('CFO Search')).toBeInTheDocument();
-    expect(screen.getByTestId('screen-title')).toHaveTextContent('Pozisyonlar');
+    expect(screen.getByTestId('screen-title')).toHaveTextContent('Aramalar');
   });
 });
