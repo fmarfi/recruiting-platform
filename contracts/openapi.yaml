@@ -3421,7 +3421,9 @@ paths:
       tags: [Tags]
       operationId: listTags
       summary: Every tag in use or defined, with colour, pool flag and usage counts
-      description: Union of the distinct values in the `tags` arrays of accounts, people, job orders and proposals (archived records included in the counts) with the `tag_definition` rows. Tags without a definition have colour GREY and `defined=false`. Default sort `name,asc`.
+      description: |
+        Union of the distinct values in the `tags` arrays of accounts, people, job orders and proposals (archived records included in the counts) with the `tag_definition` rows. Tags without a definition have colour GREY and `defined=false`. Default sort `name,asc`.
+        Sortable: `name`, `total`.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: accounts / backend-accounts
       parameters:
@@ -3436,12 +3438,7 @@ paths:
           schema: { type: boolean }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
-        - name: sort
-          in: query
-          description: 'Sortable: `name`, `total`. Default `name,asc`.'
-          schema:
-            type: array
-            items: { type: string }
+        - $ref: '#/components/parameters/Sort'
       responses:
         '200':
           description: Page of tags
@@ -3551,8 +3548,8 @@ paths:
       operationId: rankJobOrderList
       summary: Set the order of one list (keyboard reordering, Alt+Up/Down)
       description: |
-        `applicationIds` must be exactly the applications currently on `list` for this job order, in the
-        new order (else 409 `STATE_CONFLICT`, reload and retry). Ranks become 1..n (unique, gapless). The
+        `applicationIds` must be exactly the active applications currently on `list` for this job order
+        (PLACED ones are on the shortlist but never ranked), in the new order (else 409 `STATE_CONFLICT`, reload and retry). Ranks become 1..n (unique, gapless). The
         service locks the job order row for every rank change, so concurrent reorders serialise. Envers
         records each changed application.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
@@ -3648,12 +3645,15 @@ paths:
       tags: [Longlist and shortlist]
       operationId: deleteClientFeedback
       summary: Delete a round entered by mistake (Envers keeps the history; does not undo a stage move)
+      description: |
+        409 `ARCHIVED` when the job order or the person is archived (ADR 0013).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       responses:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   # ---------- 1.3.0: candidate evaluation (ADR 0013) ----------
   /people/{id}/evaluations:
     parameters:
@@ -3662,6 +3662,8 @@ paths:
       tags: [Evaluation]
       operationId: listEvaluations
       summary: Evaluations of a person, newest first (Evaluations tab)
+      description: |
+        Writes one access-log VIEW row per returned evaluation (entity EVALUATION), because evaluations carry `privateNotes` and assessments (NFR-05).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       parameters:
@@ -3710,6 +3712,8 @@ paths:
       tags: [Evaluation]
       operationId: getEvaluation
       summary: One evaluation
+      description: |
+        Writes one access-log VIEW row (entity EVALUATION).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       responses:
@@ -3745,12 +3749,15 @@ paths:
       tags: [Evaluation]
       operationId: deleteEvaluation
       summary: Delete an evaluation (Envers keeps the history until the person is anonymised)
+      description: |
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       responses:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /people/{id}/interview-notes:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -3758,6 +3765,8 @@ paths:
       tags: [Evaluation]
       operationId: listInterviewNotes
       summary: Interview notes of a person, newest first
+      description: |
+        Writes one access-log VIEW row per returned note (entity INTERVIEW_NOTE).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       parameters:
@@ -3776,6 +3785,8 @@ paths:
       tags: [Evaluation]
       operationId: createInterviewNote
       summary: Add interview notes (SX-009; template headings Career, Motivation, Fit, Concerns are client-side)
+      description: |
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -3792,6 +3803,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /interview-notes/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -3820,12 +3832,15 @@ paths:
       tags: [Evaluation]
       operationId: deleteInterviewNote
       summary: Delete interview notes
+      description: |
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       responses:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /people/{id}/references:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -3833,6 +3848,8 @@ paths:
       tags: [Evaluation]
       operationId: listReferences
       summary: Reference checks of a person
+      description: |
+        Writes one access-log VIEW row per returned reference (entity CANDIDATE_REFERENCE); referee details are third-party data.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       parameters:
@@ -3851,7 +3868,9 @@ paths:
       tags: [Evaluation]
       operationId: createReference
       summary: Add a reference check
-      description: The referee's name and contact details are a third person's data (ADR 0013); they are deleted with the candidate's anonymisation and never put into reports (only status and summary).
+      description: |
+        The referee's name and contact details are a third person's data (ADR 0013); they are deleted with the candidate's anonymisation and never put into reports (only status and summary).
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -3868,6 +3887,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /references/{id}:
     parameters:
       - $ref: '#/components/parameters/IdPath'
@@ -3896,12 +3916,15 @@ paths:
       tags: [Evaluation]
       operationId: deleteReference
       summary: Delete a reference check
+      description: |
+        409 `ARCHIVED` when the person (or the job order of the record) is archived (ADR 0013).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       responses:
         '204': { description: Deleted }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   # ---------- 1.3.0: search brief and research (ADR 0013) ----------
   /job-orders/{id}/brief:
     parameters:
@@ -4074,12 +4097,15 @@ paths:
       tags: [Search brief]
       operationId: deleteTargetCompany
       summary: Remove a target company (prefer status CLOSED once approached)
+      description: |
+        409 `ARCHIVED` when the job order is archived (ADR 0013).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       responses:
         '204': { description: Removed }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   # ---------- 1.3.0: commercial (ADR 0013) ----------
   /agreements:
     get:
@@ -4406,16 +4432,16 @@ paths:
       tags: [Commercial]
       operationId: listConflictChecks
       summary: Recorded conflict checks, newest first
+      description: |
+        Sortable: `checkedAt` (default `checkedAt,desc`).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       parameters:
         - $ref: '#/components/parameters/AccountIdQuery'
         - $ref: '#/components/parameters/JobOrderIdQuery'
-        - name: proposalId
-          in: query
-          schema: { $ref: '#/components/schemas/Id' }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
       responses:
         '200':
           description: Page of checks
@@ -4487,6 +4513,8 @@ paths:
       tags: [Exports]
       operationId: listExports
       summary: My exports; for MANAGER/ADMIN every export (approval queue with `status=PENDING_APPROVAL`)
+      description: |
+        Sortable: `requestedAt` (default `requestedAt,desc`), `status`, `rowCount`.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: security / security-privacy
       parameters:
@@ -4499,6 +4527,7 @@ paths:
           explode: true
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
       responses:
         '200':
           description: Page of exports, newest first
@@ -4886,7 +4915,7 @@ components:
                     title: Chief Financial Officer
                     type: JOB_ORDER
     Gone:
-      description: The consent link has expired (`GONE`)
+      description: The resource has expired or was removed for good (`GONE`), e.g. an expired consent link, an expired export file, or a client report deleted by an erasure
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/ProblemDetail' }
@@ -5773,7 +5802,10 @@ components:
         rank:
           type: [integer, 'null']
           minimum: 1
-          description: Since 1.3.0. Position on its list, unique and gapless per job order and list; null when REJECTED or PLACED.
+          description: |
+            Since 1.3.0. Position on its list, unique and gapless per job order and list among the **ranked** applications:
+            the active ones (`PipelineStage.isActive()`). PLACED applications are on the SHORTLIST (`list` = SHORTLIST)
+            but unranked (`rank` null) and are listed after the ranked ones; REJECTED ones are on no list.
         rating: { type: [integer, 'null'], minimum: 1, maximum: 5, description: 'Since 1.3.0. 1 reject, 3 maybe, 5 outstanding.' }
         rationale: { type: [string, 'null'], maxLength: 2000, description: Since 1.3.0. Why this person is on the list; internal unless put in a report. }
         outreachStatus:
@@ -7190,7 +7222,7 @@ components:
           minItems: 1
           maxItems: 500
           uniqueItems: true
-          description: Every application on the list, first = rank 1.
+          description: Exactly the **active** applications of the job order on this list (PLACED and REJECTED excluded), first = rank 1. A missing, extra, PLACED or REJECTED id gives 409 `STATE_CONFLICT` (stale view; reload).
           items: { $ref: '#/components/schemas/Id' }
     ClientFeedback:
       type: object
@@ -7200,7 +7232,7 @@ components:
         applicationId: { $ref: '#/components/schemas/Id' }
         round: { type: integer, minimum: 1 }
         feedbackOn: { type: string, format: date }
-        participants: { type: [string, 'null'], description: Client people present (free text)., examples: ['CFO, HR director'] }
+        participants: { type: [string, 'null'], description: 'Roles of the client people present, not names (UI hint; third-party data, see `contracts/personal-data.md`).', examples: ['CFO, HR director'] }
         outcome: { $ref: '#/components/schemas/ClientFeedbackOutcome' }
         declineReason:
           oneOf: [{ $ref: '#/components/schemas/DeclineReason' }, { type: 'null' }]
