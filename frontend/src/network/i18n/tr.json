@@ -328,6 +328,36 @@
     "backToList": "Adaylara dön",
     "notFoundHint": "Silinmiş veya birleştirilmiş olabilir ya da bağlantı hatalıdır.",
     "noActivityHint": "Aramaları, toplantıları ve notları kaydedin; sonraki meslektaşınız durumu bilsin.",
-    "noPipelinesHint": "Bir hat başlatmak için bu adayı bir aramaya ekleyin."
+    "noPipelinesHint": "Bir hat başlatmak için bu adayı bir aramaya ekleyin.",
+    "edit": {
+      "title": "{{name}} düzenle",
+      "action": "Düzenle",
+      "history": "Geçmiş",
+      "sectionMain": "Kişi",
+      "sectionContact": "İletişim ve notlar",
+      "phone": "Telefon",
+      "notes": "Notlar",
+      "noticeHint": "Gün, 0 ile 365 arası",
+      "startDate": "Başlangıç tarihi",
+      "endDate": "Bitiş tarihi (boş = devam ediyor)",
+      "langCode": "Dil kodu (örneğin en)",
+      "langLevel": "Seviye",
+      "school": "Okul",
+      "degree": "Derece",
+      "studyField": "Bölüm",
+      "startYear": "Başlangıç yılı",
+      "endYear": "Bitiş yılı",
+      "currency": "Para birimi",
+      "period": "Dönem",
+      "basis": "Brüt/net",
+      "benefits": "Yan haklar",
+      "noRows": "Eklenmedi",
+      "addEmployment": "Pozisyon ekle",
+      "addLanguage": "Dil ekle",
+      "addEducation": "Eğitim ekle",
+      "removeRow": "{{n}}. satırı kaldır",
+      "tooManyTags": "Bir kişide en fazla 20 etiket olabilir.",
+      "saved": "{{name}} güncellendi"
+    }
   }
 }

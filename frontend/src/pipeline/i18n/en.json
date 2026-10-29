@@ -118,7 +118,21 @@
     "undoRemove": "Undo",
     "removedToast": "{{name}} removed from this pipeline.",
     "notFoundHint": "It may have been deleted, or the link is wrong.",
-    "backToList": "Back to searches"
+    "backToList": "Back to searches",
+    "edit": {
+      "action": "Edit",
+      "drawerTitle": "Edit {{name}}",
+      "newTitle": "New search",
+      "sectionRole": "Role",
+      "sectionBrief": "Brief and terms",
+      "title": "Job title",
+      "description": "Description",
+      "openings": "Openings",
+      "feeHint": "For example 33% of first-year salary, retained",
+      "titleRequired": "Enter a job title.",
+      "saved": "{{name}} updated",
+      "history": "History"
+    }
   },
   "quickAdd": {
     "account": "Client",

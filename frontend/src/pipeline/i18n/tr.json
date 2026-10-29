@@ -118,7 +118,21 @@
     "undoRemove": "Geri al",
     "removedToast": "{{name}} bu hattan çıkarıldı.",
     "notFoundHint": "Silinmiş olabilir veya bağlantı hatalı olabilir.",
-    "backToList": "Aramalara dön"
+    "backToList": "Aramalara dön",
+    "edit": {
+      "action": "Düzenle",
+      "drawerTitle": "{{name}} düzenle",
+      "newTitle": "Yeni arama",
+      "sectionRole": "Pozisyon",
+      "sectionBrief": "Tanım ve şartlar",
+      "title": "Pozisyon adı",
+      "description": "Açıklama",
+      "openings": "Açık pozisyon sayısı",
+      "feeHint": "Örneğin ilk yıl maaşının %33'ü, retained",
+      "titleRequired": "Pozisyon adını girin.",
+      "saved": "{{name}} güncellendi",
+      "history": "Geçmiş"
+    }
   },
   "quickAdd": {
     "account": "Müşteri",
