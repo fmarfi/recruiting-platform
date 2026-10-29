@@ -1,5 +1,5 @@
 // Job order page with the pipeline board (A-06, A-07, UX-03, UX-04).
-import { Alert, Anchor, Button, Card, Container, Group, Loader, Skeleton, Text, Title } from '@mantine/core';
+import { Anchor, Button, Card, Container, Group, Skeleton, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -10,7 +10,10 @@ import { useBoardMoves } from '../../board/useBoardMoves';
 import { QuickAdd, type QuickAddContext } from '../../quickadd/QuickAdd';
 import { StatusBadge, problemText, useCurrentUser, useFormat, useLabel, type Schemas } from '../../shared';
 import { StageGuardDialog } from '../../board/StageGuardDialog';
+import { ErrorBanner } from '../../../shell/components/ErrorBanner';
 import { Highlights } from '../../../shell/components/Highlights';
+import { SkeletonRows } from '../../../shell/components/SkeletonRows';
+import { Alert } from '@mantine/core';
 import { AddCandidateDialog } from './AddCandidateDialog';
 import { JobStatusMenu } from './JobStatusMenu';
 import { MoveToast } from './MoveToast';
@@ -23,7 +26,7 @@ export function JobOrderPage() {
   const { ref, def } = useLabel();
   const me = useCurrentUser();
   const { job, apps: appsRes } = useJobOrder(id);
-  const moves = useBoardMoves(appsRes.data, job.reload);
+  const moves = useBoardMoves(appsRes.data, job.reload, appsRes.reload);
   const [addOpen, setAddOpen] = useState(false);
   const [logCtx, setLogCtx] = useState<QuickAddContext>();
   const [statusAsk, setStatusAsk] = useState<string>();
@@ -57,11 +60,12 @@ export function JobOrderPage() {
     const notFound = (job.error as { status?: number } | undefined)?.status === 404;
     return (
       <Container py="md">
-        <Alert color="red" role="alert" title={notFound ? t('pipeline.notFound') : t('pipeline.loadFailed')}>
-          <Button variant="light" onClick={job.reload}>
-            {t('common.retry')}
+        <ErrorBanner message={notFound ? t('pipeline.notFound') : t('pipeline.loadFailed')} hint={notFound ? t('pipeline.notFoundHint') : t('pipeline.loadErrorHint')} onRetry={notFound ? undefined : job.reload} />
+        {notFound && (
+          <Button component={Link} to="/job-orders" mt="sm" variant="light">
+            {t('pipeline.backToList')}
           </Button>
-        </Alert>
+        )}
       </Container>
     );
   }
@@ -141,13 +145,9 @@ export function JobOrderPage() {
       {moves.toast && <MoveToast toast={moves.toast} onClose={() => moves.setToast(undefined)} onRefresh={appsRes.reload} />}
 
       {appsRes.loading && moves.apps.length === 0 ? (
-        <Loader size="sm" />
+        <SkeletonRows n={4} />
       ) : appsRes.error ? (
-        <Alert color="red" role="alert" title={t('pipeline.loadFailed')}>
-          <Button variant="light" onClick={appsRes.reload}>
-            {t('common.retry')}
-          </Button>
-        </Alert>
+        <ErrorBanner message={t('pipeline.loadFailed')} hint={t('pipeline.loadErrorHint')} onRetry={appsRes.reload} />
       ) : moves.apps.length === 0 ? (
         <Card withBorder padding="xl" ta="center" data-testid="empty-pipeline">
           <Text fw={600}>{t('pipeline.emptyTitle')}</Text>

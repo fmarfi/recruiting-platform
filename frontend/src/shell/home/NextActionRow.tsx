@@ -15,9 +15,9 @@ export function NextActionRow({ action: a, today, onDone, onSnooze }: Props) {
   const { t, i18n } = useTranslation();
   const due = a.overdue ? t('myday.overdueBy', { n: daysAgo(a.dueOn, today) }) : a.dueOn === today ? t('myday.group.today') : fmtDate(a.dueOn, i18n.language);
   return (
-    <Group wrap="nowrap" justify="space-between" py={6} style={{ minHeight: 'var(--touch-target-min)' }}>
-      <Checkbox label={a.title} checked={false} onChange={onDone} aria-label={a.title} />
-      <Group gap="xs" wrap="nowrap">
+    <Group wrap="wrap" justify="space-between" py={6} gap="xs" style={{ minHeight: 'var(--touch-target-min)' }}>
+      <Checkbox label={a.title} checked={false} onChange={onDone} aria-label={a.title} style={{ flex: '1 1 220px', minWidth: 0 }} styles={{ label: { overflowWrap: 'anywhere' } }} />
+      <Group gap="xs" wrap="wrap">
         {a.account && (
           <Anchor component={Link} to={`/accounts/${a.account.id}`} size="sm">
             {a.account.name}
@@ -28,7 +28,7 @@ export function NextActionRow({ action: a, today, onDone, onSnooze }: Props) {
         </Text>
         <Menu withinPortal position="bottom-end">
           <Menu.Target>
-            <Button size="compact-xs" variant="subtle" aria-label={t('myday.snooze')}>
+            <Button size="compact-xs" variant="subtle" aria-label={t('myday.snooze')} title={t('myday.snooze')}>
               ...
             </Button>
           </Menu.Target>

@@ -1,5 +1,6 @@
 // Activity (A-04): newest first; empty state invites the first log (UX-08).
 import { Button, Stack, Text } from '@mantine/core';
+import { EmptyState } from '../../shell/components/EmptyState';
 import { useTranslation } from 'react-i18next';
 import { useFormat, type Schemas } from '../../pipeline/shared';
 
@@ -7,18 +8,13 @@ export function ActivityTab({ activities, onLog }: { activities: Schemas['Activi
   const { t } = useTranslation();
   const fmt = useFormat();
   if (activities.length === 0) {
-    return (
-      <Stack align="flex-start">
-        <Text c="dimmed">{t('network.noActivity')}</Text>
-        <Button onClick={onLog}>{t('network.logActivity')}</Button>
-      </Stack>
-    );
+    return <EmptyState title={t('network.noActivity')} hint={t('network.noActivityHint')} actions={<Button onClick={onLog}>+ {t('network.logActivity')}</Button>} />;
   }
   return (
     <Stack gap="xs">
       {activities.map((a) => (
         <Text key={a.id} size="sm">
-          {fmt.date(a.occurredAt)} <b>{t(`quickAdd.types.${a.type}`)}</b> {a.note} <Text span c="dimmed">- {a.user.name}</Text>
+          <Text span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt.date(a.occurredAt)}</Text> <b>{t(`quickAdd.types.${a.type}`)}</b> {a.note} <Text span c="dimmed">- {a.user.name}</Text>
         </Text>
       ))}
     </Stack>

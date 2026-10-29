@@ -99,7 +99,26 @@
       "password": "İlk parola",
       "search": "Kullanıcı ara",
       "adminOnly": "Kullanıcıları yalnızca sistem yöneticisi değiştirebilir.",
-      "empty": "Kullanıcı bulunamadı."
+      "empty": "Kullanıcı bulunamadı.",
+      "disable": "Devre dışı bırak",
+      "enable": "Etkinleştir",
+      "disableTitle": "{{name}} devre dışı bırakılsın mı?",
+      "disableBody": "Artık giriş yapamaz. Kayıtları kalır ve istediğiniz zaman yeniden etkinleştirebilirsiniz.",
+      "emptyHint": "Başlamak için ilk çalışma arkadaşınızı davet edin.",
+      "err": {
+        "name": "Adı girin.",
+        "email": "Geçerli bir e-posta girin, örneğin ad@sirket.com.",
+        "password": "En az 8 karakterlik bir başlangıç şifresi girin."
+      },
+      "help": {
+        "email": "Bu adresle giriş yapacaklar.",
+        "role": "Danışmanlar kendi kayıtlarıyla çalışır; yöneticiler tüm firmayı da görür.",
+        "password": "Özel olarak paylaşın; girişten sonra değiştirmeleri gerekir."
+      },
+      "section": {
+        "person": "Kişi",
+        "access": "Erişim"
+      }
     },
     "role": {
       "CONSULTANT": "Danışman",
@@ -178,6 +197,15 @@
         "generic": "Kaydedilemedi. Tekrar deneyin."
       },
       "endsToday": "Bugün bitiyor"
+    },
+    "sub": {
+      "users": "Kimlerin giriş yapabildiği ve neler yapabildiği.",
+      "roles": "Her rolün neler yapabildiği. Bu sürümde sabittir.",
+      "statuses": "Müşteri, teklif, iş emri ve adaylarda kullanılan durum akışları.",
+      "import": "Müşterileri ve kişileri CSV dosyasından alın; kaydetmeden önce önizleme gösterilir.",
+      "retention": "Kişisel verilerin ne kadar saklandığı ve silme taleplerinin nasıl işlendiği.",
+      "offlimits": "Aday için yaklaşmamamız gereken şirketler.",
+      "audit": "Kişisel verileri kimin görüntülediği, dışa aktardığı veya indirdiği."
     }
   }
 }

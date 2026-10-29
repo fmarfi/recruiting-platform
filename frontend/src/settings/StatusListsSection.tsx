@@ -1,5 +1,6 @@
 import { Card, Group, Stack, Tabs, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+import { SkeletonRows } from '../shell/components/SkeletonRows';
 import { ToneBadge } from '../shell/components/ToneBadge';
 import { useReference, type LifecycleKind } from '../shell/refdata/useReference';
 
@@ -10,7 +11,7 @@ export function StatusListsSection() {
   const { t, i18n } = useTranslation();
   const ref = useReference();
   const tr = i18n.language.startsWith('tr');
-  if (!ref.data) return null;
+  if (!ref.data) return <SkeletonRows n={4} />;
   const data = ref.data;
   return (
     <Stack>
