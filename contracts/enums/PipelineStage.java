@@ -82,6 +82,19 @@ public enum PipelineStage implements Lifecycle<PipelineStage> {
     }
 
     /**
+     * The list this stage belongs to (since contract 1.3.0, ADR 0013): SOURCED and SCREENED are
+     * the longlist, the client-facing stages are the shortlist, REJECTED is on no list.
+     *
+     * @return the list, or {@code null} for {@link #REJECTED}
+     */
+    public CandidateList candidateList() {
+        if (this == REJECTED) {
+            return null;
+        }
+        return sharedWithClient() ? CandidateList.SHORTLIST : CandidateList.LONGLIST;
+    }
+
+    /**
      * Tells whether the candidate is still in the process (counts as active).
      *
      * @return {@code true} unless placed or rejected
