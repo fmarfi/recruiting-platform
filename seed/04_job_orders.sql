@@ -51,9 +51,14 @@ INSERT INTO app_seed VALUES
  (44, 4, 83, 'SOURCED', NULL), (45, 4, 84, 'SCREENED', NULL), (46, 4, 85, 'SCREENED', NULL), (47, 4, 86, 'SOURCED', NULL),
  (48, 11, 85, 'REJECTED', 'Client chose another finalist');
 
-INSERT INTO application (id, job_order_id, person_id, stage, rejection_reason, stage_changed_at,
+INSERT INTO application (id, job_order_id, person_id, stage, rejection_reason, close_reason, stage_changed_at,
                          created_at, created_by, updated_at, updated_by)
 SELECT pg_temp.uid(6, s.n), pg_temp.uid(5, s.job), pg_temp.uid(3, s.person), s.stage, s.reason,
+       CASE WHEN s.stage <> 'REJECTED' THEN NULL
+            WHEN s.reason LIKE 'Client chose%' THEN 'CLIENT_DECLINED'
+            WHEN s.reason LIKE 'Withdrew%' THEN 'CANDIDATE_WITHDREW'
+            WHEN s.reason = 'Compensation mismatch' THEN 'COMPENSATION_MISMATCH'
+            ELSE 'OTHER' END,
        CASE WHEN s.stage = 'SOURCED' THEN c.created_at
             ELSE least(now() - interval '1 hour', c.created_at + make_interval(days => 2 + s.n % 9)) END,
        c.created_at, pg_temp.uid(1, j.owner), c.created_at, pg_temp.uid(1, j.owner)

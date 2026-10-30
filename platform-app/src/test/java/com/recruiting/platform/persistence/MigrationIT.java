@@ -2,6 +2,7 @@ package com.recruiting.platform.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.recruiting.platform.contracts.*;
 import com.recruiting.platform.contracts.AccessAction;
 import com.recruiting.platform.contracts.AccountStatus;
 import com.recruiting.platform.contracts.ActivityType;
@@ -51,7 +52,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 class MigrationIT extends AbstractPersistenceIT {
 
-    private static final Pattern LITERAL = Pattern.compile("'([A-Z_]+)'");
+    private static final Pattern LITERAL = Pattern.compile("'([A-Z][A-Z0-9_]*)'");
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -99,7 +100,51 @@ class MigrationIT extends AbstractPersistenceIT {
             new EnumColumn("duplicate_candidate", "status", DuplicateStatus.class),
             new EnumColumn("off_limits_rule", "reason", OffLimitsReason.class),
             new EnumColumn("candidate_exposure", "channel", ExposureChannel.class),
-            new EnumColumn("consent_request", "purpose", ConsentRequestPurpose.class));
+            new EnumColumn("consent_request", "purpose", ConsentRequestPurpose.class),
+            // 1.3.0 (schema.md line 19)
+            new EnumColumn("account", "archive_reason", ArchiveReason.class),
+            new EnumColumn("account", "einvoice_status", EInvoiceStatus.class),
+            new EnumColumn("account", "employee_band", EmployeeBand.class),
+            new EnumColumn("account", "confidentiality_level", ConfidentialityLevel.class),
+            new EnumColumn("account", "preferred_language", Language.class),
+            new EnumColumn("person", "archive_reason", ArchiveReason.class),
+            new EnumColumn("person", "function_area", JobFunction.class),
+            new EnumColumn("person", "seniority", Seniority.class),
+            new EnumColumn("job_order", "archive_reason", ArchiveReason.class),
+            new EnumColumn("job_order", "confidentiality_level", ConfidentialityLevel.class),
+            new EnumColumn("tag_definition", "colour", TagColour.class),
+            new EnumColumn("application", "outreach_status", OutreachStatus.class),
+            new EnumColumn("application", "close_reason", CloseReason.class),
+            new EnumColumn("activity", "outcome", ActivityOutcome.class),
+            new EnumColumn("activity", "direction", ActivityDirection.class),
+            new EnumColumn("activity", "source", ActivitySource.class),
+            new EnumColumn("client_feedback", "outcome", ClientFeedbackOutcome.class),
+            new EnumColumn("client_feedback", "decline_reason", DeclineReason.class),
+            new EnumColumn("candidate_evaluation", "interview_type", InterviewType.class),
+            new EnumColumn("candidate_evaluation", "recommendation", Recommendation.class),
+            new EnumColumn("interview_note", "interview_type", InterviewType.class),
+            new EnumColumn("candidate_reference", "status", ReferenceStatus.class),
+            new EnumColumn("search_brief", "seniority_level", Seniority.class),
+            new EnumColumn("search_brief", "function_area", JobFunction.class),
+            new EnumColumn("search_criterion", "kind", CriterionKind.class),
+            new EnumColumn("job_order_team_member", "role", SearchTeamRole.class),
+            new EnumColumn("target_company", "tier", TargetTier.class),
+            new EnumColumn("target_company", "status", TargetCompanyStatus.class),
+            new EnumColumn("agreement", "kind", AgreementKind.class),
+            new EnumColumn("agreement", "status", AgreementStatus.class),
+            new EnumColumn("agreement", "language", Language.class),
+            new EnumColumn("agreement", "exclusivity", Exclusivity.class),
+            new EnumColumn("agreement", "fee_model", FeeModel.class),
+            new EnumColumn("agreement", "guarantee_start_basis", GuaranteeStartBasis.class),
+            new EnumColumn("fee_schedule_item", "trigger", FeeTrigger.class),
+            new EnumColumn("fee_schedule_item", "invoice_state", InvoiceState.class),
+            new EnumColumn("placement", "status", PlacementStatus.class),
+            new EnumColumn("conflict_check", "decision", ConflictDecision.class),
+            new EnumColumn("export_job", "entity", ListEntity.class),
+            new EnumColumn("export_job", "status", ExportStatus.class),
+            new EnumColumn("client_report", "kind", ReportKind.class),
+            new EnumColumn("client_report", "language", Language.class),
+            new EnumColumn("import_job_record", "entity_type", EntityType.class));
 
     @Test
     void extensionsAndSearchHelperExist() {
@@ -139,7 +184,11 @@ class MigrationIT extends AbstractPersistenceIT {
     void everyAuditedTableHasAnAuditTable() {
         List<String> audited = List.of("app_user", "account", "person", "person_employment", "contact", "network_link",
                 "job_order", "application", "proposal", "activity", "next_action", "person_privacy",
-                "retention_settings", "data_subject_request", "person_education", "person_file", "off_limits_rule");
+                "retention_settings", "data_subject_request", "person_education", "person_file", "off_limits_rule",
+                // 1.3.0
+                "activity_attendee", "tag_definition", "client_feedback", "candidate_evaluation", "interview_note",
+                "candidate_reference", "search_brief", "search_criterion", "job_order_team_member", "target_company",
+                "agreement", "fee_schedule_item", "placement");
         for (String table : audited) {
             Integer n = jdbc.queryForObject(
                     "SELECT count(*) FROM information_schema.tables WHERE table_name = ?", Integer.class, table + "_aud");
@@ -158,6 +207,42 @@ class MigrationIT extends AbstractPersistenceIT {
     void arrayCheckConstraintsMatchTheContractEnums() {
         assertThat(arrayCheckLiterals("duplicate_candidate", "ck_duplicate_reasons"))
                 .isEqualTo(names(DuplicateMatchReason.class));
+        assertThat(arrayCheckLiterals("candidate_evaluation", "ck_candidate_evaluation_motivation_tags"))
+                .isEqualTo(names(MotivationTag.class));
+        assertThat(arrayCheckLiterals("candidate_evaluation", "ck_candidate_evaluation_report_blocks"))
+                .isEqualTo(names(EvaluationBlock.class));
+        assertThat(arrayCheckLiterals("agreement", "ck_agreement_fee_basis"))
+                .isEqualTo(names(FeeBasisComponent.class));
+    }
+
+    @Test
+    void contract13IndexesAndConstraintsExist() {
+        List<String> indexes = jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'",
+                String.class);
+        assertThat(indexes).contains("uq_account_normalized_name", "idx_account_aliases_norm",
+                "idx_application_job_close_reason", "uq_activity_external_message_id", "uq_placement_application",
+                "idx_candidate_reference_referee_email", "idx_agreement_signatory", "idx_person_employment_organisation");
+        assertThat(jdbc.queryForObject(
+                "SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_account_normalized_name'", String.class))
+                .contains("UNIQUE").contains("archived_at IS NULL");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_indexes WHERE indexname = 'uq_account_name'",
+                Integer.class)).isZero();
+        // normalized_name is generated, so it is not in account_aud
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM information_schema.columns
+                WHERE table_name = 'account_aud' AND column_name = 'normalized_name'""", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("""
+                SELECT is_generated FROM information_schema.columns
+                WHERE table_name = 'account' AND column_name = 'normalized_name'""", String.class))
+                .isEqualTo("ALWAYS");
+        // the 1.3.0 set-null FKs
+        List<String> setNull = jdbc.queryForList("""
+                SELECT c.conrelid::regclass::text || '.' || a.attname
+                FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+                WHERE c.contype = 'f' AND c.confdeltype = 'n'""", String.class);
+        assertThat(setNull).contains("agreement.signatory_contact_id", "placement.person_id",
+                "placement.application_id", "candidate_evaluation.application_id", "interview_note.application_id",
+                "candidate_exposure.application_id", "data_subject_request.person_id");
     }
 
     @Test

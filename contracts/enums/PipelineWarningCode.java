@@ -9,5 +9,7 @@ public enum PipelineWarningCode {
     /** The person was already presented to this account for another job order. */
     PREVIOUSLY_PRESENTED_TO_ACCOUNT,
     /** The person is in another job order's pipeline that is not PLACED or REJECTED. */
-    ACTIVE_IN_OTHER_PROCESS
+    ACTIVE_IN_OTHER_PROCESS,
+    /** The shortlist has more than 7 people after this move (since 1.3.0, SX-014). */
+    SHORTLIST_LONG
 }

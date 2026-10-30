@@ -33,7 +33,7 @@ INSERT INTO acct_seed (n, name, sector, city, status, owner, opened_days, status
 UPDATE acct_seed SET slug = pg_temp.slug(name);
 
 INSERT INTO account (id, name, sector, city, website, notes, owner_id, status, status_changed_at, opened_on,
-                     created_at, created_by, updated_at, updated_by)
+                     created_at, created_by, updated_at, updated_by, is_client, is_prospect)
 SELECT pg_temp.uid(2, n), name, sector, city, 'https://www.' || left(slug, 20) || '.example',
        (ARRAY['Prefers e-mail first, phone second.',
               'Board approves senior hires; allow two weeks for feedback.',
@@ -43,5 +43,6 @@ SELECT pg_temp.uid(2, n), name, sector, city, 'https://www.' || left(slug, 20) |
               'Wants every shortlist to state consent status clearly.'])[n % 6 + 1],
        pg_temp.uid(1, owner), status, now() - make_interval(days => status_days),
        current_date - opened_days, now() - make_interval(days => opened_days), pg_temp.uid(1, owner),
-       now() - make_interval(days => status_days), pg_temp.uid(1, owner)
+       now() - make_interval(days => status_days), pg_temp.uid(1, owner),
+       status IN ('ACTIVE', 'ON_HOLD', 'CLOSED'), status IN ('LEAD', 'PROPOSAL_SENT')
 FROM acct_seed;

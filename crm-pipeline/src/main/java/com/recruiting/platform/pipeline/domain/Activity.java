@@ -1,5 +1,9 @@
 package com.recruiting.platform.pipeline.domain;
 
+import com.recruiting.platform.contracts.ActivityDirection;
+import com.recruiting.platform.contracts.ActivityOutcome;
+import com.recruiting.platform.contracts.ActivitySource;
+
 import jakarta.persistence.*;
 import com.recruiting.platform.contracts.ActivityType;
 import java.time.Instant;
@@ -104,4 +108,56 @@ public class Activity extends AuditableEntity {
         this.userId = userId;
     }
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "outcome")
+    private ActivityOutcome outcome;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "direction")
+    private ActivityDirection direction;
+
+    @Column(name = "duration_min")
+    private Short durationMin;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source")
+    private ActivitySource source = ActivitySource.MANUAL;
+
+    @Column(name = "external_message_id", length = 300)
+    private String externalMessageId;
+
+    public ActivityOutcome getOutcome() {
+        return outcome;
+    }
+    public void setOutcome(ActivityOutcome outcome) {
+        this.outcome = outcome;
+    }
+
+    public ActivityDirection getDirection() {
+        return direction;
+    }
+    public void setDirection(ActivityDirection direction) {
+        this.direction = direction;
+    }
+
+    public Short getDurationMin() {
+        return durationMin;
+    }
+    public void setDurationMin(Short durationMin) {
+        this.durationMin = durationMin;
+    }
+
+    public ActivitySource getSource() {
+        return source;
+    }
+    public void setSource(ActivitySource source) {
+        this.source = source;
+    }
+
+    public String getExternalMessageId() {
+        return externalMessageId;
+    }
+    public void setExternalMessageId(String externalMessageId) {
+        this.externalMessageId = externalMessageId;
+    }
 }
