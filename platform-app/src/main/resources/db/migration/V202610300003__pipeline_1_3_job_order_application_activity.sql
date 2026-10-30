@@ -47,7 +47,6 @@ FROM (SELECT id,
       FROM application
       WHERE stage NOT IN ('REJECTED', 'PLACED')) r
 WHERE a.id = r.id;
-UPDATE application SET outreach_status = 'SCREENED' WHERE stage <> 'SOURCED';
 -- Close reason backfill before the CHECK that ties it to REJECTED.
 UPDATE application SET close_reason = 'OTHER' WHERE stage = 'REJECTED';
 ALTER TABLE application

@@ -254,7 +254,7 @@ public class Account extends AuditableEntity {
     private boolean client;
 
     @Column(name = "is_prospect")
-    private boolean prospect = true;
+    private boolean prospect;
 
     @Column(name = "is_target")
     private boolean target;
@@ -266,6 +266,7 @@ public class Account extends AuditableEntity {
     @Column(name = "aliases")
     private List<String> aliases = new ArrayList<>();
 
+    @org.hibernate.annotations.Generated(event = {org.hibernate.generator.EventType.INSERT, org.hibernate.generator.EventType.UPDATE})
     @NotAudited
     @Column(name = "normalized_name", length = 200, insertable = false, updatable = false)
     private String normalizedName;
@@ -461,5 +462,13 @@ public class Account extends AuditableEntity {
 
     public String getNormalizedName() {
         return normalizedName;
+    }
+
+    /** Satisfies the role CHECK for accounts created without a role: prospect only when no flag is set (R63). */
+    @PrePersist
+    void defaultRole() {
+        if (!(client || prospect || target || employer)) {
+            prospect = true;
+        }
     }
 }

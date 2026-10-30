@@ -156,9 +156,9 @@ public class Application extends AuditableEntity {
     @PrePersist
     @PreUpdate
     void alignCloseReasonWithStage() {
-        if (stage == com.recruiting.platform.contracts.PipelineStage.REJECTED) {
+        if (stage == PipelineStage.REJECTED) {
             if (closeReason == null) {
-                closeReason = com.recruiting.platform.contracts.CloseReason.OTHER;
+                closeReason = CloseReason.OTHER;
             }
         } else {
             closeReason = null;
