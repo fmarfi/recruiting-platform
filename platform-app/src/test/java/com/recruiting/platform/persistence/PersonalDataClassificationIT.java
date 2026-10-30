@@ -56,27 +56,7 @@ class PersonalDataClassificationIT extends AbstractPersistenceIT {
             }
         }
 
-        // 1. tables in scope
-        Set<String> scope = new LinkedHashSet<>(FIXED_SCOPE);
-        scope.addAll(jdbc.queryForList("""
-                SELECT DISTINCT c.conrelid::regclass::text FROM pg_constraint c
-                WHERE c.contype = 'f' AND c.confrelid::regclass::text = ANY (?)""", String.class,
-                (Object) FK_TARGETS.toArray(String[]::new)));
-        scope.removeIf(t -> t.endsWith("_aud"));
-
-        // 2. every column of a table in scope has a row
-        List<String> unclassified = new ArrayList<>();
-        for (String table : scope) {
-            for (String col : jdbc.queryForList("""
-                    SELECT column_name FROM information_schema.columns
-                    WHERE table_schema = 'public' AND table_name = ? ORDER BY ordinal_position""", String.class,
-                    table)) {
-                if (!shared.contains(col) && !classified.contains(table + "." + col)
-                        && !SHARED_ALIASES.contains(table + "." + col)) {
-                    unclassified.add(table + "." + col);
-                }
-            }
-        }
+        List<String> unclassified = findUnclassified(rows);
         assertThat(unclassified).as("columns with no row in contracts/personal-data.md").isEmpty();
 
         // 3. no stale rows
@@ -104,6 +84,53 @@ class PersonalDataClassificationIT extends AbstractPersistenceIT {
             }
         }
         assertThat(inconsistent).isEmpty();
+    }
+
+    /** Columns of tables in scope that have no row in the document. */
+    private List<String> findUnclassified(List<Row> rows) {
+        Set<String> classified = new HashSet<>();
+        Set<String> shared = new HashSet<>();
+        for (Row r : rows) {
+            for (String c : r.columns()) {
+                if (r.table().equals("*")) {
+                    shared.add(c);
+                } else {
+                    classified.add(r.table() + "." + c);
+                }
+            }
+        }
+        Set<String> scope = new LinkedHashSet<>(FIXED_SCOPE);
+        scope.addAll(jdbc.queryForList("""
+                SELECT DISTINCT c.conrelid::regclass::text FROM pg_constraint c
+                WHERE c.contype = 'f' AND c.confrelid::regclass::text = ANY (?)""", String.class,
+                (Object) FK_TARGETS.toArray(String[]::new)));
+        scope.removeIf(t -> t.endsWith("_aud"));
+        List<String> unclassified = new ArrayList<>();
+        for (String table : scope) {
+            for (String col : jdbc.queryForList("""
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = ? ORDER BY ordinal_position""", String.class,
+                    table)) {
+                if (!shared.contains(col) && !classified.contains(table + "." + col)
+                        && !SHARED_ALIASES.contains(table + "." + col)) {
+                    unclassified.add(table + "." + col);
+                }
+            }
+        }
+        return unclassified;
+    }
+
+    @Test
+    void aColumnMissingFromTheDocumentIsReported() throws IOException {
+        List<Row> rows = parse();
+        List<String> found = tx.execute(status -> {
+            jdbc.execute("ALTER TABLE person ADD COLUMN secret_hobby varchar(50)");
+            jdbc.execute("ALTER TABLE activity_attendee ADD COLUMN guest_note text");
+            List<String> result = findUnclassified(rows);
+            status.setRollbackOnly();
+            return result;
+        });
+        assertThat(found).containsExactlyInAnyOrder("person.secret_hobby", "activity_attendee.guest_note");
     }
 
     private static List<Row> parse() throws IOException {
