@@ -154,4 +154,24 @@ public class ImportJob extends AuditableEntity {
         this.completedAt = completedAt;
     }
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "mapping")
+    private Map<String,Object> mapping;
+
+    @Column(name = "rolled_back_at")
+    private Instant rolledBackAt;
+
+    public Map<String,Object> getMapping() {
+        return mapping;
+    }
+    public void setMapping(Map<String,Object> mapping) {
+        this.mapping = mapping;
+    }
+
+    public Instant getRolledBackAt() {
+        return rolledBackAt;
+    }
+    public void setRolledBackAt(Instant rolledBackAt) {
+        this.rolledBackAt = rolledBackAt;
+    }
 }

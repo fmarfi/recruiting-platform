@@ -1,5 +1,8 @@
 package com.recruiting.platform.pipeline.domain;
 
+import com.recruiting.platform.contracts.CloseReason;
+import com.recruiting.platform.contracts.OutreachStatus;
+
 import jakarta.persistence.*;
 import com.recruiting.platform.contracts.PipelineStage;
 import java.time.Instant;
@@ -94,4 +97,71 @@ public class Application extends AuditableEntity {
         this.offLimitsOverrideReason = offLimitsOverrideReason;
     }
 
+    @Column(name = "rank")
+    private Integer rank;
+
+    @Column(name = "rating")
+    private Short rating;
+
+    @Column(name = "rationale")
+    private String rationale;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "outreach_status")
+    private OutreachStatus outreachStatus = OutreachStatus.TO_CALL;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "close_reason")
+    private CloseReason closeReason;
+
+    public Integer getRank() {
+        return rank;
+    }
+    public void setRank(Integer rank) {
+        this.rank = rank;
+    }
+
+    public Short getRating() {
+        return rating;
+    }
+    public void setRating(Short rating) {
+        this.rating = rating;
+    }
+
+    public String getRationale() {
+        return rationale;
+    }
+    public void setRationale(String rationale) {
+        this.rationale = rationale;
+    }
+
+    public OutreachStatus getOutreachStatus() {
+        return outreachStatus;
+    }
+    public void setOutreachStatus(OutreachStatus outreachStatus) {
+        this.outreachStatus = outreachStatus;
+    }
+
+    public CloseReason getCloseReason() {
+        return closeReason;
+    }
+    public void setCloseReason(CloseReason closeReason) {
+        this.closeReason = closeReason;
+    }
+
+    /**
+     * Keeps the table CHECK {@code (stage = 'REJECTED') = (close_reason IS NOT NULL)} true until the pipeline service
+     * sets the reason itself (R65): REJECTED without a reason gets {@code OTHER}; any other stage has none.
+     */
+    @PrePersist
+    @PreUpdate
+    void alignCloseReasonWithStage() {
+        if (stage == com.recruiting.platform.contracts.PipelineStage.REJECTED) {
+            if (closeReason == null) {
+                closeReason = com.recruiting.platform.contracts.CloseReason.OTHER;
+            }
+        } else {
+            closeReason = null;
+        }
+    }
 }

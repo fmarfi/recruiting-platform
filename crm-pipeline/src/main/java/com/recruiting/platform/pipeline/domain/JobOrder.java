@@ -1,5 +1,8 @@
 package com.recruiting.platform.pipeline.domain;
 
+import com.recruiting.platform.contracts.ArchiveReason;
+import com.recruiting.platform.contracts.ConfidentialityLevel;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.util.ArrayList;
@@ -176,5 +179,57 @@ public class JobOrder extends AuditableEntity {
 
     public void setTags(List<String> tags) {
         this.tags = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
+    }
+
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    @Column(name = "archived_by")
+    private UUID archivedBy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "archive_reason")
+    private ArchiveReason archiveReason;
+
+    @Column(name = "archive_note", length = 500)
+    private String archiveNote;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "confidentiality_level")
+    private ConfidentialityLevel confidentialityLevel = ConfidentialityLevel.NORMAL;
+
+    public Instant getArchivedAt() {
+        return archivedAt;
+    }
+    public void setArchivedAt(Instant archivedAt) {
+        this.archivedAt = archivedAt;
+    }
+
+    public UUID getArchivedBy() {
+        return archivedBy;
+    }
+    public void setArchivedBy(UUID archivedBy) {
+        this.archivedBy = archivedBy;
+    }
+
+    public ArchiveReason getArchiveReason() {
+        return archiveReason;
+    }
+    public void setArchiveReason(ArchiveReason archiveReason) {
+        this.archiveReason = archiveReason;
+    }
+
+    public String getArchiveNote() {
+        return archiveNote;
+    }
+    public void setArchiveNote(String archiveNote) {
+        this.archiveNote = archiveNote;
+    }
+
+    public ConfidentialityLevel getConfidentialityLevel() {
+        return confidentialityLevel;
+    }
+    public void setConfidentialityLevel(ConfidentialityLevel confidentialityLevel) {
+        this.confidentialityLevel = confidentialityLevel;
     }
 }
