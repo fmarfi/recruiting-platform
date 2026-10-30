@@ -82,3 +82,26 @@
 - Tests cover dotless ı / dotted İ in CV search.
 - `OffLimitsRule.startsOn` default uses Europe/Istanbul.
 - **security-privacy requirement:** the basis-switch SQL updates `person_privacy` without Envers, so the latest `person_privacy_aud` row is stale. The one-off `RetentionRenewed` job must re-save the changed rows through JPA to write a fresh revision.
+
+
+# Hand-off: db-engineer · C13-DB (contract 1.3 database layer) · 2026-10-30
+
+**Branch / commits:** `db-1-3` (base 5ad3649 = merge of `contract-1-3` into `feature/network-customer-tools` 87bf963) · 3 commits
+
+**Done**
+- Migrations `V202610300001..07`: the whole 1.3.0 schema (the branch had none of it): R63 account columns, `normalize_org_name(s)` (schema-qualified, needed for index creation), generated `normalized_name` with pre-check and unique non-archived index, `person_employment.organisation_id`, `include_subsidiaries`, archive columns, tags/skills, `tag_definition`, `account_merge`, import rollback + `import_job_record`, R65/R70 columns, rank/close_reason backfills, `activity_attendee`, brief/criterion/team/target/feedback/evaluation/note/reference/report/agreement/fee/placement/conflict/export tables, all `_aud` columns, CHECKs from `contracts/enums`, set-null FKs.
+- Entities and repositories (accounts, pipeline, security) with Envers. Encrypted JSON columns map to a `String` through `pipeline.domain.EncryptedJsonConverter` (`SearchBrief.compBandJson`, `Placement.compensationJson`). Enum arrays are `List<String>`.
+- Tests: `PersonalDataClassificationIT`, `PersonDeleteIT` (indirect FK walk + signatory/placement/attendee delete), `MigrationIT` (enum/array parity, 1.3 indexes, set-null FKs), `OrganisationNameNormalisationIT`, `Contract13RepositoryIT`.
+
+**Others must know**
+- backend-accounts: `Account` entity defaults `prospect = true` so the role CHECK holds until the service sets roles. Raw inserts need a role flag.
+- backend-pipeline: `Application` has a `@PrePersist/@PreUpdate` that sets `close_reason = OTHER` on REJECTED and clears it otherwise (CHECK). Replace it with the service rule. Shortlist guard (rating + rationale), rank and outreach status are service work. I changed test helpers `Wave2bSupport` and `PersonDeleteIT` (role flag, `close_reason`).
+- Seed files `seed/02_accounts.sql` (needs `is_client`/`is_prospect` per status, `account_aud` columns) and `seed/04_job_orders.sql` / `09_envers.sql` (rejected applications need `close_reason`; aud columns) are not updated.
+
+**Change requests**
+- architect · `contracts/personal-data.md`: add `person_file.row_version` (optimistic lock, named so to avoid the CV `version`) to the `*` row; the IT whitelists it for now.
+- architect · `contracts/schema.md`: `consent_record.consent_request_id` is `no action` under a cascading table; the FK walk allows it because both rows go in one statement. State that exception in the FK rule.
+- security-privacy · `AuditPurger` additions in schema.md step 4 (the new `_aud` tables) are not implemented here.
+
+**Verified with**
+- `mvn -B verify -Pintegration` → green, 166 integration tests (surefire 31 + 6 + 8 in other modules), 0 failures.
