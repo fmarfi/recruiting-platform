@@ -1,5 +1,9 @@
 package com.recruiting.platform.accounts.domain;
 
+import com.recruiting.platform.contracts.ArchiveReason;
+import com.recruiting.platform.contracts.JobFunction;
+import com.recruiting.platform.contracts.Seniority;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.util.ArrayList;
@@ -304,4 +308,77 @@ public class Person extends AuditableEntity {
         this.linkedinUrlNormalized = linkedinUrlNormalized;
     }
 
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    @Column(name = "archived_by")
+    private UUID archivedBy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "archive_reason")
+    private ArchiveReason archiveReason;
+
+    @Column(name = "archive_note", length = 500)
+    private String archiveNote;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "skills", length = 50)
+    private List<String> skills = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "function_area")
+    private JobFunction functionArea;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "seniority")
+    private Seniority seniority;
+
+    public Instant getArchivedAt() {
+        return archivedAt;
+    }
+    public void setArchivedAt(Instant archivedAt) {
+        this.archivedAt = archivedAt;
+    }
+
+    public UUID getArchivedBy() {
+        return archivedBy;
+    }
+    public void setArchivedBy(UUID archivedBy) {
+        this.archivedBy = archivedBy;
+    }
+
+    public ArchiveReason getArchiveReason() {
+        return archiveReason;
+    }
+    public void setArchiveReason(ArchiveReason archiveReason) {
+        this.archiveReason = archiveReason;
+    }
+
+    public String getArchiveNote() {
+        return archiveNote;
+    }
+    public void setArchiveNote(String archiveNote) {
+        this.archiveNote = archiveNote;
+    }
+
+    public List<String> getSkills() {
+        return skills;
+    }
+    public void setSkills(List<String> skills) {
+        this.skills = skills;
+    }
+
+    public JobFunction getFunctionArea() {
+        return functionArea;
+    }
+    public void setFunctionArea(JobFunction functionArea) {
+        this.functionArea = functionArea;
+    }
+
+    public Seniority getSeniority() {
+        return seniority;
+    }
+    public void setSeniority(Seniority seniority) {
+        this.seniority = seniority;
+    }
 }

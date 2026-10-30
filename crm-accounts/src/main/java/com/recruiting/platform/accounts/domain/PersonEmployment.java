@@ -91,4 +91,13 @@ public class PersonEmployment {
         this.sortOrder = sortOrder;
     }
 
+    @Column(name = "organisation_id")
+    private UUID organisationId;
+
+    public UUID getOrganisationId() {
+        return organisationId;
+    }
+    public void setOrganisationId(UUID organisationId) {
+        this.organisationId = organisationId;
+    }
 }
