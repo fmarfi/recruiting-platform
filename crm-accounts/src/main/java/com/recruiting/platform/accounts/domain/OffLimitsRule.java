@@ -95,4 +95,14 @@ public class OffLimitsRule extends AuditableEntity {
     public void setEndsOn(LocalDate endsOn) {
         this.endsOn = endsOn;
     }
+
+    @Column(name = "include_subsidiaries")
+    private boolean includeSubsidiaries;
+
+    public boolean isIncludeSubsidiaries() {
+        return includeSubsidiaries;
+    }
+    public void setIncludeSubsidiaries(boolean includeSubsidiaries) {
+        this.includeSubsidiaries = includeSubsidiaries;
+    }
 }
