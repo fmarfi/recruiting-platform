@@ -43,7 +43,7 @@ class PersonDeleteIT extends AbstractPersistenceIT {
         UUID notice = UUID.randomUUID();
         UUID consentRecord = UUID.randomUUID();
 
-        jdbc.update("INSERT INTO account (id, name, sector, owner_id) VALUES (?, ?, 'Retail', ?)",
+        jdbc.update("INSERT INTO account (id, name, sector, owner_id, is_prospect) VALUES (?, ?, 'Retail', ?, true)",
                 account, unique("Fictional Co"), user);
         Person p = new Person();
         p.setName("Deleted Person");
@@ -90,12 +90,100 @@ class PersonDeleteIT extends AbstractPersistenceIT {
     }
 
     @Test
-    void everyForeignKeyToPersonCascadesExceptTheDataSubjectRequest() {
+    void everyForeignKeyToPersonCascadesExceptTheTwoSetNullEvidenceRows() {
         Map<String, String> rules = deleteRules("person");
-        assertThat(rules).containsEntry("data_subject_request.person_id", "n");
-        assertThat(rules.entrySet().stream().filter(e -> !e.getKey().startsWith("data_subject_request.")))
+        assertThat(rules).containsEntry("data_subject_request.person_id", "n")
+                .containsEntry("placement.person_id", "n");
+        assertThat(rules.entrySet().stream()
+                .filter(e -> !e.getKey().equals("data_subject_request.person_id")
+                        && !e.getKey().equals("placement.person_id")))
                 .isNotEmpty()
                 .allSatisfy(e -> assertThat(e.getValue()).as(e.getKey()).isEqualTo("c"));
+    }
+
+    /**
+     * Schema.md "Foreign-key rule", indirect FKs (1.3.0): walk pg_constraint from person through every table that
+     * cascades from it (person -> contact/application/activity -> ...). Any FK into a reached table must be cascade
+     * or set null, never no action or restrict, or deleting a person fails. One exception is harmless: a no action FK
+     * whose own table is also reached by cascade (both rows go in the same statement, e.g. consent_record to
+     * consent_request).
+     */
+    @Test
+    void noForeignKeyReachableFromPersonThroughCascadesIsNoActionOrRestrict() {
+        java.util.Set<String> reached = new java.util.LinkedHashSet<>(List.of("person"));
+        java.util.Deque<String> queue = new java.util.ArrayDeque<>(reached);
+        List<String[]> blocking = new java.util.ArrayList<>();
+        while (!queue.isEmpty()) {
+            String table = queue.poll();
+            for (Map<String, Object> fk : jdbc.queryForList("""
+                    SELECT c.conrelid::regclass::text AS child, c.conname AS name, c.confdeltype::text AS rule
+                    FROM pg_constraint c WHERE c.contype = 'f' AND c.confrelid = ?::regclass
+                    """, table)) {
+                String child = (String) fk.get("child");
+                String rule = (String) fk.get("rule");
+                if (table.equals("person") && (child.equals("data_subject_request") || child.equals("placement"))) {
+                    continue; // the two documented set-null exceptions
+                }
+                if ("a".equals(rule) || "r".equals(rule)) {
+                    blocking.add(new String[] {child, child + "." + fk.get("name") + " -> " + table});
+                } else if ("c".equals(rule) && reached.add(child)) {
+                    queue.add(child);
+                }
+            }
+        }
+        List<String> offenders = blocking.stream().filter(b -> !reached.contains(b[0])).map(b -> b[1]).toList();
+        assertThat(reached).contains("contact", "application", "activity", "client_feedback", "activity_attendee");
+        assertThat(offenders).as("FKs that would block deleting a person").isEmpty();
+    }
+
+    @Test
+    void deletingAPersonKeepsAgreementPlacementAndAttendedActivitiesWithNullReferences() {
+        UUID user = newUser().getId();
+        UUID account = UUID.randomUUID();
+        UUID jobOrder = UUID.randomUUID();
+        UUID contact = UUID.randomUUID();
+        UUID agreement = UUID.randomUUID();
+        UUID application = UUID.randomUUID();
+        UUID placement = UUID.randomUUID();
+        UUID meeting = UUID.randomUUID();
+        UUID feedback = UUID.randomUUID();
+        Person p = new Person();
+        p.setName("Signatory And Placed");
+        p.setType(PersonType.CANDIDATE);
+        p.setOwnerId(user);
+        p.setConsentStatus(ConsentStatus.NOT_SENT);
+        p.setRetentionStatus(RetentionStatus.ACTIVE);
+        UUID person = tx.execute(s -> people.save(p)).getId();
+
+        jdbc.update("INSERT INTO account (id, name, sector, owner_id, is_client) VALUES (?, ?, 'Retail', ?, true)",
+                account, unique("Fictional Co"), user);
+        jdbc.update("INSERT INTO job_order (id, account_id, title, owner_id) VALUES (?, ?, 'CFO', ?)",
+                jobOrder, account, user);
+        jdbc.update("INSERT INTO contact (id, account_id, person_id) VALUES (?, ?, ?)", contact, account, person);
+        jdbc.update("INSERT INTO agreement (id, account_id, kind, fee_model, currency, billing_account_id, "
+                + "signatory_contact_id) VALUES (?, ?, 'TERMS_OF_BUSINESS', 'FLAT_FEE', 'TRY', ?, ?)",
+                agreement, account, account, contact);
+        jdbc.update("INSERT INTO application (id, job_order_id, person_id) VALUES (?, ?, ?)",
+                application, jobOrder, person);
+        jdbc.update("INSERT INTO client_feedback (id, application_id, person_id, round, feedback_on, outcome, "
+                + "recorded_by, recorded_at) VALUES (?, ?, ?, 1, current_date, 'ADVANCE', ?, now())",
+                feedback, application, person, user);
+        jdbc.update("INSERT INTO placement (id, application_id, job_order_id, account_id, person_id, start_date, "
+                + "fee_amount, fee_currency, guarantee_end_on) VALUES (?, ?, ?, ?, ?, current_date, 1000, 'TRY', "
+                + "current_date + 180)", placement, application, jobOrder, account, person);
+        jdbc.update("INSERT INTO activity (id, type, note, occurred_at, account_id, user_id) "
+                + "VALUES (?, 'MEETING', 'Client meeting', now(), ?, ?)", meeting, account, user);
+        jdbc.update("INSERT INTO activity_attendee (activity_id, person_id) VALUES (?, ?)", meeting, person);
+
+        tx.executeWithoutResult(s -> people.deleteById(person));
+
+        assertThat(count("SELECT count(*) FROM agreement WHERE id = ? AND signatory_contact_id IS NULL", agreement))
+                .isOne();
+        assertThat(count("SELECT count(*) FROM placement WHERE id = ? AND person_id IS NULL "
+                + "AND application_id IS NULL", placement)).isOne();
+        assertThat(count("SELECT count(*) FROM activity WHERE id = ?", meeting)).isOne();
+        assertThat(count("SELECT count(*) FROM activity_attendee WHERE activity_id = ?", meeting)).isZero();
+        assertThat(count("SELECT count(*) FROM client_feedback WHERE id = ?", feedback)).isZero();
     }
 
     @Test
