@@ -46,7 +46,7 @@
     "newPerson": "Yeni aday",
     "addPerson": "Kişi ekle",
     "nextActions": "Sıradaki aksiyonlar",
-    "noActivity": "Henüz görüşme kaydı yok. İlk aramanızı veya toplantınızı kaydedin.",
+    "noActivity": "Henüz kayıtlı bir etkinlik yok.",
     "noConnections": "Sizi kim tanıştırdı? İlk bağlantıyı ekleyin.",
     "noOpenJobs": "Uygun açık arama yok.",
     "noPipelines": "Henüz bir aramada değil.",
@@ -359,6 +359,14 @@
       "removeRow": "{{n}}. satırı kaldır",
       "tooManyTags": "Bir kişide en fazla 20 etiket olabilir.",
       "saved": "{{name}} güncellendi"
-    }
+    },
+    "dayGroup": {
+      "today": "Bugün",
+      "yesterday": "Dün"
+    },
+    "personMore": "Diğer işlemler",
+    "noCareer": "Henüz kariyer geçmişi kaydedilmedi.",
+    "noNextActions": "Açık sonraki adım yok.",
+    "currentRole": "Devam ediyor"
   }
 }
