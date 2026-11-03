@@ -7,6 +7,17 @@ Every rule below is a check in review. "Why" is given once so builders can decid
 
 Sources this enforces (read the named sections only if a rule is unclear): `docs/product/brand/brand-direction.md` sections 4 (icons, one per object type), 6 (motion), 8 (dos and don'ts); `docs/product/research/critique-consultant-review.md` "What a partner would laugh at" and "Top 15 criticisms" (money and time over counts, consent as banners, board must show all stages). Where this file and brand-direction.md differ, this file wins.
 
+## 0. The bar: mid-enterprise
+The product is sold to mid-size firms (tens to a few hundred users, years of data). A screen passes only if it would survive an IT/procurement demo next to Salesforce, Bullhorn or Invenias. Concretely:
+- **Scale:** every list is built for 10,000+ rows: server-side paging and sort, total count in the title, sticky header, saved views, select-all-matching for bulk actions. No screen assumes a short list.
+- **Many users:** every record shows owner and "Last updated by <name>, <time>"; activity is attributed; history is one click away.
+- **Permissions are visible:** an action the user may not take is disabled with a tooltip saying why, never silently missing or failing.
+- **Trust:** destructive actions name the record ("Archive Lale Yapi Holding?"); reversible actions offer Undo instead of a confirm; errors say what happened and what to do, with no stack traces or raw codes.
+- **Keyboard and speed:** every primary flow can be finished with the keyboard; Ctrl+K reaches every record and action; Ctrl+Enter saves forms; Esc closes.
+- **Accessibility:** WCAG 2.1 AA (contrast, focus, labels, 44 px touch targets on phone).
+- **Tone:** sober and exact. No emoji, no exclamation marks, no cute empty-state copy, no marketing words in the UI.
+- **Locale:** TR and EN, Turkish date/number formats in TR, no truncated Turkish labels.
+
 ## 1. Principles
 1. **Content over chrome.** Borders, boxes, colour and badges are spent only where they carry meaning. Default is plain text on the surface.
 2. **One way to do each thing.** One page header, one table, one toolbar, one badge style, one empty state. Screens differ in content, never in pattern.
@@ -94,3 +105,5 @@ User verdict on the current ones: "like a text editor". Forms must feel like a f
 - [ ] Table/toolbar/badge/empty/loading follow section 6
 - [ ] 1440 px and 375 px: no overflow, no horizontal page scroll
 - [ ] Looks like the same product as the clients list
+- [ ] Section 0 enterprise bar: scale, owner/last-updated, disabled-with-reason, named destructive actions, keyboard path, AA
+- [ ] Gate tools: `design-skills:accessibility-audit` and `design-skills:design-critique` on each screen before sign-off
