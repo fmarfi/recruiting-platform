@@ -1,15 +1,17 @@
 // Network list (A-12): who do we know and who should I contact? Smart lists, DataGrid (columns, sort, density, saved views, CSV) and bulk consent requests.
 import { AppPagination } from '../../shell/components/AppPagination';
-import { Alert, Badge, Box, Button, Card, Chip, CloseButton, Collapse, Container, Group, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Badge, Box, Button, Chip, CloseButton, Collapse, Container, Group, Menu, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
+import { IconDots, IconDownload, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
 import { useCurrentUser, useLabel, type Schemas } from '../../pipeline/shared';
 import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
 import { PageHeader } from '../../shell/components/PageHeader';
+import { ICON_SIZE, ICON_STROKE } from '../../shell/components/objectIcons';
 import { DataGrid, ViewsMenu, formatSort, localViewStore, useGridColumns } from '../../shell/grid';
 import { tokens } from '../../theme/tokens';
 import { migrateLegacyViews } from './legacyViews';
@@ -30,6 +32,7 @@ type ActiveChip = { key: string; label: string; remove: () => void };
 
 export function NetworkList() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
   const me = useCurrentUser();
   const { isManager } = useAuth();
@@ -106,87 +109,104 @@ export function NetworkList() {
         subtitle={t('network.subtitle')}
         actions={
           <>
-          <Button variant="default" loading={busy} disabled={!res.data?.page.totalElements} onClick={() => void exportCsv()}>
-            {t('network.exportAll')}
-          </Button>
-          <Button variant="default" component={Link} to="/network/cv-intake">
-            {t('network.intake.nav')}
-          </Button>
-          {isManager && (
-            <Button variant="default" component={Link} to="/network/duplicates">
-              {t('network.dup.nav')}
+            <Menu position="bottom-end" shadow="md" withinPortal>
+              <Menu.Target>
+                <Button variant="default" aria-label={t('network.personMore')}>
+                  <IconDots size={ICON_SIZE} stroke={ICON_STROKE} />
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item leftSection={<IconDownload size={ICON_SIZE} stroke={ICON_STROKE} />} disabled={!res.data?.page.totalElements || busy} onClick={() => void exportCsv()}>
+                  {t('network.exportAll')}
+                </Menu.Item>
+                {isManager && (
+                  <Menu.Item component={Link} to="/network/duplicates">
+                    {t('network.dup.nav')}
+                  </Menu.Item>
+                )}
+              </Menu.Dropdown>
+            </Menu>
+            <Button variant="default" component={Link} to="/network/cv-intake">
+              {t('network.intake.nav')}
             </Button>
-          )}
-          <Button onClick={() => setNewOpen(true)}>+ {t('network.newPerson')}</Button>
+            <Button leftSection={<IconPlus size={ICON_SIZE} stroke={ICON_STROKE} />} onClick={() => setNewOpen(true)}>
+              {t('network.newPerson')}
+            </Button>
           </>
         }
       />
       <PresetsBar current={f} onApply={(v) => set({ ...DEFAULT_FILTERS, ...v })} />
-      <Card withBorder padding="md" mb="md" component="section" aria-label={t('network.filtersTitle')}>
-        <Group align="flex-end" wrap="wrap">
-          <TextInput label={t('network.search')} flex={1} miw="15rem" value={f.q} onChange={(e) => change({ q: e.currentTarget.value })} />
-          <SegmentedControl
-            value={f.mine ? 'me' : 'all'}
-            onChange={(v) => change({ mine: v === 'me' })}
-            data={[
-              { value: 'all', label: t('network.all') },
-              { value: 'me', label: t('network.mine') },
-            ]}
-          />
-          <Button variant={advanced ? 'light' : 'default'} aria-expanded={advancedOpen} aria-controls="network-advanced-filters" onClick={() => setAdvancedOpen((o) => !o)}>
-            {advanced ? `${t('network.filtersTitle')} · ${advanced}` : t('network.filtersTitle')}
-          </Button>
+      <Group align="center" wrap="wrap" component="section" aria-label={t('network.filtersTitle')}>
+        <TextInput
+          placeholder={t('network.search')}
+          aria-label={t('network.search')}
+          leftSection={<IconSearch size={ICON_SIZE} stroke={ICON_STROKE} />}
+          flex={1}
+          miw="15rem"
+          value={f.q}
+          onChange={(e) => change({ q: e.currentTarget.value })}
+        />
+        <SegmentedControl
+          value={f.mine ? 'me' : 'all'}
+          onChange={(v) => change({ mine: v === 'me' })}
+          data={[
+            { value: 'all', label: t('network.all') },
+            { value: 'me', label: t('network.mine') },
+          ]}
+        />
+        <Button variant={advanced ? 'light' : 'default'} aria-expanded={advancedOpen} aria-controls="network-advanced-filters" onClick={() => setAdvancedOpen((o) => !o)}>
+          {advanced ? `${t('network.filtersTitle')} (${advanced})` : t('network.filtersTitle')}
+        </Button>
+      </Group>
+      {!advancedOpen && chips.length > 0 && (
+        <Group gap="xs" mt="sm" data-testid="active-filter-chips">
+          {chips.map((c) => (
+            <Badge key={c.key} variant="light" color="gray" tt="none" rightSection={<CloseButton size="xs" aria-label={t('network.removeFilter')} onClick={c.remove} />}>
+              {c.label}
+            </Badge>
+          ))}
         </Group>
-        {!advancedOpen && chips.length > 0 && (
-          <Group gap="xs" mt="sm" data-testid="active-filter-chips">
-            {chips.map((c) => (
-              <Badge key={c.key} variant="light" color="gray" tt="none" rightSection={<CloseButton size="xs" aria-label={t('network.removeFilter')} onClick={c.remove} />}>
-                {c.label}
-              </Badge>
-            ))}
+      )}
+      <Collapse expanded={advancedOpen}>
+        <Box id="network-advanced-filters" pt="md">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+            <Select
+              label={t('network.filterNotContacted')}
+              clearable
+              value={f.staleDays ? String(f.staleDays) : null}
+              onChange={(v) => change({ staleDays: v ? Number(v) : 0 })}
+              data={[...new Set([30, 60, 90, 180, f.staleDays].filter(Boolean))].sort((a, b) => a - b).map((d) => ({ value: String(d), label: t('network.daysAgo', { count: d }) }))}
+            />
+            <Select
+              label={t('network.fields.consent')}
+              clearable
+              value={f.consent ?? null}
+              onChange={(v) => change({ consent: (v as Schemas['ConsentStatus']) ?? undefined })}
+              data={(ref?.lifecycles.consent.statuses ?? []).map((s) => ({ value: s.value, label: label('consent', s.value) }))}
+            />
+            <Stack gap="xs">
+              <Text id="network-type-label" size="sm" fw={500}>
+                {t('network.fields.type')}
+              </Text>
+              <Chip.Group multiple value={f.types} onChange={(v) => change({ types: v as Schemas['PersonType'][] })}>
+                <Group gap="xs" role="group" aria-labelledby="network-type-label">
+                  {PERSON_TYPES.map((x) => (
+                    <Chip key={x} value={x} size="sm">
+                      {t(`network.types.${x}`)}
+                    </Chip>
+                  ))}
+                </Group>
+              </Chip.Group>
+            </Stack>
+            <PoolFilters f={f} onChange={change} />
+          </SimpleGrid>
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" size="compact-sm" disabled={!advanced} onClick={clearAdvanced}>
+              {t('network.clearFilters')}
+            </Button>
           </Group>
-        )}
-        <Collapse expanded={advancedOpen}>
-          <Box id="network-advanced-filters" pt="md">
-            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-              <Select
-                label={t('network.filterNotContacted')}
-                clearable
-                value={f.staleDays ? String(f.staleDays) : null}
-                onChange={(v) => change({ staleDays: v ? Number(v) : 0 })}
-                data={[...new Set([30, 60, 90, 180, f.staleDays].filter(Boolean))].sort((a, b) => a - b).map((d) => ({ value: String(d), label: t('network.daysAgo', { count: d }) }))}
-              />
-              <Select
-                label={t('network.fields.consent')}
-                clearable
-                value={f.consent ?? null}
-                onChange={(v) => change({ consent: (v as Schemas['ConsentStatus']) ?? undefined })}
-                data={(ref?.lifecycles.consent.statuses ?? []).map((s) => ({ value: s.value, label: label('consent', s.value) }))}
-              />
-              <Stack gap="xs">
-                <Text id="network-type-label" size="sm" fw={500}>
-                  {t('network.fields.type')}
-                </Text>
-                <Chip.Group multiple value={f.types} onChange={(v) => change({ types: v as Schemas['PersonType'][] })}>
-                  <Group gap="xs" role="group" aria-labelledby="network-type-label">
-                    {PERSON_TYPES.map((x) => (
-                      <Chip key={x} value={x} size="sm">
-                        {t(`network.types.${x}`)}
-                      </Chip>
-                    ))}
-                  </Group>
-                </Chip.Group>
-              </Stack>
-              <PoolFilters f={f} onChange={change} />
-            </SimpleGrid>
-            <Group justify="flex-end" mt="md">
-              <Button variant="subtle" size="compact-sm" disabled={!advanced} onClick={clearAdvanced}>
-                {t('network.clearFilters')}
-              </Button>
-            </Group>
-          </Box>
-        </Collapse>
-      </Card>
+        </Box>
+      </Collapse>
       {(f.city || f.company) && (
         <Group gap="xs" mb="sm" data-testid="pending-chips">
           {(['city', 'company'] as const).map(
@@ -213,6 +233,7 @@ export function NetworkList() {
           columnsController={columns}
           rows={res.error ? undefined : res.data ? people : undefined}
           rowId={(p) => p.id}
+          onRowClick={(p) => navigate(`/people/${p.id}`)}
           loading={res.loading}
           error={!!res.error}
           onRetry={res.reload}
@@ -261,7 +282,7 @@ export function NetworkList() {
                     {t('network.clear')}
                   </Button>
                 ) : (
-                  <Button onClick={() => setNewOpen(true)}>+ {t('network.addPerson')}</Button>
+                  <Button leftSection={<IconPlus size={ICON_SIZE} stroke={ICON_STROKE} />} onClick={() => setNewOpen(true)}>{t('network.addPerson')}</Button>
                 )
               }
             />

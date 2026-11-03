@@ -381,6 +381,11 @@
       "title": "ör. Finans Direktörü",
       "email": "ad@sirket.com",
       "phone": "+90 555 000 00 00"
+    },
+    "consentBanner": {
+      "REFUSED": "Onay reddedildi. Yeni roller için iletişime geçmeyin, müşterilerle paylaşmayın.",
+      "WITHDRAWN": "Onay geri çekildi. Yeni roller için iletişime geçmeyin; veriler silinmek üzere planlandı.",
+      "NOT_SENT": "Henüz onay isteği gönderilmedi. Onay verilmeden müşterilerle paylaşılamaz."
     }
   }
 }
