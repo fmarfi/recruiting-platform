@@ -17,6 +17,7 @@ import { canMove, type Application, type Stage } from './boardRules';
 import type { BoardProps } from './boardTypes';
 import { ReasonDialog } from './ReasonDialog';
 import { RejectedLane } from './RejectedLane';
+import './board.css';
 
 /** Kanban board (UX-04). Drag on desktop, Move menu everywhere; only moves from /reference-data are offered. */
 export function Board(props: BoardProps) {
@@ -76,10 +77,18 @@ export function Board(props: BoardProps) {
           ))}
         </Group>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: phone ? '1fr' : `repeat(${visible.length}, minmax(220px, 1fr))`, gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
-        {visible.map((s) => (
-          <BoardColumn key={s} stage={s} apps={props.apps.filter((a) => a.stage === s)} props={guarded} activeApp={activeApp} />
-        ))}
+      <div className="pipe-board-scroll">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: phone ? '1fr' : `repeat(${visible.length}, minmax(16.5rem, 1fr))`,
+            gap: 'var(--space-3)',
+          }}
+        >
+          {visible.map((s) => (
+            <BoardColumn key={s} stage={s} apps={props.apps.filter((a) => a.stage === s)} props={guarded} activeApp={activeApp} />
+          ))}
+        </div>
       </div>
       <RejectedLane apps={rejected} props={guarded} activeApp={activeApp} />
       <ReasonDialog
