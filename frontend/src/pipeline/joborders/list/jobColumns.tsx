@@ -21,7 +21,7 @@ export function useJobColumns(): ColumnDef<JobOrderRow>[] {
         minWidth: 180,
         accessor: (j) => j.title,
         cell: (j) => (
-          <Anchor component={Link} to={`/job-orders/${j.id}`} fw={600}>
+          <Anchor component={Link} to={`/job-orders/${j.id}`} fw={500} c="var(--color-ink)" underline="never">
             {j.title}
           </Anchor>
         ),
@@ -42,7 +42,7 @@ export function JobCard({ j }: { j: JobOrderRow }) {
   return (
     <Stack gap={2}>
       <Group justify="space-between" wrap="nowrap">
-        <Anchor component={Link} to={`/job-orders/${j.id}`} fw={600}>
+        <Anchor component={Link} to={`/job-orders/${j.id}`} fw={500} c="var(--color-ink)" underline="never">
           {j.title}
         </Anchor>
         <StatusBadge lifecycle="jobOrder" value={j.status} />
