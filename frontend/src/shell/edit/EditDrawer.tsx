@@ -35,15 +35,17 @@ export interface EditDrawerProps {
   onSave: () => Promise<void | VersionConflict>;
   /** Called from the compare dialog: "mine" re-saves the draft on top of the new version, "theirs" drops the draft. */
   onResolveConflict?: (choice: 'mine' | 'theirs') => Promise<void>;
-  /** Width in px, default 480. */
+  /** Width in px, default 640 (visual system v3, section 6b). */
   size?: number;
+  /** Label of the primary footer button, a verb with the object (default "Save changes"). */
+  saveLabel?: string;
 }
 
 /**
  * Right-hand edit drawer: titled sections, sticky Save/Cancel (Ctrl/Cmd+Enter saves), a guard before closing with
  * unsaved edits, and a compare dialog for version conflicts. Focus is trapped while open and returns to the trigger.
  */
-export function EditDrawer({ opened, onClose, title, sections, dirty, onSave, onResolveConflict, size = 480 }: EditDrawerProps) {
+export function EditDrawer({ opened, onClose, title, sections, dirty, onSave, onResolveConflict, size = 640, saveLabel }: EditDrawerProps) {
   const { tx } = useText();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,24 +132,24 @@ export function EditDrawer({ opened, onClose, title, sections, dirty, onSave, on
           onKeyDown={onKeyDown}
           noValidate
         >
-          <Stack gap="lg" pb="md">
+          <Stack gap="xl" pb="md">
             {sections.map((s) => (
               <section key={s.id} aria-labelledby={`edit-sec-${s.id}`}>
-                <Title order={3} size="h5" id={`edit-sec-${s.id}`} mb="xs">
+                <Title order={3} id={`edit-sec-${s.id}`} fz="0.8125rem" fw={600} c="var(--color-ink2)" mb="xs">
                   {s.title}
                 </Title>
                 <Stack gap="sm">{s.content}</Stack>
               </section>
             ))}
           </Stack>
-          <div style={{ position: 'sticky', bottom: 0, background: 'var(--mantine-color-body)', borderTop: '1px solid var(--mantine-color-default-border)', padding: '12px 0' }}>
+          <div style={{ position: 'sticky', bottom: 0, background: 'var(--mantine-color-body)', borderTop: '1px solid var(--color-border)', padding: 'var(--space-3) 0' }}>
             {error && (
               <Alert color="red" role="alert" mb="xs" p="xs">
                 {error}
               </Alert>
             )}
             <Group justify="space-between" wrap="wrap">
-              <Text size="xs" c="dimmed">
+              <Text fz="0.75rem" c="dimmed">
                 {tx('edit.saveHint')}
               </Text>
               <Group gap="xs">
@@ -155,7 +157,7 @@ export function EditDrawer({ opened, onClose, title, sections, dirty, onSave, on
                   {tx('edit.cancel')}
                 </Button>
                 <Button type="submit" loading={saving} loaderProps={{ 'aria-hidden': true }}>
-                  {saving ? tx('edit.saving') : tx('edit.save')}
+                  {saving ? tx('edit.saving') : (saveLabel ?? tx('edit.saveChanges'))}
                 </Button>
               </Group>
             </Group>

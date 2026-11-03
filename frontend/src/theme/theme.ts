@@ -8,6 +8,13 @@ const gray = tokens.ramp.gray as unknown as MantineColorsTuple;
 const c = tokens.color.light;
 const px = (n: number) => `${n}px`;
 
+// Visual system v3 section 6b: field labels are 12 / 500 ink3, 4 px above the input; descriptions are 12 ink3.
+const fieldStyles = {
+  label: { fontWeight: 500, color: c.ink3, marginBottom: 'var(--space-1)', fontSize: '0.75rem' },
+  description: { fontSize: '0.75rem', color: c.ink3, marginBottom: 'var(--space-1)' },
+  error: { fontSize: '0.8125rem' },
+};
+
 export const theme = createTheme({
   primaryColor: 'brand',
   primaryShade: 6,
@@ -60,10 +67,10 @@ export const theme = createTheme({
     ActionIcon: { defaultProps: { radius: 6 } },
     Chip: { defaultProps: { radius: 4, size: 'sm' } },
     SegmentedControl: { defaultProps: { radius: 4 } },
-    TextInput: { defaultProps: { radius: 6 }, styles: { label: { fontWeight: 500, color: c.ink2, marginBottom: 6, fontSize: '0.875rem' }, description: { fontSize: '0.8125rem', color: c.ink3, marginBottom: 6 }, error: { fontSize: '0.8125rem' } } },
-    PasswordInput: { styles: { label: { fontWeight: 500, color: c.ink2, marginBottom: 6, fontSize: '0.875rem' }, description: { fontSize: '0.8125rem', color: c.ink3, marginBottom: 6 }, error: { fontSize: '0.8125rem' } } },
-    Select: { styles: { label: { fontWeight: 500, color: c.ink2, marginBottom: 6, fontSize: '0.875rem' }, description: { fontSize: '0.8125rem', color: c.ink3, marginBottom: 6 }, error: { fontSize: '0.8125rem' } } },
-    Textarea: { styles: { label: { fontWeight: 500, color: c.ink2, marginBottom: 6, fontSize: '0.875rem' }, description: { fontSize: '0.8125rem', color: c.ink3, marginBottom: 6 }, error: { fontSize: '0.8125rem' } } },
+    TextInput: { defaultProps: { radius: 6 }, styles: fieldStyles },
+    PasswordInput: { styles: fieldStyles },
+    Select: { styles: fieldStyles },
+    Textarea: { styles: fieldStyles },
     Paper: { defaultProps: { radius: 8 }, styles: { root: { borderColor: c.border } } },
     Card: { defaultProps: { radius: 8, withBorder: true, padding: 'md', shadow: 'none' } },
     Modal: { defaultProps: { radius: 12, shadow: 'md', overlayProps: { backgroundOpacity: 0.35, color: c.ink } }, styles: { title: { fontWeight: 600, fontSize: '1.1rem' } } },
