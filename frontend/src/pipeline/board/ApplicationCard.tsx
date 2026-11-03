@@ -8,6 +8,9 @@ import { legalMoves, type Application } from './boardRules';
 import type { BoardProps } from './boardTypes';
 
 const DAY_MS = 86_400_000;
+// Days in stage that turn the age cue amber, then red.
+const STAGE_WARN_DAYS = 30;
+const STAGE_DANGER_DAYS = 60;
 
 export function ApplicationCard({ app, props, dragging }: { app: Application; props: BoardProps; dragging: boolean }) {
   const { t } = useTranslation();
@@ -19,6 +22,12 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
   const p = app.person;
   const since = app.stageChangedAt ? new Date(app.stageChangedAt).getTime() : NaN;
   const days = Number.isNaN(since) ? undefined : Math.max(0, Math.floor((Date.now() - since) / DAY_MS));
+  const ageTone =
+    days === undefined || days <= STAGE_WARN_DAYS
+      ? undefined
+      : days > STAGE_DANGER_DAYS
+        ? 'var(--tone-bad-fg)'
+        : 'var(--tone-warn-fg)';
   return (
     <Card
       ref={setNodeRef}
@@ -79,11 +88,17 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
         )}
       </Group>
       <Group justify="space-between" mt="xs" gap="xs" wrap="nowrap">
-        <StatusBadge lifecycle="consent" value={p.consentStatus} />
+        <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+          <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+            {t('pipeline.consentLabel')}:
+          </Text>
+          <StatusBadge lifecycle="consent" value={p.consentStatus} />
+        </Group>
         <Text
           size="xs"
           c="dimmed"
           className="pipe-board-days"
+          style={{ color: ageTone }}
           title={fmt.dateLong(app.stageChangedAt)}
         >
           {days === undefined ? '–' : t('pipeline.daysInStage', { count: days })}

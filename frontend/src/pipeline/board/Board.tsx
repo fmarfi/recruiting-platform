@@ -19,6 +19,13 @@ import { ReasonDialog } from './ReasonDialog';
 import { RejectedLane } from './RejectedLane';
 import './board.css';
 
+// Column widths: 7 stages must fit at >= 1280px. Empty columns shrink but stay valid drop targets.
+const COLUMN_MIN = '11rem';
+const EMPTY_COLUMN_MIN = '8rem';
+const EMPTY_COLUMN_WEIGHT = '0.6fr';
+
+const columnTrack = (hasCards: boolean) => (hasCards ? `minmax(${COLUMN_MIN}, 1fr)` : `minmax(${EMPTY_COLUMN_MIN}, ${EMPTY_COLUMN_WEIGHT})`);
+
 /** Kanban board (UX-04). Drag on desktop, Move menu everywhere; only moves from /reference-data are offered. */
 export function Board(props: BoardProps) {
   const { t } = useTranslation();
@@ -81,7 +88,7 @@ export function Board(props: BoardProps) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: phone ? '1fr' : `repeat(${visible.length}, minmax(16.5rem, 1fr))`,
+            gridTemplateColumns: phone ? '1fr' : visible.map((s) => columnTrack(props.apps.some((a) => a.stage === s))).join(' '),
             gap: 'var(--space-3)',
           }}
         >

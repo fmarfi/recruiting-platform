@@ -25,6 +25,7 @@
     "changeStatus": "Durumu değiştir",
     "daysOpen": "{{count}} gündür açık",
     "daysInStage": "Aşamada {{count}} gün",
+    "consentLabel": "Rıza",
     "emptyBody": "Süreci başlatmak için ilk adayı ekleyin.",
     "emptyColumn": "Boş",
     "emptyTitle": "Henüz aday yok",
