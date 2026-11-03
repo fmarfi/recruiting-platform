@@ -1,7 +1,9 @@
-import { Box, Button, Card, Checkbox, Group, SegmentedControl, Stack, Table, Text, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Box, Button, Card, Checkbox, Group, Stack, Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
+import { IconArrowDown, IconArrowUp, IconDownload, IconRowInsertBottom } from '@tabler/icons-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { ICON_SIZE, ICON_STROKE } from '../components/objectIcons';
 import { SkeletonRows } from '../components/SkeletonRows';
 import { ColumnChooser } from './ColumnChooser';
 import { downloadCsv, toCsv } from './csv';
@@ -39,6 +41,8 @@ export interface DataGridProps<T> {
   groupBy?: GroupRows<T>;
   /** Pixels under which the sticky header sticks (app header height). */
   stickyOffset?: number;
+  /** Whole-row click (pointer cursor); clicks on buttons, links and inputs inside a row do not trigger it. */
+  onRowClick?: (row: T) => void;
 }
 
 function cellValue<T>(c: ColumnDef<T>, row: T): ReactNode {
@@ -71,23 +75,27 @@ export function DataGrid<T>(p: DataGridProps<T>) {
     <Group justify="space-between" gap="sm" wrap="wrap">
       <Group gap="sm">{p.toolbar}</Group>
       <Group gap="xs">
-        <SegmentedControl
-          size="sm"
-          aria-label={t('grid.density')}
-          value={density}
-          onChange={(v) => {
-            setDensity(v as Density);
-            saveDensity(p.gridId, v as Density);
-          }}
-          data={[
-            { value: 'compact', label: t('grid.compact') },
-            { value: 'comfortable', label: t('grid.comfortable') },
-          ]}
-        />
+        <Tooltip label={density === 'compact' ? t('grid.comfortable') : t('grid.compact')}>
+          <ActionIcon
+            variant="default"
+            size="md"
+            aria-label={t('grid.density')}
+            aria-pressed={density === 'compact'}
+            onClick={() => {
+              const next: Density = density === 'compact' ? 'comfortable' : 'compact';
+              setDensity(next);
+              saveDensity(p.gridId, next);
+            }}
+          >
+            <IconRowInsertBottom size={ICON_SIZE} stroke={ICON_STROKE} aria-hidden />
+          </ActionIcon>
+        </Tooltip>
         {p.exportName && (
-          <Button variant="default" size="sm" onClick={exportCsv} disabled={rows.length === 0}>
-            {t('grid.exportCsv')}
-          </Button>
+          <Tooltip label={t('grid.exportCsv')}>
+            <ActionIcon variant="default" size="md" onClick={exportCsv} disabled={rows.length === 0} aria-label={t('grid.exportCsv')}>
+              <IconDownload size={ICON_SIZE} stroke={ICON_STROKE} aria-hidden />
+            </ActionIcon>
+          </Tooltip>
         )}
         {!p.phone && <ColumnChooser defs={p.columns} columns={cols} />}
       </Group>
@@ -144,7 +152,8 @@ export function DataGrid<T>(p: DataGridProps<T>) {
     );
   } else {
     body = (
-      <Table highlightOnHover withTableBorder stickyHeader stickyHeaderOffset={p.stickyOffset ?? 56} verticalSpacing={density === 'compact' ? 6 : 14} aria-busy={!!p.loading} style={{ opacity: p.loading ? 0.6 : 1 }}>
+      <Box style={{ border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-surface)' }}>
+      <Table highlightOnHover stickyHeader stickyHeaderOffset={p.stickyOffset ?? 56} verticalSpacing={0} aria-busy={!!p.loading} style={{ opacity: p.loading ? 0.6 : 1, '--table-hover-color': 'var(--color-surface2)' }}>
         <Table.Thead>
           <Table.Tr>
             {p.selectable && (
@@ -158,8 +167,9 @@ export function DataGrid<T>(p: DataGridProps<T>) {
               return (
                 <Table.Th key={c.id} title={c.header} style={{ minWidth: c.minWidth, textAlign: c.numeric ? 'right' : undefined, whiteSpace: 'normal', overflowWrap: 'anywhere', verticalAlign: 'bottom' }} aria-sort={c.sortable ? (active ? (p.sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}>
                   {c.sortable && p.onSort ? (
-                    <UnstyledButton fw={600} fz="inherit" ta={c.numeric ? 'right' : 'left'} onClick={() => p.onSort!(nextSort(p.sort ?? null, field, c.firstSortDir))} aria-label={t('grid.sortBy', { col: c.header })}>
-                      {c.header} {active ? (p.sort!.dir === 'asc' ? '\u25B2' : '\u25BC') : ''}
+                    <UnstyledButton fw={500} fz="inherit" ta={c.numeric ? 'right' : 'left'} onClick={() => p.onSort!(nextSort(p.sort ?? null, field, c.firstSortDir))} aria-label={t('grid.sortBy', { col: c.header })}>
+                      {c.header}
+                      {active && (p.sort!.dir === 'asc' ? <IconArrowUp size={12} stroke={ICON_STROKE} aria-hidden style={{ marginLeft: 4 }} /> : <IconArrowDown size={12} stroke={ICON_STROKE} aria-hidden style={{ marginLeft: 4 }} />)}
                     </UnstyledButton>
                   ) : (
                     c.header
@@ -181,14 +191,35 @@ export function DataGrid<T>(p: DataGridProps<T>) {
             ...g.rows.map((r) => {
               const id = p.rowId(r);
               return (
-                <Table.Tr key={id} bg={selected.has(id) ? 'var(--color-accentSoft)' : undefined}>
+                <Table.Tr
+                  key={id}
+                  bg={selected.has(id) ? 'var(--color-accentSoft)' : undefined}
+                  style={{ height: density === 'compact' ? 32 : 40, cursor: p.onRowClick ? 'pointer' : undefined }}
+                  onClick={
+                    p.onRowClick
+                      ? (e) => {
+                          if ((e.target as HTMLElement).closest('a,button,input,label,[role="checkbox"],[role="menuitem"]')) return;
+                          p.onRowClick!(r);
+                        }
+                      : undefined
+                  }
+                >
                   {p.selectable && (
                     <Table.Td>
                       <Checkbox checked={selected.has(id)} onChange={() => setSelected(toggleId(selected, id))} aria-label={t('grid.selectRow')} />
                     </Table.Td>
                   )}
-                  {cols.visible.map((c) => (
-                    <Table.Td key={c.id} style={c.numeric ? { textAlign: 'right', fontVariantNumeric: 'tabular-nums' } : undefined}>{cellValue(c, r)}</Table.Td>
+                  {cols.visible.map((c, i) => (
+                    <Table.Td
+                      key={c.id}
+                      style={{
+                        paddingBlock: 0,
+                        ...(c.numeric ? { textAlign: 'right', fontVariantNumeric: 'tabular-nums' } : null),
+                        ...(i === 0 ? { fontWeight: 500, color: 'var(--color-ink)' } : null),
+                      }}
+                    >
+                      {cellValue(c, r)}
+                    </Table.Td>
                   ))}
                 </Table.Tr>
               );
@@ -196,6 +227,7 @@ export function DataGrid<T>(p: DataGridProps<T>) {
           ])}
         </Table.Tbody>
       </Table>
+      </Box>
     );
   }
 
