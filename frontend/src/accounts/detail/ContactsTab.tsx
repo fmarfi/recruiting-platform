@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api, type components } from '../../api';
 import { ConfirmDialog } from '../../shell/components/ConfirmDialog';
-import { EmptyState } from '../../shell/components/EmptyState';
 import { ToneBadge } from '../../shell/components/ToneBadge';
 import { fmtDate } from '../../shell/lib/format';
+import { SectionEmpty } from './SectionEmpty';
 
 type Contact = components['schemas']['Contact'];
 
@@ -46,7 +46,7 @@ export function ContactsTab({ contacts, showEnded, onShowEnded, accountId, onCha
       <ConfirmDialog opened={!!ending} title={t('accounts.endContactTitle')} body={ending ? t('accounts.endContactBody', { name: ending.person.name }) : undefined} confirmLabel={t('accounts.endContact')} danger busy={busy} onConfirm={() => void end()} onCancel={() => setEnding(null)} />
       <Switch label={t('accounts.showEnded')} checked={showEnded} onChange={(e) => onShowEnded(e.currentTarget.checked)} />
       {contacts.length === 0 ? (
-        <EmptyState title={t('accounts.emptyContacts')} hint={t('accounts.emptyContactsHint')} actions={<Button onClick={onAdd}>+ {t('accounts.addContact')}</Button>} />
+        <SectionEmpty text={t('accounts.emptyContacts')} action={<Button size="compact-sm" variant="light" onClick={onAdd}>+ {t('accounts.addContact')}</Button>} />
       ) : (
         contacts.map((c) => (
           <Group key={c.id} justify="space-between" wrap="nowrap" style={{ opacity: c.active ? 1 : 0.6 }}>

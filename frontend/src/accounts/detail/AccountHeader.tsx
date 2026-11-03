@@ -1,10 +1,10 @@
-import { Alert, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
-import { useRef } from 'react';
+import { Alert, Box, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
+import { useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../../api';
 import { StatusMenu } from '../../shell/components/StatusMenu';
 import { InlineEditField, useUndoToast } from '../../shell/edit';
-import { fmtDate } from '../../shell/lib/format';
+import { fmtRelative } from '../../shell/lib/format';
 import { useReference } from '../../shell/refdata/useReference';
 import { ReasonDialog } from '../components/ReasonDialog';
 import { StatusFailureAlert } from '../components/StatusFailureAlert';
@@ -47,6 +47,13 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
     onChanged,
     t('shell.saveError'),
   );
+  const facts: { label: string; value: ReactNode }[] = [
+    { label: t('accounts.sector'), value: a.sector },
+    { label: t('accounts.city'), value: a.city },
+    { label: t('accounts.owner'), value: a.owner.name },
+    { label: t('accounts.openSearches'), value: a.openJobCount },
+    { label: t('accounts.lastActivity'), value: fmtRelative(a.lastActivityAt, i18n.language) },
+  ];
   const renamed = useRef(a.version);
   const rename = async (name: string, expect: number) => {
     const r = await api.PATCH('/accounts/{id}', { ...statusPath, body: { name: name.trim(), version: expect } });
@@ -86,9 +93,18 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
             </Button>
           </Group>
         </Group>
-        <Text c="dimmed">
-          {[a.sector, a.city].filter(Boolean).join(' - ')} - {t('accounts.ownerIs', { name: a.owner.name })} - {t('accounts.clientSince', { date: fmtDate(a.openedOn, i18n.language) })}
-        </Text>
+        <Box component="dl" m={0} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: 'var(--space-3) var(--space-5)' }}>
+          {facts.map((f) => (
+            <div key={f.label} style={{ minWidth: 0 }}>
+              <Text component="dt" size="xs" c="dimmed">
+                {f.label}
+              </Text>
+              <Text component="dd" m={0} fw={600} style={{ overflowWrap: 'anywhere' }}>
+                {f.value ?? '-'}
+              </Text>
+            </div>
+          ))}
+        </Box>
         {change.failure && <StatusFailureAlert failure={change.failure} />}
         {a.status === 'CLOSED' && <Alert color="gray">{t('accounts.closedBanner')}</Alert>}
       </Stack>
