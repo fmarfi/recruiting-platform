@@ -1,5 +1,5 @@
 // Client header (visual system v3, sections 5 and 6b): RecordHeader band content, same shape as the person header.
-import { Alert, Anchor, Button, Menu } from '@mantine/core';
+import { Alert, Anchor, Button, Menu, Text } from '@mantine/core';
 import { IconDots } from '@tabler/icons-react';
 import { useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,7 +82,11 @@ export function AccountHeader({ account: a, onLog, onAddJob, onAddAction, onChan
             label={t('accounts.edit.name')}
             value={a.name}
             validate={(v) => (v.trim() ? null : t('accounts.edit.nameRequired'))}
-            display={(v) => <span>{v}</span>}
+            display={(v) => (
+              <Text span ff="var(--font-display)" fz="1.5rem" fw={600} c="var(--color-ink)">
+                {v}
+              </Text>
+            )}
             onSave={(v) => rename(v, version.current)}
             onUndo={(prev) => rename(prev, renamed.current)}
           />
