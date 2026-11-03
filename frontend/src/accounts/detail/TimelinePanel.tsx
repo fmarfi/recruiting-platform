@@ -1,4 +1,4 @@
-import { Button, Select, Stack, Text, Title } from '@mantine/core';
+import { Button, Select, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import type { components } from '../../api';
 import { ActivityIcon, CandidateIcon, ClientIcon, ContactIcon, FeeIcon, ICON_SIZE, ICON_STROKE, SearchIcon } from '../../shell/components/objectIcons';
@@ -27,7 +27,7 @@ interface Props {
   onLog?: () => void;
 }
 
-/** Timeline (A-08), grouped by day. Text is built from kind and statuses, not from the English `summary`. */
+/** Activity timeline (A-08), grouped by day, shown inside the Activity panel. Text is built from kind and statuses, not from the English `summary`. */
 export function TimelinePanel({ entries, kind, onKind, onLog }: Props) {
   const { t, i18n } = useTranslation();
   const ref = useReference();
@@ -57,9 +57,6 @@ export function TimelinePanel({ entries, kind, onKind, onLog }: Props) {
 
   return (
     <Stack gap="xs">
-      <Title order={2} size="h3">
-        {t('accounts.tab.timeline')}
-      </Title>
       <Select
         aria-label={t('accounts.tab.timeline')}
         value={kind || 'ALL'}
@@ -73,7 +70,7 @@ export function TimelinePanel({ entries, kind, onKind, onLog }: Props) {
         <Stack gap="md" style={{ maxHeight: 640, overflowY: 'auto' }}>
           {[...groups.values()].map((g) => (
             <section key={g.key} aria-label={g.label}>
-              <Text size="xs" c="dimmed" fw={500} style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--color-surface)', paddingBlock: 'var(--space-1)' }}>
+              <Text size="xs" c="var(--color-ink3)" fw={500} style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--color-surface)', paddingBlock: 'var(--space-1)' }}>
                 {g.label}
               </Text>
               <Stack component="ol" gap={0} m={0} p={0} style={{ listStyle: 'none' }}>
