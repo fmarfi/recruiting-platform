@@ -185,6 +185,10 @@
       "saved": "{{name}} güncellendi",
       "statusChanged": "Durum {{status}} olarak değiştirildi",
       "tagsFailed": "Kaydedildi, ancak etiketler değiştirilemedi. Etiketleri tekrar deneyin."
-    }
+    },
+    "namePlaceholder": "Şirket adı",
+    "moreDetails": "Daha fazla ayrıntı",
+    "createClient": "Müşteri oluştur",
+    "saveHint": "Kaydetmek için Ctrl+Enter"
   }
 }
