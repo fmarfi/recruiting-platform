@@ -1,17 +1,20 @@
-// Plain collapsible section (v3 6): a 16/600 heading with a chevron, no box around it. Used for "Rejected" and "History".
-import { Box, Collapse, Text, UnstyledButton } from '@mantine/core';
+// Collapsible panel (visual system v3, sections 4 and 5): a shared Panel whose header is the toggle. Used for "Rejected" and "History".
+import { Collapse, UnstyledButton } from '@mantine/core';
 import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
+import { Panel } from '../../shell/components/Panel';
 import { ICON_SIZE, ICON_STROKE } from '../../shell/components/objectIcons';
 
 export function SectionToggle({
   title,
+  count,
   open,
   onToggle,
   children,
   testId,
 }: {
   title: string;
+  count?: number;
   open: boolean;
   onToggle: () => void;
   children?: ReactNode;
@@ -19,8 +22,8 @@ export function SectionToggle({
 }) {
   const Chevron = open ? IconChevronDown : IconChevronRight;
   return (
-    <Box data-testid={testId}>
-      <Text component="h2" m={0} fw={600} size="md">
+    <Panel
+      title={
         <UnstyledButton
           type="button"
           onClick={onToggle}
@@ -30,10 +33,12 @@ export function SectionToggle({
           <Chevron size={ICON_SIZE} stroke={ICON_STROKE} aria-hidden />
           {title}
         </UnstyledButton>
-      </Text>
-      <Collapse expanded={open}>
-        <Box mt="sm">{children}</Box>
-      </Collapse>
-    </Box>
+      }
+      count={count}
+      padding="none"
+      testId={testId}
+    >
+      <Collapse expanded={open}>{children}</Collapse>
+    </Panel>
   );
 }
