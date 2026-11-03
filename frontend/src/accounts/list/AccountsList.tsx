@@ -91,7 +91,7 @@ export function AccountsList() {
               <EmptyState
                 title={t('accounts.emptyFilter')}
                 actions={
-                  <Button variant="default" onClick={clear}>
+                  <Button onClick={clear}>
                     {t('accounts.clear')}
                   </Button>
                 }

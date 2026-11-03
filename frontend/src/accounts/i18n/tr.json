@@ -34,6 +34,7 @@
     "duplicate": "Bu adla bir müşteri zaten var.",
     "name": "Ad",
     "newAccount": "Yeni müşteri",
+    "openRecord": "Müşteri kaydını aç",
     "sector": "Sektör",
     "reason": "Neden",
     "reasonTitle": "{{status}} durumuna geçiş nedeni",
