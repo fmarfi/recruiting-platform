@@ -1,4 +1,4 @@
-﻿import { Anchor, Group, Text } from '@mantine/core';
+import { Anchor, Group, Text } from '@mantine/core';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -8,15 +8,6 @@ import type { ColumnDef } from '../../shell/grid';
 import { fmtDate, fmtRelative } from '../../shell/lib/format';
 
 export type Account = components['schemas']['Account'];
-
-/** Affordance that the name opens the record: a small chevron in the token ink colour, decorative only. */
-function OpenChevron() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden focusable="false" style={{ color: 'var(--color-ink3)', flexShrink: 0 }}>
-      <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 /** Column definitions of the accounts grid. Sort keys are the ones /accounts documents. */
 export function useAccountColumns(): ColumnDef<Account>[] {
@@ -31,12 +22,10 @@ export function useAccountColumns(): ColumnDef<Account>[] {
         locked: true,
         minWidth: 180,
         accessor: (a) => a.name,
+        // Plain ink text. The link keeps the name keyboard reachable; the whole row also opens the record (DataGrid onRowClick).
         cell: (a) => (
-          <Anchor component={Link} to={`/accounts/${a.id}`} fw={600} underline="hover" title={t('accounts.openRecord')}>
-            <Group component="span" gap="xs" wrap="nowrap" display="inline-flex" align="center">
-              {a.name}
-              <OpenChevron />
-            </Group>
+          <Anchor component={Link} to={`/accounts/${a.id}`} underline="never" fw={500} c="var(--color-ink)">
+            {a.name}
           </Anchor>
         ),
       },
@@ -71,7 +60,7 @@ export function AccountCard({ a }: { a: Account }) {
   return (
     <Anchor component={Link} to={`/accounts/${a.id}`} underline="never" c="inherit">
       <Group justify="space-between" wrap="nowrap">
-        <Text fw={600}>{a.name}</Text>
+        <Text fw={500}>{a.name}</Text>
         <StatusBadge kind="account" value={a.status} size="sm" />
       </Group>
       <Text size="sm" c="dimmed">
