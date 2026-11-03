@@ -62,7 +62,7 @@ export function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; 
   if (collapsed) return null;
   return (
     <Stack gap={2} component="nav" aria-label={t('nav.pinned')} mt="md">
-      <Text size="xs" fw={700} tt="uppercase" px="var(--space-3)" style={{ color: 'var(--color-chromeInk2)' }}>
+      <Text size="sm" fw={600} px="var(--space-3)" style={{ color: 'var(--color-chromeInk2)' }}>
         {t('nav.pinned')}
       </Text>
       {rows === null && (
@@ -106,7 +106,7 @@ export function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; 
   );
 }
 
-/** Main navigation on midnight chrome: a column in the rail on laptop (icons only when collapsed), a row in the bottom bar on phone. */
+/** Main navigation on midnight chrome: a column in the rail or the phone drawer (icons only when the rail is collapsed); the row variant is kept for callers that need a horizontal bar. */
 export function NavItems({ vertical, collapsed = false, onNavigate }: { vertical: boolean; collapsed?: boolean; onNavigate?: () => void }) {
   const { t } = useTranslation();
   const items = useNavItems();
@@ -133,9 +133,9 @@ export function NavItems({ vertical, collapsed = false, onNavigate }: { vertical
             flexDirection: vertical ? 'row' : 'column',
             alignItems: 'center',
             justifyContent: vertical && !collapsed ? 'flex-start' : 'center',
-            gap: vertical ? 12 : 2,
-            padding: vertical ? (collapsed ? 0 : '0 var(--space-3)') : '4px 2px',
-            fontSize: vertical ? '0.9375rem' : 12,
+            gap: vertical ? 'var(--space-3)' : 'var(--space-1)',
+            padding: vertical ? (collapsed ? 0 : '0 var(--space-3)') : 'var(--space-1) var(--space-0)',
+            fontSize: vertical ? '0.9375rem' : '0.75rem',
             whiteSpace: 'nowrap',
             minWidth: 0,
             overflow: 'hidden',
