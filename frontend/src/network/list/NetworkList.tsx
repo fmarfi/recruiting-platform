@@ -106,8 +106,9 @@ export function NetworkList() {
       />
       <PresetsBar current={f} onApply={(v) => set({ ...DEFAULT_FILTERS, ...v })} />
       <Card withBorder padding="md" mb="md" component="section" aria-label={t('network.filtersTitle')}>
-      <Group mb="sm" align="flex-end">
-        <TextInput label={t('network.search')} style={{ flex: '1 1 220px' }} value={f.q} onChange={(e) => change({ q: e.currentTarget.value })} />
+      <Stack gap="sm">
+      <Group align="flex-end" wrap="wrap">
+        <TextInput label={t('network.search')} flex={1} miw="15rem" value={f.q} onChange={(e) => change({ q: e.currentTarget.value })} />
         <SegmentedControl
           value={f.mine ? 'me' : 'all'}
           onChange={(v) => change({ mine: v === 'me' })}
@@ -119,6 +120,7 @@ export function NetworkList() {
         <Select
           label={t('network.filterNotContacted')}
           clearable
+          w={{ base: '100%', sm: '12rem' }}
           value={f.staleDays ? String(f.staleDays) : null}
           onChange={(v) => change({ staleDays: v ? Number(v) : 0 })}
           data={[...new Set([30, 60, 90, 180, f.staleDays].filter(Boolean))].sort((a, b) => a - b).map((d) => ({ value: String(d), label: t('network.daysAgo', { count: d }) }))}
@@ -126,14 +128,15 @@ export function NetworkList() {
         <Select
           label={t('network.fields.consent')}
           clearable
+          w={{ base: '100%', sm: '12rem' }}
           value={f.consent ?? null}
           onChange={(v) => change({ consent: (v as Schemas['ConsentStatus']) ?? undefined })}
           data={(ref?.lifecycles.consent.statuses ?? []).map((s) => ({ value: s.value, label: label('consent', s.value) }))}
         />
       </Group>
       <Chip.Group multiple value={f.types} onChange={(v) => change({ types: v as Schemas['PersonType'][] })}>
-        <Group gap="xs" mb="sm" style={{ overflowX: 'auto' }} wrap="nowrap" role="group" aria-label={t('network.fields.type')}>
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase" w={112} style={{ flex: 'none' }}>{t('network.fields.type')}</Text>
+        <Group gap="xs" style={{ overflowX: 'auto' }} wrap="nowrap" role="group" aria-label={t('network.fields.type')}>
+          <Text size="sm" c="dimmed" fw={600} w={112} style={{ flex: 'none' }}>{t('network.fields.type')}</Text>
           {PERSON_TYPES.map((x) => (
             <Chip key={x} value={x} size="sm">
               {t(`network.types.${x}`)}
@@ -142,6 +145,7 @@ export function NetworkList() {
         </Group>
       </Chip.Group>
       <PoolFilters f={f} onChange={change} />
+      </Stack>
       </Card>
       {(f.city || f.company) && (
         <Group gap="xs" mb="sm" data-testid="pending-chips">
@@ -217,7 +221,7 @@ export function NetworkList() {
                     {t('network.clear')}
                   </Button>
                 ) : (
-                  <Button onClick={() => setNewOpen(true)}>+ {t('network.newPerson')}</Button>
+                  <Button onClick={() => setNewOpen(true)}>+ {t('network.addPerson')}</Button>
                 )
               }
             />
