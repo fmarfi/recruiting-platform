@@ -42,7 +42,7 @@
       "searchPlaceholder": "Arama ara",
       "status": "Durum",
       "title": "Aramalar",
-      "subtitle": "{{count}} açık arama; açık kalma günü ve aktif adaylar tek bakışta.",
+      "subtitle": "Açık aramalar; açık kalma günü ve aktif adaylar tek bakışta.",
       "subtitleFiltered": "{{count}} arama filtrelerle eşleşiyor.",
       "new": "Yeni arama",
       "newPickClient": "Önce müşteriyi seçin",
@@ -134,7 +134,8 @@
       "titleRequired": "Pozisyon adını girin.",
       "saved": "{{name}} güncellendi",
       "history": "Geçmiş"
-    }
+    },
+    "brief": "Brief"
   },
   "quickAdd": {
     "account": "Müşteri",

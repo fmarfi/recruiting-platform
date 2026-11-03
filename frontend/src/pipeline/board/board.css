@@ -1,21 +1,25 @@
 /* Pipeline board visuals (UXP-1). Theme tokens only: no hex colours, no raw px spacing. */
 
+/* The board is the one white panel on the page; stage columns sit inside it without boxes of their own. */
 .pipe-board-scroll {
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding-bottom: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
+/* Columns show a border only while a card is being dragged (legal or over), so the resting board stays quiet. */
 .pipe-board-col {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface2);
+  padding: var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
   transition:
     border-color var(--motion-fast),
     background-color var(--motion-fast),
@@ -50,11 +54,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 600;
-  letter-spacing: -0.005em;
   color: var(--color-ink);
+}
+
+/* Drop-target outline on the Rejected section: only while a card is being dragged. */
+.pipe-lane {
+  border-radius: var(--radius-md);
+}
+
+.pipe-lane[data-legal="true"] {
+  outline: 1px dashed var(--color-accent);
+  outline-offset: var(--space-1);
+}
+
+.pipe-lane[data-over="true"] {
+  outline: 1px solid var(--color-accent);
+  outline-offset: var(--space-1);
 }
 
 .pipe-board-empty {

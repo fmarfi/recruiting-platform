@@ -42,7 +42,7 @@
       "searchPlaceholder": "Find searches",
       "status": "Status",
       "title": "Searches",
-      "subtitle": "{{count}} open searches: days open and active candidates at a glance.",
+      "subtitle": "Open searches, with days open and active candidates at a glance.",
       "subtitleFiltered": "{{count}} searches match the filters.",
       "new": "New search",
       "newPickClient": "Choose the client first",
@@ -134,7 +134,8 @@
       "titleRequired": "Enter a job title.",
       "saved": "{{name}} updated",
       "history": "History"
-    }
+    },
+    "brief": "Brief"
   },
   "quickAdd": {
     "account": "Client",

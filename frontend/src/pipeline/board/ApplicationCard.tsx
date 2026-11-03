@@ -1,9 +1,11 @@
 // One candidate card: name, consent badge, days in stage, Move menu. Draggable when a legal move exists.
 import { useDraggable } from '@dnd-kit/core';
 import { ActionIcon, Anchor, Card, Group, Menu, Stack, Text } from '@mantine/core';
+import { IconDots, IconShieldCheck } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { StatusBadge, useFormat, useLabel } from '../shared';
+import { ToneBadge } from '../../shell/components/ToneBadge';
+import { useFormat, useLabel } from '../shared';
 import { legalMoves, type Application } from './boardRules';
 import type { BoardProps } from './boardTypes';
 
@@ -11,11 +13,14 @@ const DAY_MS = 86_400_000;
 // Days in stage that turn the age cue amber, then red.
 const STAGE_WARN_DAYS = 30;
 const STAGE_DANGER_DAYS = 60;
+// Consent states that block or delay a move to the client: shown with an icon and words, never a colour chip alone.
+const CONSENT_PROBLEM = ['NOT_SENT', 'REFUSED', 'WITHDRAWN'];
 
 export function ApplicationCard({ app, props, dragging }: { app: Application; props: BoardProps; dragging: boolean }) {
   const { t } = useTranslation();
-  const { label } = useLabel();
+  const { label, def } = useLabel();
   const fmt = useFormat();
+  const consentProblem = CONSENT_PROBLEM.includes(app.person.consentStatus);
   const moves = props.readOnly ? [] : legalMoves(props.ref, app.stage);
   const draggable = moves.length > 0;
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: app.id, disabled: !draggable });
@@ -47,7 +52,7 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
     >
       <Group justify="space-between" wrap="nowrap" align="flex-start" gap="xs">
         <Stack gap={2} style={{ minWidth: 0 }}>
-          <Anchor component={Link} to={`/people/${p.id}`} fw={600} size="sm" onPointerDown={(e) => e.stopPropagation()}>
+          <Anchor component={Link} to={`/people/${p.id}`} fw={500} c="var(--color-ink)" underline="never" size="sm" onPointerDown={(e) => e.stopPropagation()}>
             {p.name}
           </Anchor>
           <Text size="xs" c="dimmed" truncate>
@@ -64,7 +69,7 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
                 onPointerDown={(e) => e.stopPropagation()}
                 onKeyDown={(e) => e.stopPropagation()}
               >
-                ⋯
+                <IconDots size={16} stroke={1.75} aria-hidden />
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
@@ -92,7 +97,11 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
           <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
             {t('pipeline.consentLabel')}:
           </Text>
-          <StatusBadge lifecycle="consent" value={p.consentStatus} />
+          <ToneBadge
+            tone={def('consent', p.consentStatus)?.tone ?? 'NEUTRAL'}
+            label={label('consent', p.consentStatus)}
+            icon={consentProblem ? <IconShieldCheck size={14} stroke={1.75} aria-hidden /> : undefined}
+          />
         </Group>
         <Text
           size="xs"
