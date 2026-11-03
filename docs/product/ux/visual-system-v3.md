@@ -71,6 +71,18 @@ Sources this enforces (read the named sections only if a rule is unclear): `docs
 - **Loading:** skeleton shaped like the content; never a lone spinner on a page.
 - **Header bar:** logo - global search (grows) - "New" (default/secondary style, plus icon) - avatar menu. The TR/EN switch moves into the avatar menu.
 
+## 6b. Create and edit forms (New menu, quick add, edit drawers)
+User verdict on the current ones: "like a text editor". Forms must feel like a fast tool, not a document.
+- **Ask for the minimum first.** A create form shows only what is needed to create the record (person: name, title, company, email; client: name, sector, city). Everything else sits under a "More details" disclosure, closed by default, or is added later on the record page.
+- **Context before content.** Pick *who/what* first, then *what happened*, then *when*. Quick add order: type (icon toggle row) - client/candidate (one combined search picker with object icons) - note - when.
+- **Layout:** modal width 560 px (`size="lg"`), never scrolls for the minimum fields. Two-column grid (`SimpleGrid cols={{ base: 1, sm: 2 }}`) for short fields; long fields (note, address) span both. Inputs in a row align on their top edge: no description text under one label and not the other.
+- **Labels, not paragraphs.** Field label only (12/500 ink3 per spec). No description line under labels; put a short hint in the placeholder ("e.g. Finance Director") or a tooltip icon. One line of required-field legend is removed: mark required with the asterisk only.
+- **Section labels** inside a form: 13/600 ink2 sentence case ("Contact details"), 24 px above, no uppercase, no divider boxes.
+- **Smart defaults:** owner = me, date = now, type = the most common one. Date/time: quick picks as chips ("Now", "Today", "Yesterday"; follow-up: "Tomorrow", "Next week", "Pick date") before the date input.
+- **Footer:** sticky, right-aligned: secondary "Cancel", primary verb with object ("Create candidate", "Save changes", "Log call"). Keyboard hint (Ctrl+Enter) as 12 ink3 text on the left. Primary is disabled only with a reason shown next to it.
+- **After create:** toast with "Open" link; never leave the user on an empty state.
+- **Edit drawers:** same rules; width 640 px; sections as above; sticky footer.
+
 ## 7. Motion and focus
 - 120 ms ease-out for hover/colour; 180 ms for panels. Respect `prefers-reduced-motion`.
 - Visible focus ring (`focus` colour, 2 px) on every interactive element.
