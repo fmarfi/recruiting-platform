@@ -141,11 +141,11 @@
     "actionTitle": "Action",
     "due": "Due date",
     "failed": "Could not save.",
-    "followUp": "Follow-up",
+    "followUp": "Add follow-up",
     "job": "Search",
     "modeAction": "Action",
     "modeActivity": "Activity",
-    "needContext": "Pick a client or a candidate.",
+    "needContext": "Pick a client or candidate.",
     "new": "Quick add",
     "note": "Note",
     "person": "Candidate",
@@ -159,6 +159,28 @@
       "EMAIL": "Email",
       "NOTE": "Note"
     },
-    "when": "When"
+    "when": "When",
+    "needNote": "Add a note.",
+    "needTitle": "Add the action.",
+    "needDue": "Pick a due date.",
+    "saveHint": "Ctrl+Enter to save",
+    "addAction": "Add action",
+    "logVerb": {
+      "CALL": "Log call",
+      "VISIT": "Log visit",
+      "MEETING": "Log meeting",
+      "EMAIL": "Log email",
+      "NOTE": "Log note"
+    },
+    "searchClients": "Search clients…",
+    "searchCandidates": "Search candidates…",
+    "notePlaceholder": "What was said or agreed",
+    "actionPlaceholder": "e.g. Send proposal",
+    "now": "Now",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "tomorrow": "Tomorrow",
+    "nextWeek": "Next week",
+    "pickDate": "Pick date"
   }
 }
