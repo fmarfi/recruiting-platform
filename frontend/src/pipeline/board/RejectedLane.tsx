@@ -1,4 +1,4 @@
-// Collapsed section below the board for rejected candidates; also a drop target (asks for a reason). Plain heading, no box.
+// "Rejected" panel below the pipeline panel (collapsed by default); also a drop target (asks for a reason).
 import { useDroppable } from '@dnd-kit/core';
 import { Anchor, Box, Button, Group, Menu, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
@@ -19,15 +19,14 @@ export function RejectedLane({ apps, props, activeApp }: { apps: Application[]; 
   return (
     <Box
       ref={setNodeRef}
-      mt="lg"
       className="pipe-lane"
       data-testid="lane-REJECTED"
       data-legal={legal === undefined ? undefined : String(legal)}
       data-over={isOver ? 'true' : undefined}
       style={{ opacity: legal === false ? 0.45 : 1 }}
     >
-      <SectionToggle title={t('pipeline.rejectedLane', { count: apps.length })} open={open} onToggle={() => setOpen((o) => !o)}>
-        <Stack gap="xs">
+      <SectionToggle title={t('pipeline.panelRejected')} count={apps.length} open={open} onToggle={() => setOpen((o) => !o)} testId="rejected-panel">
+        <Stack gap="xs" p="md">
           {apps.map((a) => (
             <Group key={a.id} justify="space-between" gap="xs">
               <Text size="sm">

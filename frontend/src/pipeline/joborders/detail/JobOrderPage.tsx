@@ -1,7 +1,8 @@
-// Job order page with the pipeline board (A-06, A-07, UX-03, UX-04). Header on the canvas, facts and brief below it, board in one panel.
-import { Alert, Anchor, Box, Button, Container, Group, Skeleton, Stack, Text } from '@mantine/core';
-import { IconPlus } from '@tabler/icons-react';
-import { useState, type ReactNode } from 'react';
+// Search (job order) page with the pipeline board (A-06, A-07, UX-03, UX-04). Record band with facts, full-width pipeline,
+// brief and details side by side, history last (visual system v3, section 5; reference: network/person).
+import { Alert, Anchor, Box, Button, Container, Group, Menu, Skeleton, SimpleGrid, Stack, Text } from '@mantine/core';
+import { IconDots, IconPlus } from '@tabler/icons-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../../api';
@@ -12,41 +13,19 @@ import { QuickAdd, type QuickAddContext } from '../../quickadd/QuickAdd';
 import { StatusBadge, problemText, useCurrentUser, useFormat, useLabel, type Schemas } from '../../shared';
 import { SectionToggle } from '../../shared/SectionToggle';
 import { StageGuardDialog } from '../../board/StageGuardDialog';
+import { DetailList } from '../../../shell/components/DetailList';
 import { EmptyState } from '../../../shell/components/EmptyState';
 import { ErrorBanner } from '../../../shell/components/ErrorBanner';
-import { PageHeader } from '../../../shell/components/PageHeader';
+import { Panel } from '../../../shell/components/Panel';
+import { RecordHeader } from '../../../shell/components/RecordHeader';
 import { SkeletonRows } from '../../../shell/components/SkeletonRows';
+import { ICON_SIZE, ICON_STROKE, SearchIcon } from '../../../shell/components/objectIcons';
 import { HistoryPanel } from '../../../shell/edit';
 import { AddCandidateDialog } from './AddCandidateDialog';
 import { JobOrderEditDrawer } from './JobOrderEditDrawer';
 import { JobStatusMenu } from './JobStatusMenu';
 import { MoveToast } from './MoveToast';
 import { useJobOrder } from './useJobOrder';
-
-const LABEL_STYLE = { color: 'var(--color-ink3)' } as const;
-
-/** Fact row under the title (v3 section 5): label 12 ink3 above value 14 ink, no boxes around the facts. */
-function FactRow({ items }: { items: { label: string; value: ReactNode }[] }) {
-  return (
-    <Box
-      component="dl"
-      m={0}
-      data-testid="job-highlights"
-      style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--space-3) var(--space-5)' }}
-    >
-      {items.map((h) => (
-        <div key={h.label} style={{ minWidth: 0 }}>
-          <Text component="dt" size="xs" fw={500} style={LABEL_STYLE}>
-            {h.label}
-          </Text>
-          <Text component="dd" m={0} size="sm" style={{ marginTop: 'var(--space-2)', color: 'var(--color-ink)', overflowWrap: 'anywhere' }}>
-            {h.value}
-          </Text>
-        </div>
-      ))}
-    </Box>
-  );
-}
 
 export function JobOrderPage() {
   const { id = '' } = useParams();
@@ -102,121 +81,174 @@ export function JobOrderPage() {
   }
 
   const next = def('jobOrder', j.status)?.next ?? [];
+  const rejectedCount = moves.apps.filter((a) => a.stage === 'REJECTED').length;
+  const showFilledAsk = moves.suggestFilled && next.some((n) => n.to === 'FILLED');
+  const showBanner = readOnly || showFilledAsk || !!moves.toast;
   const addBtn = (
     <Button leftSection={<IconPlus size={16} stroke={1.75} aria-hidden />} onClick={() => setAddOpen(true)}>
       {t('pipeline.addCandidate')}
     </Button>
   );
+  // Three actions: Log activity (secondary), Add candidate (the one primary), Edit inside the More menu.
+  const actions = (
+    <>
+      <Menu position="bottom-end" shadow="md" withinPortal>
+        <Menu.Target>
+          <Button variant="default" aria-label={t('pipeline.moreActions')}>
+            <IconDots size={ICON_SIZE} stroke={ICON_STROKE} />
+          </Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item onClick={() => setEditOpen(true)} data-testid="job-edit">
+            {t('pipeline.edit.action')}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      <Button variant="default" onClick={() => setLogCtx({ account: j.account, jobOrder: j })}>
+        {t('pipeline.logActivity')}
+      </Button>
+      {!readOnly && addBtn}
+    </>
+  );
 
   return (
-    <Container maw="var(--content-max-width)" fluid>
-      <PageHeader
-        breadcrumb={
-          <Anchor component={Link} to={`/accounts/${j.account.id}`} size="sm" c="var(--color-ink3)">
-            {j.account.name}
-          </Anchor>
-        }
-        title={j.title}
-        badge={
-          <JobStatusMenu
-            status={j.status}
-            isManager={isManager}
-            onChoose={(to, reasonRequired) => (reasonRequired ? setStatusAsk(to) : void changeStatus(to))}
-          />
-        }
-        actions={
-          <>
-            <Button variant="subtle" onClick={() => setEditOpen(true)} data-testid="job-edit">
-              {t('pipeline.edit.action')}
-            </Button>
-            <Button variant="default" onClick={() => setLogCtx({ account: j.account, jobOrder: j })}>
-              {t('pipeline.logActivity')}
-            </Button>
-            {!readOnly && addBtn}
-          </>
-        }
-      />
-      <FactRow
-        items={[
-          { label: t('pipeline.hl.client'), value: <Group gap={6}><Anchor component={Link} to={`/accounts/${j.account.id}`}>{j.account.name}</Anchor><StatusBadge lifecycle="account" value={j.account.status} /></Group> },
-          { label: t('pipeline.hl.location'), value: j.location || '-' },
-          { label: t('pipeline.hl.seniority'), value: j.seniority || '-' },
-          { label: t('pipeline.hl.owner'), value: j.owner.name },
-          { label: t('pipeline.hl.opened'), value: `${fmt.dateLong(j.openedOn)} (${t('pipeline.daysOpen', { count: j.daysOpen })})` },
-          { label: t('pipeline.hl.candidates'), value: `${j.activeCandidates}` },
-        ]}
-      />
-      {(j.feeTerms || j.description) && (
-        <Stack gap="sm" mt="xl" data-testid="job-brief">
-          <Text component="h2" m={0} fw={600} size="md">
-            {t('pipeline.brief')}
-          </Text>
-          {j.feeTerms && (
-            <Stack gap="xs">
-              <Text size="xs" fw={500} style={LABEL_STYLE}>
-                {t('pipeline.fee')}
-              </Text>
-              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                {j.feeTerms}
-              </Text>
-            </Stack>
-          )}
-          {j.description && (
-            <Text size="sm" style={{ whiteSpace: 'pre-wrap', color: 'var(--color-ink2)' }}>
-              {j.description}
-            </Text>
-          )}
-        </Stack>
+    <>
+      <div className="record-band" data-testid="record-band">
+        <RecordHeader
+          avatar={<SearchIcon size={32} stroke={ICON_STROKE} color="var(--color-ink3)" aria-hidden />}
+          name={j.title}
+          badge={
+            <JobStatusMenu
+              status={j.status}
+              isManager={isManager}
+              onChoose={(to, reasonRequired) => (reasonRequired ? setStatusAsk(to) : void changeStatus(to))}
+            />
+          }
+          subtitle={
+            <>
+              <Anchor component={Link} to={`/accounts/${j.account.id}`} size="sm">
+                {j.account.name}
+              </Anchor>
+              {j.location && `, ${j.location}`}
+            </>
+          }
+          actions={actions}
+          facts={[
+            { label: t('pipeline.hl.seniority'), value: j.seniority || '–' },
+            { label: t('pipeline.hl.owner'), value: j.owner.name },
+            { label: t('pipeline.hl.opened'), value: `${fmt.dateLong(j.openedOn)} (${t('pipeline.daysOpen', { count: j.daysOpen })})` },
+            { label: t('pipeline.hl.candidates'), value: j.activeCandidates },
+            { label: t('pipeline.factRejected'), value: rejectedCount },
+          ]}
+        />
+      </div>
+
+      {showBanner && (
+        <div className="record-banner">
+          <Stack gap="md">
+            {readOnly && (
+              <Alert color={j.status === 'FILLED' ? 'green' : 'gray'} data-testid="readonly-banner">
+                <Group justify="space-between">
+                  <Text size="sm">{t(j.status === 'FILLED' ? 'pipeline.bannerFilled' : 'pipeline.bannerCancelled')}</Text>
+                  {next.map((n) => (
+                    <Button key={n.to} size="compact-sm" disabled={n.managerOnly && !isManager} onClick={() => void changeStatus(n.to)}>
+                      {t('pipeline.reopenJob')}
+                    </Button>
+                  ))}
+                </Group>
+              </Alert>
+            )}
+            {showFilledAsk && (
+              <Alert color="green" withCloseButton onClose={() => moves.setSuggestFilled(false)}>
+                <Group justify="space-between">
+                  <Text size="sm">{t('pipeline.markFilledAsk')}</Text>
+                  <Button size="compact-sm" onClick={() => void changeStatus('FILLED')}>
+                    {t('pipeline.markFilled')}
+                  </Button>
+                </Group>
+              </Alert>
+            )}
+            {moves.toast && <MoveToast toast={moves.toast} onClose={() => moves.setToast(undefined)} onRefresh={appsRes.reload} />}
+          </Stack>
+        </div>
       )}
 
-      <Stack gap="md" mt="xl">
-        {readOnly && (
-          <Alert color={j.status === 'FILLED' ? 'green' : 'gray'} data-testid="readonly-banner">
-            <Group justify="space-between">
-              <Text size="sm">{t(j.status === 'FILLED' ? 'pipeline.bannerFilled' : 'pipeline.bannerCancelled')}</Text>
-              {next.map((n) => (
-                <Button key={n.to} size="compact-sm" disabled={n.managerOnly && !isManager} onClick={() => void changeStatus(n.to)}>
-                  {t('pipeline.reopenJob')}
-                </Button>
-              ))}
-            </Group>
-          </Alert>
-        )}
-        {moves.suggestFilled && next.some((n) => n.to === 'FILLED') && (
-          <Alert color="green" withCloseButton onClose={() => moves.setSuggestFilled(false)}>
-            <Group justify="space-between">
-              <Text size="sm">{t('pipeline.markFilledAsk')}</Text>
-              <Button size="compact-sm" onClick={() => void changeStatus('FILLED')}>
-                {t('pipeline.markFilled')}
-              </Button>
-            </Group>
-          </Alert>
-        )}
-        {moves.toast && <MoveToast toast={moves.toast} onClose={() => moves.setToast(undefined)} onRefresh={appsRes.reload} />}
+      <div className="record-body" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
+        <div className="record-main">
+          {appsRes.loading && moves.apps.length === 0 ? (
+            <Panel title={t('pipeline.panelPipeline')}>
+              <SkeletonRows n={4} />
+            </Panel>
+          ) : appsRes.error ? (
+            <ErrorBanner message={t('pipeline.loadFailed')} hint={t('pipeline.loadErrorHint')} onRetry={appsRes.reload} />
+          ) : moves.apps.length === 0 ? (
+            <Panel title={t('pipeline.panelPipeline')} count={0}>
+              <div data-testid="empty-pipeline">
+                <EmptyState title={t('pipeline.emptyTitle')} hint={t('pipeline.emptyBody')} actions={!readOnly ? addBtn : undefined} />
+              </div>
+            </Panel>
+          ) : (
+            // Board renders the "Pipeline" panel and the "Rejected" panel (one drag context for both).
+            <Board
+              apps={moves.apps}
+              ref={ref}
+              readOnly={readOnly}
+              onMove={(a, to, reason) => void moves.move(a, to, reason)}
+              onRemove={(a) => void moves.remove(a)}
+              onLogActivity={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })}
+            />
+          )}
 
-        {appsRes.loading && moves.apps.length === 0 ? (
-          <SkeletonRows n={4} />
-        ) : appsRes.error ? (
-          <ErrorBanner message={t('pipeline.loadFailed')} hint={t('pipeline.loadErrorHint')} onRetry={appsRes.reload} />
-        ) : moves.apps.length === 0 ? (
-          <div data-testid="empty-pipeline">
-            <EmptyState title={t('pipeline.emptyTitle')} hint={t('pipeline.emptyBody')} actions={!readOnly ? addBtn : undefined} />
-          </div>
-        ) : (
-          <Board
-            apps={moves.apps}
-            ref={ref}
-            readOnly={readOnly}
-            onMove={(a, to, reason) => void moves.move(a, to, reason)}
-            onRemove={(a) => void moves.remove(a)}
-            onLogActivity={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })}
-          />
-        )}
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+            <Panel
+              title={t('pipeline.brief')}
+              testId="job-brief"
+              empty={!j.description && !j.feeTerms ? t('pipeline.noBrief') : undefined}
+            >
+              <Stack gap="md">
+                {j.description && (
+                  <Text size="sm" c="var(--color-ink2)" style={{ whiteSpace: 'pre-wrap' }}>
+                    {j.description}
+                  </Text>
+                )}
+                <DetailList items={[{ label: t('pipeline.fee'), value: j.feeTerms ? <Box component="span" style={{ whiteSpace: 'pre-wrap' }}>{j.feeTerms}</Box> : undefined }]} />
+              </Stack>
+            </Panel>
+            <Panel title={t('pipeline.panelDetails')} testId="job-details">
+              <DetailList
+                items={[
+                  {
+                    label: t('pipeline.hl.client'),
+                    value: (
+                      <Group gap="xs" wrap="nowrap">
+                        <Anchor component={Link} to={`/accounts/${j.account.id}`} size="sm">
+                          {j.account.name}
+                        </Anchor>
+                        <StatusBadge lifecycle="account" value={j.account.status} />
+                      </Group>
+                    ),
+                  },
+                  { label: t('pipeline.hl.location'), value: j.location },
+                  { label: t('pipeline.hl.seniority'), value: j.seniority },
+                  { label: t('pipeline.hl.owner'), value: j.owner.name },
+                  { label: t('pipeline.hl.opened'), value: fmt.dateLong(j.openedOn) },
+                  { label: t('pipeline.list.status'), value: <StatusBadge lifecycle="jobOrder" value={j.status} /> },
+                  { label: t('pipeline.lastUpdated'), value: fmt.dateLong(j.updatedAt) },
+                ]}
+              />
+            </Panel>
+          </SimpleGrid>
 
-        <SectionToggle title={t('pipeline.edit.history')} open={historyOpen} onToggle={() => setHistoryOpen((o) => !o)} testId="job-history">
-          {historyOpen && <HistoryPanel entityType="JOB_ORDER" entityId={id} headingOrder={null} />}
-        </SectionToggle>
-      </Stack>
+          <SectionToggle title={t('pipeline.edit.history')} open={historyOpen} onToggle={() => setHistoryOpen((o) => !o)} testId="job-history">
+            {historyOpen && (
+              <Box p="md">
+                <HistoryPanel entityType="JOB_ORDER" entityId={id} headingOrder={null} />
+              </Box>
+            )}
+          </SectionToggle>
+        </div>
+      </div>
+
       <JobOrderEditDrawer job={j} opened={editOpen} onClose={() => setEditOpen(false)} onSaved={job.reload} />
       <AddCandidateDialog
         jobId={id}
@@ -246,6 +278,6 @@ export function JobOrderPage() {
           setStatusAsk(undefined);
         }}
       />
-    </Container>
+    </>
   );
 }
