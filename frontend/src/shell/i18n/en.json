@@ -156,7 +156,7 @@
       "inProcess": "Candidates in process",
       "placed": "Placed this year",
       "avgDaysOpen": "Average days open",
-      "avgNote": "My open searches"
+      "avgDaysOpenMine": "Average days open (mine)"
     },
     "jobs": "Open searches",
     "noJobs": "No open searches",

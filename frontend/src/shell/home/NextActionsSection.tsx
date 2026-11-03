@@ -1,7 +1,7 @@
 import { Box, Button, Group, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../components/EmptyState';
-import { HomePanel, HomeSection } from './HomeSection';
+import { Panel } from '../components/Panel';
 import { NextActionRow } from './NextActionRow';
 import type { NextAction } from './useMyDay';
 
@@ -23,8 +23,7 @@ export function NextActionsSection({ actions, today, undo, onDone, onSnooze, onA
     ['upcoming', actions.filter((a) => !a.overdue && a.dueOn !== today)],
   ];
   return (
-    <HomePanel>
-      <HomeSection title={t('myday.actions')}>
+    <Panel title={t('myday.actions')} count={actions.length}>
         {undo && (
           <Group justify="space-between" wrap="nowrap" gap="sm" py="var(--space-1)" role="status">
             <Text size="sm" c="var(--color-ink2)">
@@ -51,7 +50,6 @@ export function NextActionsSection({ actions, today, undo, onDone, onSnooze, onA
               </Box>
             ))
         )}
-      </HomeSection>
-    </HomePanel>
+    </Panel>
   );
 }
