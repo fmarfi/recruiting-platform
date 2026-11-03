@@ -47,7 +47,7 @@
     "newPerson": "New candidate",
     "addPerson": "Add person",
     "nextActions": "Next actions",
-    "noActivity": "No contact logged. Log your first call or meeting.",
+    "noActivity": "No activity logged yet.",
     "noConnections": "Who introduced you? Add the first connection.",
     "noOpenJobs": "No open searches available.",
     "noPipelines": "Not on any search yet.",
@@ -361,6 +361,14 @@
       "removeRow": "Remove row {{n}}",
       "tooManyTags": "At most 20 tags per person.",
       "saved": "{{name}} updated"
-    }
+    },
+    "dayGroup": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "personMore": "More actions",
+    "noCareer": "No career history recorded yet.",
+    "noNextActions": "No open next actions.",
+    "currentRole": "Present"
   }
 }
