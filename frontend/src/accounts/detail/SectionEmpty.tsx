@@ -1,14 +1,14 @@
-import { Box, Group, Text } from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
 import type { ReactNode } from 'react';
 
-/** Empty section on the account page: one sentence and, when one exists, the primary action for it. */
+/** Empty section on the account page: one sentence, centred, and when one exists the primary action for it. No box, no illustration. */
 export function SectionEmpty({ text, action }: { text: string; action?: ReactNode }) {
   return (
-    <Box data-testid="empty-state" p="md" style={{ border: 'thin dashed var(--color-borderStrong)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)' }}>
-      <Group justify="space-between" gap="sm">
-        <Text c="dimmed">{text}</Text>
-        {action}
-      </Group>
-    </Box>
+    <Stack data-testid="empty-state" align="center" gap="sm" py="lg">
+      <Text c="dimmed" ta="center">
+        {text}
+      </Text>
+      {action}
+    </Stack>
   );
 }

@@ -1,4 +1,4 @@
-import { Button, Group, Stack, Text } from '@mantine/core';
+import { Group, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../../api';
 import { StatusMenu } from '../../shell/components/StatusMenu';
@@ -6,6 +6,7 @@ import { fmtDate } from '../../shell/lib/format';
 import { useReference } from '../../shell/refdata/useReference';
 import { ReasonDialog } from '../components/ReasonDialog';
 import { StatusFailureAlert } from '../components/StatusFailureAlert';
+import { AddButton } from './AddButton';
 import { SectionEmpty } from './SectionEmpty';
 import { useStatusChange } from './useStatusChange';
 
@@ -23,7 +24,7 @@ function ProposalRow({ p, onChanged }: { p: Proposal; onChanged: () => void }) {
     <div>
       <Group justify="space-between" wrap="nowrap">
         <div>
-          <Text fw={600}>{p.title}</Text>
+          <Text fw={500}>{p.title}</Text>
           <Text size="sm" c="dimmed">
             {[p.feeAmount ? `${p.feeAmount} ${p.currency ?? ''}` : null, p.sentOn ? fmtDate(p.sentOn, i18n.language) : null].filter(Boolean).join(' - ')}
           </Text>
@@ -38,7 +39,7 @@ function ProposalRow({ p, onChanged }: { p: Proposal; onChanged: () => void }) {
 
 export function ProposalsTab({ proposals, onChanged, onAdd }: { proposals: Proposal[]; onChanged: () => void; onAdd: () => void }) {
   const { t } = useTranslation();
-  if (proposals.length === 0) return <SectionEmpty text={t('accounts.emptyProposals')} action={<Button size="compact-sm" variant="light" onClick={onAdd}>+ {t('accounts.newProposal')}</Button>} />;
+  if (proposals.length === 0) return <SectionEmpty text={t('accounts.emptyProposals')} action={<AddButton label={t('accounts.newProposal')} onClick={onAdd} />} />;
   return (
     <Stack gap="sm">
       {proposals.map((p) => (

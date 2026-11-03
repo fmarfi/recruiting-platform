@@ -1,4 +1,4 @@
-import { Anchor, Badge, Button, Card, Container, Grid, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core';
+import { Button, Card, Container, Grid, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -15,6 +15,7 @@ import { LogActivityDialog } from '../components/LogActivityDialog';
 import { OffLimitsBanner } from './OffLimitsBanner';
 import { AccountEditDrawer } from './AccountEditDrawer';
 import { AccountHeader } from './AccountHeader';
+import { AddButton } from './AddButton';
 import { ContactsTab } from './ContactsTab';
 import { DashboardStrip } from './DashboardStrip';
 import { JobsTab } from './JobsTab';
@@ -24,13 +25,14 @@ import { TimelinePanel } from './TimelinePanel';
 import { useAccountPage } from './useAccountPage';
 
 const tabStyle = { whiteSpace: 'nowrap' } as const;
+/** Tab count: tabular number after the label, in ink3 (visual system section 6). */
 const Count = ({ n }: { n: number }) => (
-  <Badge size="sm" variant="light" style={{ fontVariantNumeric: 'tabular-nums' }}>
+  <Text span size="sm" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
     {n}
-  </Badge>
+  </Text>
 );
 
-/** Account page (UX-05): header, dashboard strip, tabs and the timeline in one view. */
+/** Account page (UX-05): header, dashboard strip, tabs and the timeline in one view. Sections sit on the canvas, not in cards. */
 export function AccountPage() {
   const { t } = useTranslation();
   const { id = '' } = useParams();
@@ -68,25 +70,29 @@ export function AccountPage() {
 
   return (
     <Container maw="var(--content-max-width)" p={0}>
-      <Stack>
-        <Text size="sm">
-          <Anchor component={Link} to="/accounts">
-            {t('nav.accounts')}
-          </Anchor>{' '}
-          / {a.name}
-        </Text>
-        <OffLimitsBanner accountId={a.id} canManage={isManager} />
+      <Stack gap="lg">
         <AccountHeader account={a} onLog={() => setDialog('log')} onAddAction={() => setDialog('action')} onChanged={page.reloadAll} onEdit={() => setDialog('edit')} />
+        <OffLimitsBanner accountId={a.id} canManage={isManager} />
         <DashboardStrip dashboard={page.dashboard.data} onAddAction={() => setDialog('action')} />
         <Grid>
           <Grid.Col span={{ base: 12, md: 8 }}>
-            <Tabs defaultValue="jobs">
+            <Tabs defaultValue="jobs" variant="underline">
               <Tabs.List style={{ flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden' }}>
-                <Tabs.Tab value="jobs" style={tabStyle} rightSection={<Count n={jobs.length} />}>{t('accounts.tab.jobs')}</Tabs.Tab>
-                <Tabs.Tab value="contacts" style={tabStyle} rightSection={<Count n={contacts.length} />}>{t('accounts.tab.contacts')}</Tabs.Tab>
-                <Tabs.Tab value="relationships" style={tabStyle}>{t('accounts.tab.relationships')}</Tabs.Tab>
-                <Tabs.Tab value="proposals" style={tabStyle} rightSection={<Count n={proposals.length} />}>{t('accounts.tab.proposals')}</Tabs.Tab>
-                <Tabs.Tab value="history" style={tabStyle}>{t('accounts.tab.history')}</Tabs.Tab>
+                <Tabs.Tab value="jobs" style={tabStyle} rightSection={<Count n={jobs.length} />}>
+                  {t('accounts.tab.jobs')}
+                </Tabs.Tab>
+                <Tabs.Tab value="contacts" style={tabStyle} rightSection={<Count n={contacts.length} />}>
+                  {t('accounts.tab.contacts')}
+                </Tabs.Tab>
+                <Tabs.Tab value="relationships" style={tabStyle}>
+                  {t('accounts.tab.relationships')}
+                </Tabs.Tab>
+                <Tabs.Tab value="proposals" style={tabStyle} rightSection={<Count n={proposals.length} />}>
+                  {t('accounts.tab.proposals')}
+                </Tabs.Tab>
+                <Tabs.Tab value="history" style={tabStyle}>
+                  {t('accounts.tab.history')}
+                </Tabs.Tab>
                 <Tabs.Tab value="timeline" hiddenFrom="md" style={tabStyle}>
                   {t('accounts.tab.timeline')}
                 </Tabs.Tab>
@@ -94,9 +100,7 @@ export function AccountPage() {
               <Tabs.Panel value="jobs" pt="md">
                 {jobs.length > 0 && (
                   <Group justify="flex-end" mb="xs">
-                    <Button size="compact-sm" variant="light" onClick={() => setDialog('job')}>
-                      + {t('accounts.newJob')}
-                    </Button>
+                    <AddButton label={t('accounts.newJob')} onClick={() => setDialog('job')} />
                   </Group>
                 )}
                 <JobsTab jobs={jobs} onAdd={() => setDialog('job')} />
@@ -104,9 +108,7 @@ export function AccountPage() {
               <Tabs.Panel value="contacts" pt="md">
                 {contacts.length > 0 && (
                   <Group justify="flex-end" mb="xs">
-                    <Button size="compact-sm" variant="light" onClick={() => setDialog('contact')}>
-                      + {t('accounts.addContact')}
-                    </Button>
+                    <AddButton label={t('accounts.addContact')} onClick={() => setDialog('contact')} />
                   </Group>
                 )}
                 <ContactsTab onAdd={() => setDialog('contact')} contacts={contacts} showEnded={page.showEnded} onShowEnded={page.setShowEnded} accountId={a.id} onChanged={page.reloadAll} />
@@ -117,9 +119,7 @@ export function AccountPage() {
               <Tabs.Panel value="proposals" pt="md">
                 {proposals.length > 0 && (
                   <Group justify="flex-end" mb="xs">
-                    <Button size="compact-sm" variant="light" onClick={() => setDialog('proposal')}>
-                      + {t('accounts.newProposal')}
-                    </Button>
+                    <AddButton label={t('accounts.newProposal')} onClick={() => setDialog('proposal')} />
                   </Group>
                 )}
                 <ProposalsTab proposals={proposals} onChanged={page.reloadAll} onAdd={() => setDialog('proposal')} />
