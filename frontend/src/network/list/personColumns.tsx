@@ -1,10 +1,12 @@
 // Column definitions and phone card of the network grid. Sort keys are the ones /people documents.
 import { ActionIcon, Anchor, Badge, Group, Stack, Text } from '@mantine/core';
+import { IconMail } from '@tabler/icons-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { StatusBadge, useFormat, useLabel, type Schemas } from '../../pipeline/shared';
 import type { ColumnDef } from '../../shell/grid';
+import { ICON_SIZE, ICON_STROKE } from '../../shell/components/objectIcons';
 import { splitCvMatch } from './PoolFilters';
 
 export type Person = Schemas['PersonSummary'];
@@ -36,7 +38,7 @@ export function usePersonColumns(withCv = false): ColumnDef<Person>[] {
         minWidth: 160,
         accessor: (p) => p.name,
         cell: (p) => (
-          <Anchor component={Link} to={`/people/${p.id}`} fw={600} c="var(--color-ink)" underline="hover">
+          <Anchor component={Link} to={`/people/${p.id}`} fw={500} c="var(--color-ink)" underline="never">
             {p.name}
           </Anchor>
         ),
@@ -80,7 +82,7 @@ export function usePersonColumns(withCv = false): ColumnDef<Person>[] {
         cell: (p) =>
           p.email ? (
             <ActionIcon component="a" href={`mailto:${p.email}`} variant="subtle" size="sm" aria-label={`${t('network.fields.email')}: ${p.name}`} title={p.email}>
-              {'✉'}
+              <IconMail size={ICON_SIZE} stroke={ICON_STROKE} />
             </ActionIcon>
           ) : (
             '-'
@@ -97,7 +99,7 @@ export function PersonCard({ p }: { p: Person }) {
   return (
     <Stack gap={2}>
       <Group gap="xs">
-        <Anchor component={Link} to={`/people/${p.id}`} fw={600}>
+        <Anchor component={Link} to={`/people/${p.id}`} fw={500} underline="never">
           {p.name}
         </Anchor>
         <Text span size="xs" c="dimmed">
