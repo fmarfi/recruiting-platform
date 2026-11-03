@@ -156,7 +156,7 @@
       "inProcess": "Süreçteki aday",
       "placed": "Bu yıl yerleşen",
       "avgDaysOpen": "Ortalama açık gün",
-      "avgNote": "Açık aramalarım"
+      "avgDaysOpenMine": "Ortalama açık gün (benim)"
     },
     "jobs": "Açık aramalar",
     "noJobs": "Açık arama yok",
