@@ -126,7 +126,13 @@ export function PersonPage() {
           <Stack gap="md">
             <RelationshipSnapshot person={p} activities={activities} actions={d.actions.data?.content ?? []} linkCount={links.length} jobCount={apps.length} />
             <ProfileSection person={p} />
-            <OverviewTab person={p} actions={d.actions.data?.content ?? []} roles={d.roles.data ?? []} />
+            <OverviewTab
+              person={p}
+              actions={d.actions.data?.content ?? []}
+              roles={d.roles.data ?? []}
+              onAddAction={() => setDialog('action')}
+              onEdit={() => setDialog('edit')}
+            />
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="map">
