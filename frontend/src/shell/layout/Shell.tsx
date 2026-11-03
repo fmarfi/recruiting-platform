@@ -1,4 +1,5 @@
 import { ActionIcon, AppShell, Box, Burger, Group } from '@mantine/core';
+import { IconChevronLeft, IconChevronRight, IconPlus } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,10 +7,10 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { UndoToastProvider } from '../edit';
 import { tokens } from '../../theme/tokens';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
+import { ICON_SIZE_NAV, ICON_STROKE } from '../components/objectIcons';
 import { CommandButton, useCommandHotkey } from '../command/CommandButton';
 import { CommandPalette } from '../command/CommandPalette';
 import { GlobalSearch } from '../search/GlobalSearch';
-import { LanguageSwitch } from './LanguageSwitch';
 import { Logo } from './Logo';
 import { NavItems } from './NavItems';
 import { NewMenu } from './NewMenu';
@@ -69,7 +70,6 @@ export function Shell() {
           <Box visibleFrom="sm">
             <NewMenu onChanged={() => setVersion((v) => v + 1)} />
           </Box>
-          <LanguageSwitch />
           <UserMenu />
         </Group>
       </AppShell.Header>
@@ -84,9 +84,7 @@ export function Shell() {
             aria-expanded={!collapsed}
             title={collapsed ? t('shell.expandNav') : t('shell.collapseNav')}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false">
-              {collapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}
-            </svg>
+            {collapsed ? <IconChevronRight size={ICON_SIZE_NAV} stroke={ICON_STROKE} aria-hidden /> : <IconChevronLeft size={ICON_SIZE_NAV} stroke={ICON_STROKE} aria-hidden />}
           </button>
         )}
       </AppShell.Navbar>
@@ -108,9 +106,7 @@ export function Shell() {
             onClick={() => setFab(true)}
             style={{ position: 'fixed', right: 'var(--space-4)', bottom: 'var(--space-4)', zIndex: 150, boxShadow: 'var(--shadow-pop)' }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden focusable="false">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+            <IconPlus size={22} stroke={ICON_STROKE} aria-hidden />
           </ActionIcon>
           <QuickAdd opened={fab} onClose={() => setFab(false)} onSaved={() => setVersion((v) => v + 1)} />
         </>
