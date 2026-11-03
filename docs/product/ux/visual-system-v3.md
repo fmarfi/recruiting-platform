@@ -11,7 +11,7 @@ Sources this enforces (read the named sections only if a rule is unclear): `docs
 The product is sold to mid-size firms (tens to a few hundred users, years of data). A screen passes only if it would survive an IT/procurement demo next to Salesforce, Bullhorn or Invenias. Concretely:
 - **Scale:** every list is built for 10,000+ rows: server-side paging and sort, total count in the title, sticky header, saved views, select-all-matching for bulk actions. No screen assumes a short list.
 - **Many users:** every record shows owner and "Last updated by <name>, <time>"; activity is attributed; history is one click away.
-- **Permissions are visible:** an action the user may not take is disabled with a tooltip saying why, never silently missing or failing.
+- **Permissions are visible (post-pilot; role work is postponed, do not build it now):** an action the user may not take is disabled with a tooltip saying why, never silently missing or failing.
 - **Trust:** destructive actions name the record ("Archive Lale Yapi Holding?"); reversible actions offer Undo instead of a confirm; errors say what happened and what to do, with no stack traces or raw codes.
 - **Keyboard and speed:** every primary flow can be finished with the keyboard; Ctrl+K reaches every record and action; Ctrl+Enter saves forms; Esc closes.
 - **Accessibility:** WCAG 2.1 AA (contrast, focus, labels, 44 px touch targets on phone).
