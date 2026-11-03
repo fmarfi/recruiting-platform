@@ -1,7 +1,10 @@
-import { Alert, Box, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
+import { Alert, Anchor, Avatar, Button, Group, Text } from '@mantine/core';
 import { useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { api, type components } from '../../api';
+import { PageHeader } from '../../shell/components/PageHeader';
+import { ClientIcon, ICON_SIZE_NAV, ICON_STROKE } from '../../shell/components/objectIcons';
 import { StatusMenu } from '../../shell/components/StatusMenu';
 import { InlineEditField, useUndoToast } from '../../shell/edit';
 import { fmtRelative } from '../../shell/lib/format';
@@ -20,7 +23,7 @@ interface Props {
   onEdit: () => void;
 }
 
-/** Name, editable status badge, owner line and the two quick actions (A-02, UX-06). */
+/** Name, editable status badge, the fact row and the actions, on the canvas via PageHeader (A-02, UX-06). */
 export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdit }: Props) {
   const { t, i18n } = useTranslation();
   const ref = useReference();
@@ -63,52 +66,62 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
     onChanged();
   };
   return (
-    <Card withBorder>
-      <Stack gap="xs">
-        <Group justify="space-between" align="flex-start">
-          <Group>
+    <>
+      <PageHeader
+        breadcrumb={
+          <Anchor component={Link} to="/accounts" underline="hover" c="var(--color-ink3)">
+            {t('nav.accounts')}
+          </Anchor>
+        }
+        title={
+          <Group gap="sm" wrap="nowrap" align="center">
+            <Avatar size={40} radius="xl" aria-hidden style={{ background: 'var(--color-surface2)', color: 'var(--color-ink2)', flex: 'none' }}>
+              <ClientIcon size={ICON_SIZE_NAV} stroke={ICON_STROKE} />
+            </Avatar>
             <InlineEditField
               label={t('accounts.edit.name')}
               value={a.name}
               validate={(v) => (v.trim() ? null : t('accounts.edit.nameRequired'))}
               display={(v) => (
-                <Title order={1} data-testid="screen-title">
+                <Text component="span" fw={600} style={{ fontSize: 'var(--mantine-h1-font-size)', lineHeight: 1.25 }}>
                   {v}
-                </Title>
+                </Text>
               )}
               onSave={(v) => rename(v, version.current)}
               onUndo={(prev) => rename(prev, renamed.current)}
             />
-            <StatusMenu kind="account" value={a.status} onMove={change.move} />
           </Group>
-          <Button variant="subtle" onClick={onEdit}>
-            {t('accounts.edit.action')}
-          </Button>
-          <Group visibleFrom="sm">
-            <Button onClick={onLog}>
-              {t('accounts.logActivity')}
+        }
+        badge={<StatusMenu kind="account" value={a.status} onMove={change.move} />}
+        actions={
+          <>
+            <Button variant="default" onClick={onEdit}>
+              {t('accounts.edit.action')}
             </Button>
             <Button variant="default" onClick={onAddAction}>
               {t('accounts.addAction')}
             </Button>
-          </Group>
-        </Group>
-        <Box component="dl" m={0} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: 'var(--space-3) var(--space-5)' }}>
-          {facts.map((f) => (
-            <div key={f.label} style={{ minWidth: 0 }}>
-              <Text component="dt" size="xs" c="dimmed">
-                {f.label}
-              </Text>
-              <Text component="dd" m={0} fw={600} style={{ overflowWrap: 'anywhere' }}>
-                {f.value ?? '-'}
-              </Text>
-            </div>
-          ))}
-        </Box>
-        {change.failure && <StatusFailureAlert failure={change.failure} />}
-        {a.status === 'CLOSED' && <Alert color="gray">{t('accounts.closedBanner')}</Alert>}
-      </Stack>
+            <Button onClick={onLog}>{t('accounts.logActivity')}</Button>
+          </>
+        }
+        subtitle={
+          <span style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: 'var(--space-3) var(--space-5)' }}>
+            {facts.map((f) => (
+              <span key={f.label} style={{ minWidth: 0 }}>
+                <Text span display="block" size="xs" c="dimmed" fw={500} style={{ marginBottom: 'var(--space-2)' }}>
+                  {f.label}
+                </Text>
+                <Text span display="block" c="var(--color-ink)" fw={500} style={{ overflowWrap: 'anywhere' }}>
+                  {f.value ?? '-'}
+                </Text>
+              </span>
+            ))}
+          </span>
+        }
+      />
+      {change.failure && <StatusFailureAlert failure={change.failure} />}
+      {a.status === 'CLOSED' && <Alert color="gray">{t('accounts.closedBanner')}</Alert>}
       <ReasonDialog opened={!!change.pending} target={change.pending ? ref.label('account', change.pending.to) : ''} onConfirm={change.confirm} onCancel={change.cancel} />
-    </Card>
+    </>
   );
 }

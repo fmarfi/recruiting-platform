@@ -1,20 +1,21 @@
 import { Button, Select, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import type { components } from '../../api';
+import { ActivityIcon, CandidateIcon, ClientIcon, ContactIcon, FeeIcon, ICON_SIZE, ICON_STROKE, SearchIcon } from '../../shell/components/objectIcons';
 import { fmtDate } from '../../shell/lib/format';
 import { useReference } from '../../shell/refdata/useReference';
 import { SectionEmpty } from './SectionEmpty';
 
 type Entry = components['schemas']['TimelineEntry'];
 const KINDS = ['ACCOUNT_STATUS', 'ACTIVITY', 'PROPOSAL', 'JOB_ORDER', 'CONTACT', 'CANDIDATE'];
-/** One colour per activity type, so the dot alone tells the types apart. */
-const DOT: Record<string, string> = {
-  ACCOUNT_STATUS: 'var(--color-brass)',
-  ACTIVITY: 'var(--color-accent)',
-  PROPOSAL: 'var(--color-info)',
-  JOB_ORDER: 'var(--color-success)',
-  CONTACT: 'var(--color-ink3)',
-  CANDIDATE: 'var(--color-warning)',
+/** One object icon per activity type (visual system section 6), shown in ink3. */
+const KIND_ICON: Record<string, typeof ClientIcon> = {
+  ACCOUNT_STATUS: ClientIcon,
+  ACTIVITY: ActivityIcon,
+  PROPOSAL: FeeIcon,
+  JOB_ORDER: SearchIcon,
+  CONTACT: ContactIcon,
+  CANDIDATE: CandidateIcon,
 };
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -67,29 +68,36 @@ export function TimelinePanel({ entries, kind, onKind, onLog }: Props) {
         data={[{ value: 'ALL', label: t('accounts.all') }, ...KINDS.map((k) => ({ value: k, label: t(`accounts.kind.${k}`) }))]}
       />
       {entries.length === 0 ? (
-        <SectionEmpty text={t('accounts.emptyTimeline')} action={onLog && <Button size="compact-sm" variant="light" onClick={onLog}>{t('accounts.logActivity')}</Button>} />
+        <SectionEmpty text={t('accounts.emptyTimeline')} action={onLog && <Button size="sm" variant="default" onClick={onLog}>{t('accounts.logActivity')}</Button>} />
       ) : (
         <Stack gap="md" style={{ maxHeight: 640, overflowY: 'auto' }}>
           {[...groups.values()].map((g) => (
             <section key={g.key} aria-label={g.label}>
-              <Text size="xs" c="dimmed" fw={600} style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--color-surface)', paddingBlock: 'var(--space-1)' }}>
+              <Text size="xs" c="dimmed" fw={500} style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--color-surface)', paddingBlock: 'var(--space-1)' }}>
                 {g.label}
               </Text>
               <Stack component="ol" gap={0} m={0} p={0} style={{ listStyle: 'none' }}>
-                {g.items.map((e) => (
-                  <li key={e.id} style={{ position: 'relative', borderLeft: 'thin solid var(--color-border)', marginLeft: 'var(--space-1)', padding: '0 0 var(--space-4) var(--space-4)' }}>
-                    <span aria-hidden style={{ position: 'absolute', left: 'calc(var(--badge-dot) * -0.5)', top: 'var(--space-1)', width: 'var(--badge-dot)', height: 'var(--badge-dot)', borderRadius: '50%', background: DOT[e.kind] ?? 'var(--color-ink3)', boxShadow: '0 0 0 var(--space-1) var(--color-surface)' }} />
-                    <Text size="xs" c="dimmed">
-                      {e.actor?.name ?? t('accounts.system')} - <time dateTime={e.occurredAt}>{new Date(e.occurredAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}</time>
-                    </Text>
-                    <Text size="sm">{text(e)}</Text>
-                    {e.reason && (
-                      <Text size="xs" c="dimmed">
-                        {e.reason}
-                      </Text>
-                    )}
-                  </li>
-                ))}
+                {g.items.map((e) => {
+                  const Icon = KIND_ICON[e.kind] ?? ActivityIcon;
+                  return (
+                    <li key={e.id} style={{ display: 'flex', gap: 'var(--space-3)', padding: 'var(--space-2) 0' }}>
+                      <Icon size={ICON_SIZE} stroke={ICON_STROKE} aria-hidden style={{ color: 'var(--color-ink3)', flex: 'none', marginTop: 2 }} />
+                      <div style={{ minWidth: 0 }}>
+                        <Text size="sm" c="var(--color-ink2)">
+                          {text(e)}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {e.actor?.name ?? t('accounts.system')} - <time dateTime={e.occurredAt}>{new Date(e.occurredAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}</time>
+                        </Text>
+                        {e.reason && (
+                          <Text size="xs" c="dimmed">
+                            {e.reason}
+                          </Text>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </Stack>
             </section>
           ))}
