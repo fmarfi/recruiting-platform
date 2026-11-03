@@ -24,6 +24,7 @@
     "backTo": "Back to {{stage}}",
     "changeStatus": "Change status",
     "daysOpen": "{{count}} days open",
+    "daysInStage": "{{count}} days in stage",
     "emptyBody": "Add the first candidate to start the pipeline.",
     "emptyColumn": "Empty",
     "emptyTitle": "No candidates yet",
