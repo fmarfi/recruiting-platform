@@ -185,6 +185,10 @@
       "saved": "{{name}} updated",
       "statusChanged": "Status changed to {{status}}",
       "tagsFailed": "Saved, but the tags could not be changed. Try the tags again."
-    }
+    },
+    "namePlaceholder": "Company name",
+    "moreDetails": "More details",
+    "createClient": "Create client",
+    "saveHint": "Ctrl+Enter to save"
   }
 }
