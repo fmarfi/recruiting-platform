@@ -51,7 +51,13 @@ The product is sold to mid-size firms (tens to a few hundred users, years of dat
 - **No panel inside a panel.** Inside a panel, separate groups with a 1 px divider or 24 px space.
 - No coloured top borders, left stripes, gradients or decorative backgrounds.
 - Radius: 4 for chips/badges/segmented controls, 6 for inputs/buttons, 8 for panels, 12 for dialogs. **Nothing pill-shaped or oval** except avatars. Filter options are square-cornered chips or a select, never rounded pills.
-- **Cards are the exception, not the layout.** A page is: header, toolbar, then content sitting directly on the canvas or in ONE white panel (a table, a board, a form). Page sections are separated by headings and space, not by wrapping each in a card. Allowed panels: the main table, a form, a dialog, KPI tiles, and a record page's side column. Not allowed: a card around a filter bar, around a page header, around a single list, or around each section of a record page.
+- **Few large panels, never loose text, never small cards.** (User feedback, both ways: "everything is in a card" was wrong, and "text spat on a blank page that can't be told apart" was also wrong.) Rules:
+  - The beige canvas holds only: the page title/header band, the list toolbar, and panels. **Any other content (facts, lists, timelines, text) lives inside a white panel.**
+  - A panel is a *region*, not a decoration: it has a **panel header** (h2 16/600 ink + optional count and right-aligned actions, 12 px vertical padding, 1 px divider below) and a body. Use the shared `Panel` component.
+  - Inside a panel: rows separated by 1 px dividers, groups by a divider or 24 px. No panel inside a panel, no tinted boxes inside a panel.
+  - Typical counts: list page = 1 panel (the table). Record page = 2 to 4 panels (see section 5). Home = KPI strip + 2 or 3 panels.
+  - Not allowed: a card around a filter bar, each fact in its own box, a row of many small cards, or loose paragraphs on the canvas.
+- **Label/value pairs** always use the shared `DetailList`: a two-column grid, label 13/400 ink3 in a fixed 140 px column, value 14/500 ink; rows 8 px apart; empty value shows "–" in ink3. Never inline "Label: value" sentences.
 
 ## 5. Page anatomy (every routed page)
 ```
@@ -64,7 +70,19 @@ The product is sold to mid-size firms (tens to a few hundred users, years of dat
 [Content]
 ```
 - Use the shared `PageHeader` for every page. Max one primary button per page, max two secondary; more goes into a "More" (`...`) menu.
-- Record pages: under the title a **fact row** of 4 to 6 facts (label 12 ink3 above value 14 ink), no boxes around facts.
+- **Record pages** (client, candidate, search) use the shared `RecordLayout`:
+```
+[Header band: white surface, full width, 1 px bottom border]
+  breadcrumb / avatar or object icon 40 px / serif name + status badge / subtitle (title, company) / actions right
+  fact strip: 4-6 key facts, label 12 ink3 above value 14/500 ink, separated by 1 px vertical dividers
+  tabs (underline) sit at the bottom edge of the band
+[Optional full-width banner: consent / off-limits problem]
+[Body: two columns on >= 1200 px]
+  main (2/3): the active tab's panels (e.g. "Activity", "Career", "Pipeline")
+  aside (1/3): "Details" panel (DetailList of all fields + "Last updated by"), "Next actions" panel
+  phone: one column, aside below main
+```
+- Section titles inside the body are panel headers, never free-floating h2 on the canvas.
 
 ## 6. Components
 - **Icons:** `@tabler/icons-react` only, outline, stroke 1.75, 16 px in buttons/menus/tables, 18 px in navigation. No hand-drawn SVG, no text glyphs ("+", ">", "x") as icons, no emoji. One icon per object type everywhere, exported from `shell/components/objectIcons.ts`: Client `IconBuilding`, Contact `IconIdBadge2`, Search `IconTargetArrow`, Candidate `IconUserStar`, Person `IconUser`, Activity `IconMessages`, Task `IconCheckbox`, Consent `IconShieldCheck`, Off-limits `IconHandStop`, Exposure `IconEye`, Fee `IconCoins`, Settings `IconSettings`, Home `IconHome`.
