@@ -1,10 +1,12 @@
-import { Alert, Anchor, Avatar, Button, Group, Text } from '@mantine/core';
+// Client header (visual system v3, sections 5 and 6b): RecordHeader band content, same shape as the person header.
+import { Alert, Anchor, Button, Menu } from '@mantine/core';
+import { IconDots } from '@tabler/icons-react';
 import { useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api, type components } from '../../api';
-import { PageHeader } from '../../shell/components/PageHeader';
-import { ClientIcon, ICON_SIZE_NAV, ICON_STROKE } from '../../shell/components/objectIcons';
+import { ClientIcon, ICON_SIZE, ICON_STROKE } from '../../shell/components/objectIcons';
+import { RecordHeader } from '../../shell/components/RecordHeader';
 import { StatusMenu } from '../../shell/components/StatusMenu';
 import { InlineEditField, useUndoToast } from '../../shell/edit';
 import { fmtRelative } from '../../shell/lib/format';
@@ -18,13 +20,15 @@ type Account = components['schemas']['Account'];
 interface Props {
   account: Account;
   onLog: () => void;
+  onAddJob: () => void;
   onAddAction: () => void;
   onChanged: () => void;
   onEdit: () => void;
+  tabs?: ReactNode;
 }
 
-/** Name, editable status badge, the fact row and the actions, on the canvas via PageHeader (A-02, UX-06). */
-export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdit }: Props) {
+/** Name, editable status badge, subtitle, fact strip, actions and tabs in the RecordLayout band (A-02, UX-06). */
+export function AccountHeader({ account: a, onLog, onAddJob, onAddAction, onChanged, onEdit, tabs }: Props) {
   const { t, i18n } = useTranslation();
   const ref = useReference();
   const showUndo = useUndoToast();
@@ -51,12 +55,11 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
     t('shell.saveError'),
   );
   const facts: { label: string; value: ReactNode }[] = [
-    { label: t('accounts.sector'), value: a.sector },
-    { label: t('accounts.city'), value: a.city },
     { label: t('accounts.owner'), value: a.owner.name },
     { label: t('accounts.openSearches'), value: a.openJobCount },
     { label: t('accounts.lastActivity'), value: fmtRelative(a.lastActivityAt, i18n.language) },
   ];
+  const subline = [a.sector, a.city].filter(Boolean).join(', ');
   const renamed = useRef(a.version);
   const rename = async (name: string, expect: number) => {
     const r = await api.PATCH('/accounts/{id}', { ...statusPath, body: { name: name.trim(), version: expect } });
@@ -67,57 +70,46 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
   };
   return (
     <>
-      <PageHeader
+      <RecordHeader
         breadcrumb={
-          <Anchor component={Link} to="/accounts" underline="hover" c="var(--color-ink3)">
+          <Anchor component={Link} to="/accounts" size="sm">
             {t('nav.accounts')}
           </Anchor>
         }
-        title={
-          <Group gap="sm" wrap="nowrap" align="center">
-            <Avatar size={40} radius="xl" aria-hidden style={{ background: 'var(--color-surface2)', color: 'var(--color-ink2)', flex: 'none' }}>
-              <ClientIcon size={ICON_SIZE_NAV} stroke={ICON_STROKE} />
-            </Avatar>
-            <InlineEditField
-              label={t('accounts.edit.name')}
-              value={a.name}
-              validate={(v) => (v.trim() ? null : t('accounts.edit.nameRequired'))}
-              display={(v) => (
-                <Text component="span" fw={600} style={{ fontSize: 'var(--mantine-h1-font-size)', lineHeight: 1.25 }}>
-                  {v}
-                </Text>
-              )}
-              onSave={(v) => rename(v, version.current)}
-              onUndo={(prev) => rename(prev, renamed.current)}
-            />
-          </Group>
+        avatar={<ClientIcon size={32} stroke={ICON_STROKE} color="var(--color-ink3)" aria-hidden />}
+        name={
+          <InlineEditField
+            label={t('accounts.edit.name')}
+            value={a.name}
+            validate={(v) => (v.trim() ? null : t('accounts.edit.nameRequired'))}
+            display={(v) => <span>{v}</span>}
+            onSave={(v) => rename(v, version.current)}
+            onUndo={(prev) => rename(prev, renamed.current)}
+          />
         }
         badge={<StatusMenu kind="account" value={a.status} onMove={change.move} />}
+        subtitle={subline || undefined}
         actions={
           <>
-            <Button variant="default" onClick={onEdit}>
-              {t('accounts.edit.action')}
-            </Button>
-            <Button variant="default" onClick={onAddAction}>
-              {t('accounts.addAction')}
+            <Menu position="bottom-end" shadow="md" withinPortal>
+              <Menu.Target>
+                <Button variant="default" aria-label={t('accounts.record.moreActions')}>
+                  <IconDots size={ICON_SIZE} stroke={ICON_STROKE} />
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={onEdit}>{t('accounts.edit.action')}</Menu.Item>
+                <Menu.Item onClick={onAddAction}>{t('accounts.addAction')}</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            <Button variant="default" onClick={onAddJob}>
+              {t('accounts.newJob')}
             </Button>
             <Button onClick={onLog}>{t('accounts.logActivity')}</Button>
           </>
         }
-        subtitle={
-          <span style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: 'var(--space-3) var(--space-5)' }}>
-            {facts.map((f) => (
-              <span key={f.label} style={{ minWidth: 0 }}>
-                <Text span display="block" size="xs" c="dimmed" fw={500} style={{ marginBottom: 'var(--space-2)' }}>
-                  {f.label}
-                </Text>
-                <Text span display="block" c="var(--color-ink)" fw={500} style={{ overflowWrap: 'anywhere' }}>
-                  {f.value ?? '-'}
-                </Text>
-              </span>
-            ))}
-          </span>
-        }
+        facts={facts}
+        tabs={tabs}
       />
       {change.failure && <StatusFailureAlert failure={change.failure} />}
       {a.status === 'CLOSED' && <Alert color="gray">{t('accounts.closedBanner')}</Alert>}

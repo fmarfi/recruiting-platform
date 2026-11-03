@@ -189,6 +189,18 @@
     "namePlaceholder": "Company name",
     "moreDetails": "More details",
     "createClient": "Create client",
-    "saveHint": "Ctrl+Enter to save"
+    "saveHint": "Ctrl+Enter to save",
+    "record": {
+      "overview": "Overview",
+      "activity": "Activity",
+      "details": "Details",
+      "nextActions": "Next actions",
+      "noNextAction": "No next action set.",
+      "moreActions": "More actions",
+      "website": "Website",
+      "status": "Status",
+      "notes": "Notes",
+      "lastUpdated": "Last updated"
+    }
   }
 }
