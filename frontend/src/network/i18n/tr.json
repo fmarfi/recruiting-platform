@@ -7,6 +7,7 @@
     "all": "Tümü",
     "career": "Kariyer",
     "clear": "Temizle",
+    "clearFilters": "Filtreleri temizle",
     "consentFailed": "Onay isteği gönderilemedi.",
     "consentNoEmail": "Bu kişinin e-posta adresi yok.",
     "consentTo": "{{email}} adresine onay isteği gönderilecek.",
@@ -71,6 +72,7 @@
       "files": "CV dosyaları",
       "exposure": "Sunum geçmişi"
     },
+    "tagChip": "Etiket: {{tag}}",
     "types": {
       "EXECUTIVE": "Yönetici",
       "CLIENT_CONTACT": "Müşteri kontağı",

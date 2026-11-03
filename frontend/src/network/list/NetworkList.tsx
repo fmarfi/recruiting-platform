@@ -1,6 +1,6 @@
 // Network list (A-12): who do we know and who should I contact? Smart lists, DataGrid (columns, sort, density, saved views, CSV) and bulk consent requests.
 import { AppPagination } from '../../shell/components/AppPagination';
-import { Alert, Badge, Button, Card, Chip, CloseButton, Container, Group, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Badge, Box, Button, Card, Chip, CloseButton, Collapse, Container, Group, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,11 @@ import { PersonCard, usePersonColumns, type Person } from './personColumns';
 import { EXPORT_LIMIT, fetchAllPeople, usePeople, type PeopleFilters } from './usePeople';
 
 const GRID_ID = 'network';
+
+/** Number of active advanced filter groups (the count on the Filters button). Search and All/Mine are not counted. */
+const advancedCount = (x: ViewFilters) => [x.staleDays, x.consent, x.types.length, x.tags.length, x.channels.length, x.cv, x.shareable].filter(Boolean).length;
+
+type ActiveChip = { key: string; label: string; remove: () => void };
 
 export function NetworkList() {
   const { t, i18n } = useTranslation();
@@ -50,6 +55,18 @@ export function NetworkList() {
   const change = (patch: Partial<ViewFilters>) => set({ ...f, ...patch });
   const filtered = !!(f.q || f.types.length || f.mine || f.consent || f.staleDays || f.city || f.company || f.tags.length || f.channels.length || f.cv || f.shareable);
   const sort = viewSort(f);
+  // Open on load when the URL already carries advanced filters; after that the Filters button owns the panel.
+  const advanced = advancedCount(f);
+  const [advancedOpen, setAdvancedOpen] = useState(advanced > 0);
+  const clearAdvanced = () => change({ staleDays: 0, consent: undefined, types: [], tags: [], channels: [], cv: '', shareable: false });
+  const chips: ActiveChip[] = [];
+  if (f.staleDays) chips.push({ key: 'stale', label: `${t('network.filterNotContacted')}: ${t('network.daysAgo', { count: f.staleDays })}`, remove: () => change({ staleDays: 0 }) });
+  if (f.consent) chips.push({ key: 'consent', label: `${t('network.fields.consent')}: ${label('consent', f.consent)}`, remove: () => change({ consent: undefined }) });
+  f.types.forEach((x) => chips.push({ key: `type-${x}`, label: `${t('network.fields.type')}: ${t(`network.types.${x}`)}`, remove: () => change({ types: f.types.filter((y) => y !== x) }) }));
+  f.tags.forEach((x) => chips.push({ key: `tag-${x}`, label: t('network.tagChip', { tag: x }), remove: () => change({ tags: f.tags.filter((y) => y !== x) }) }));
+  f.channels.forEach((x) => chips.push({ key: `channel-${x}`, label: `${t('network.pool.channels')}: ${t(`network.pool.channel.${x}`)}`, remove: () => change({ channels: f.channels.filter((y) => y !== x) }) }));
+  if (f.cv) chips.push({ key: 'cv', label: `${t('network.pool.cv')}: ${f.cv}`, remove: () => change({ cv: '' }) });
+  if (f.shareable) chips.push({ key: 'shareable', label: t('network.pool.shareable'), remove: () => change({ shareable: false }) });
 
   const exportCsv = async () => {
     setBusy(true);
@@ -106,46 +123,69 @@ export function NetworkList() {
       />
       <PresetsBar current={f} onApply={(v) => set({ ...DEFAULT_FILTERS, ...v })} />
       <Card withBorder padding="md" mb="md" component="section" aria-label={t('network.filtersTitle')}>
-      <Stack gap="sm">
-      <Group align="flex-end" wrap="wrap">
-        <TextInput label={t('network.search')} flex={1} miw="15rem" value={f.q} onChange={(e) => change({ q: e.currentTarget.value })} />
-        <SegmentedControl
-          value={f.mine ? 'me' : 'all'}
-          onChange={(v) => change({ mine: v === 'me' })}
-          data={[
-            { value: 'all', label: t('network.all') },
-            { value: 'me', label: t('network.mine') },
-          ]}
-        />
-        <Select
-          label={t('network.filterNotContacted')}
-          clearable
-          w={{ base: '100%', sm: '12rem' }}
-          value={f.staleDays ? String(f.staleDays) : null}
-          onChange={(v) => change({ staleDays: v ? Number(v) : 0 })}
-          data={[...new Set([30, 60, 90, 180, f.staleDays].filter(Boolean))].sort((a, b) => a - b).map((d) => ({ value: String(d), label: t('network.daysAgo', { count: d }) }))}
-        />
-        <Select
-          label={t('network.fields.consent')}
-          clearable
-          w={{ base: '100%', sm: '12rem' }}
-          value={f.consent ?? null}
-          onChange={(v) => change({ consent: (v as Schemas['ConsentStatus']) ?? undefined })}
-          data={(ref?.lifecycles.consent.statuses ?? []).map((s) => ({ value: s.value, label: label('consent', s.value) }))}
-        />
-      </Group>
-      <Chip.Group multiple value={f.types} onChange={(v) => change({ types: v as Schemas['PersonType'][] })}>
-        <Group gap="xs" style={{ overflowX: 'auto' }} wrap="nowrap" role="group" aria-label={t('network.fields.type')}>
-          <Text size="sm" c="dimmed" fw={600} w={112} style={{ flex: 'none' }}>{t('network.fields.type')}</Text>
-          {PERSON_TYPES.map((x) => (
-            <Chip key={x} value={x} size="sm">
-              {t(`network.types.${x}`)}
-            </Chip>
-          ))}
+        <Group align="flex-end" wrap="wrap">
+          <TextInput label={t('network.search')} flex={1} miw="15rem" value={f.q} onChange={(e) => change({ q: e.currentTarget.value })} />
+          <SegmentedControl
+            value={f.mine ? 'me' : 'all'}
+            onChange={(v) => change({ mine: v === 'me' })}
+            data={[
+              { value: 'all', label: t('network.all') },
+              { value: 'me', label: t('network.mine') },
+            ]}
+          />
+          <Button variant={advanced ? 'light' : 'default'} aria-expanded={advancedOpen} aria-controls="network-advanced-filters" onClick={() => setAdvancedOpen((o) => !o)}>
+            {advanced ? `${t('network.filtersTitle')} · ${advanced}` : t('network.filtersTitle')}
+          </Button>
         </Group>
-      </Chip.Group>
-      <PoolFilters f={f} onChange={change} />
-      </Stack>
+        {!advancedOpen && chips.length > 0 && (
+          <Group gap="xs" mt="sm" data-testid="active-filter-chips">
+            {chips.map((c) => (
+              <Badge key={c.key} variant="light" color="gray" tt="none" rightSection={<CloseButton size="xs" aria-label={t('network.removeFilter')} onClick={c.remove} />}>
+                {c.label}
+              </Badge>
+            ))}
+          </Group>
+        )}
+        <Collapse expanded={advancedOpen}>
+          <Box id="network-advanced-filters" pt="md">
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+              <Select
+                label={t('network.filterNotContacted')}
+                clearable
+                value={f.staleDays ? String(f.staleDays) : null}
+                onChange={(v) => change({ staleDays: v ? Number(v) : 0 })}
+                data={[...new Set([30, 60, 90, 180, f.staleDays].filter(Boolean))].sort((a, b) => a - b).map((d) => ({ value: String(d), label: t('network.daysAgo', { count: d }) }))}
+              />
+              <Select
+                label={t('network.fields.consent')}
+                clearable
+                value={f.consent ?? null}
+                onChange={(v) => change({ consent: (v as Schemas['ConsentStatus']) ?? undefined })}
+                data={(ref?.lifecycles.consent.statuses ?? []).map((s) => ({ value: s.value, label: label('consent', s.value) }))}
+              />
+              <Stack gap="xs">
+                <Text id="network-type-label" size="sm" fw={500}>
+                  {t('network.fields.type')}
+                </Text>
+                <Chip.Group multiple value={f.types} onChange={(v) => change({ types: v as Schemas['PersonType'][] })}>
+                  <Group gap="xs" role="group" aria-labelledby="network-type-label">
+                    {PERSON_TYPES.map((x) => (
+                      <Chip key={x} value={x} size="sm">
+                        {t(`network.types.${x}`)}
+                      </Chip>
+                    ))}
+                  </Group>
+                </Chip.Group>
+              </Stack>
+              <PoolFilters f={f} onChange={change} />
+            </SimpleGrid>
+            <Group justify="flex-end" mt="md">
+              <Button variant="subtle" size="compact-sm" disabled={!advanced} onClick={clearAdvanced}>
+                {t('network.clearFilters')}
+              </Button>
+            </Group>
+          </Box>
+        </Collapse>
       </Card>
       {(f.city || f.company) && (
         <Group gap="xs" mb="sm" data-testid="pending-chips">
