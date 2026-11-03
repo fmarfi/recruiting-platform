@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
     <Group justify="space-between" align="flex-start" gap="sm" mb="md" wrap="wrap">
-      <Stack gap={2} style={{ flex: '1 1 280px', minWidth: 0 }}>
+      <Stack gap="xs" style={{ flex: '1 1 280px', minWidth: 0 }}>
         <Title order={1} data-testid="screen-title" style={{ overflowWrap: 'anywhere' }}>
           {title}
         </Title>
