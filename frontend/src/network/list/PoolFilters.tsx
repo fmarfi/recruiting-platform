@@ -18,7 +18,7 @@ export function PoolFilters({ f, onChange }: { f: ViewFilters; onChange: (patch:
   }, [cv]);
   return (
     <>
-      <Group mb="sm" align="flex-end">
+      <Group align="flex-end" wrap="wrap" mb="sm">
         <TagsInput
           label={t('network.pool.tags')}
           description={t('network.pool.tagsHint')}
@@ -28,18 +28,20 @@ export function PoolFilters({ f, onChange }: { f: ViewFilters; onChange: (patch:
           splitChars={[',']}
           maxLength={MAX_TAG_LENGTH}
           clearable
-          style={{ minWidth: 240 }}
+          miw="15rem"
+          flex={1}
         />
         <TextInput
           label={t('network.pool.cv')}
           description={t('network.pool.cvHint')}
           value={cv}
           onChange={(e) => setCv(e.currentTarget.value)}
-          style={{ minWidth: 240 }}
+          miw="15rem"
+          flex={1}
         />
       </Group>
       <Group gap="xs" style={{ overflowX: 'auto' }} wrap="nowrap" role="group" aria-label={t('network.pool.channels')}>
-        <Text size="xs" c="dimmed" fw={600} tt="uppercase" w={112} style={{ flex: 'none' }}>{t('network.pool.channels')}</Text>
+        <Text size="sm" c="dimmed" fw={600} w={112} style={{ flex: 'none' }}>{t('network.pool.channels')}</Text>
         <Chip.Group multiple value={f.channels} onChange={(v) => onChange({ channels: v as Schemas['SourceChannel'][] })}>
           {SOURCE_CHANNELS.map((c) => (
             <Chip key={c} value={c} size="sm">

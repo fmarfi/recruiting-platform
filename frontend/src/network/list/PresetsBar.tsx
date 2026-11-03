@@ -7,7 +7,7 @@ export function PresetsBar({ current, onApply }: { current: ViewFilters; onApply
   const { t } = useTranslation();
   return (
     <Group gap="xs" mb="sm" data-testid="saved-views" style={{ overflowX: 'auto' }} wrap="nowrap">
-      <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+      <Text size="sm" c="dimmed" fw={600}>
         {t('network.views')}
       </Text>
       {PRESETS.map((p) => (
