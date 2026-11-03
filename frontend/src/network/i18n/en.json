@@ -337,7 +337,7 @@
       "action": "Edit",
       "history": "History",
       "sectionMain": "Person",
-      "sectionContact": "Contact and notes",
+      "sectionContact": "Contact",
       "phone": "Phone",
       "notes": "Notes",
       "noticeHint": "Days, 0 to 365",
@@ -360,7 +360,9 @@
       "addEducation": "Add education",
       "removeRow": "Remove row {{n}}",
       "tooManyTags": "At most 20 tags per person.",
-      "saved": "{{name}} updated"
+      "saved": "{{name}} updated",
+      "sectionWork": "Work",
+      "sectionMore": "More"
     },
     "dayGroup": {
       "today": "Today",
@@ -369,6 +371,16 @@
     "personMore": "More actions",
     "noCareer": "No career history recorded yet.",
     "noNextActions": "No open next actions.",
-    "currentRole": "Present"
+    "currentRole": "Present",
+    "moreDetails": "More details",
+    "ctrlSave": "Ctrl+Enter to save",
+    "createCandidate": "Create candidate",
+    "consentHint": "Needed for the consent request",
+    "ph": {
+      "name": "First and last name",
+      "title": "e.g. Finance Director",
+      "email": "name@company.com",
+      "phone": "+90 555 000 00 00"
+    }
   }
 }
