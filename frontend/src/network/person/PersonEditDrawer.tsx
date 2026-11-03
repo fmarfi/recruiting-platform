@@ -1,5 +1,5 @@
 // Edit drawer for a person: every writable field of PersonUpdateRequest, tags (via bulk ADD_TAG / REMOVE_TAG) and compensation behind the role guard.
-import { Group, NativeSelect, NumberInput, Text, Textarea, TextInput } from '@mantine/core';
+import { NativeSelect, NumberInput, SimpleGrid, Text, Textarea, TextInput } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
@@ -159,13 +159,23 @@ export function PersonEditDrawer({ person: p, opened, onClose, onSaved }: Props)
           content: (
             <>
               {text('name', t('network.fields.name'), { required: true, maxLength: 200, 'data-autofocus': true })}
-              <NativeSelect label={t('network.fields.type')} value={values.type} data={(['EXECUTIVE', 'CLIENT_CONTACT', 'REFERRER', 'CANDIDATE'] as const).map((v) => ({ value: v, label: t(`network.types.${v}`) }))} onChange={(e) => set('type', e.currentTarget.value)} error={errors.type || undefined} />
-              {text('title', t('network.fields.title'), { maxLength: 200 })}
-              {text('company', t('network.fields.company'), { maxLength: 200 })}
-              {text('city', t('network.fields.city'), { maxLength: 100 })}
-              <OwnerSelect label={t('network.fields.owner')} value={values.ownerId} current={p.owner} onChange={(v) => set('ownerId', v)} error={errors.ownerId} />
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                <NativeSelect label={t('network.fields.type')} value={values.type} data={(['EXECUTIVE', 'CLIENT_CONTACT', 'REFERRER', 'CANDIDATE'] as const).map((v) => ({ value: v, label: t(`network.types.${v}`) }))} onChange={(e) => set('type', e.currentTarget.value)} error={errors.type || undefined} />
+                <OwnerSelect label={t('network.fields.owner')} value={values.ownerId} current={p.owner} onChange={(v) => set('ownerId', v)} error={errors.ownerId} />
+              </SimpleGrid>
               <TagInput label={t('network.pool.tags')} value={tags} onChange={setTags} maxTags={20} />
             </>
+          ),
+        },
+        {
+          id: 'work',
+          title: t('network.edit.sectionWork'),
+          content: (
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              {text('title', t('network.fields.title'), { maxLength: 200, placeholder: t('network.ph.title') })}
+              {text('company', t('network.fields.company'), { maxLength: 200 })}
+              {text('city', t('network.fields.city'), { maxLength: 100 })}
+            </SimpleGrid>
           ),
         },
         {
@@ -173,52 +183,49 @@ export function PersonEditDrawer({ person: p, opened, onClose, onSaved }: Props)
           title: t('network.edit.sectionContact'),
           content: (
             <>
-              {text('email', t('network.fields.email'), { type: 'email', maxLength: 254 })}
-              {text('phone', t('network.edit.phone'), { type: 'tel', maxLength: 50 })}
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                {text('email', t('network.fields.email'), { type: 'email', maxLength: 254, placeholder: t('network.ph.email') })}
+                {text('phone', t('network.edit.phone'), { type: 'tel', maxLength: 50 })}
+              </SimpleGrid>
               {text('linkedinUrl', 'LinkedIn', { type: 'url', maxLength: 300, placeholder: 'https://' })}
-              {text('howWeKnow', t('network.fields.howWeKnow'), { maxLength: 1000 })}
-              <Textarea label={t('network.edit.notes')} value={values.notes} onChange={(e) => set('notes', e.currentTarget.value)} error={errors.notes || undefined} autosize minRows={3} maxLength={4000} />
             </>
           ),
         },
         {
-          id: 'profile',
-          title: t('network.profile.title'),
+          id: 'more',
+          title: t('network.edit.sectionMore'),
           content: (
             <>
-              <NativeSelect label={t('network.profile.source')} value={values.sourceChannel} data={[{ value: '', label: '-' }, ...channels.map((v) => ({ value: v, label: t(`network.pool.channel.${v}`) }))]} onChange={(e) => set('sourceChannel', e.currentTarget.value)} error={errors.sourceChannel || undefined} />
-              <NumberInput label={t('network.profile.notice')} description={t('network.edit.noticeHint')} min={0} max={365} allowDecimal={false} value={values.noticePeriodDays === '' ? '' : Number(values.noticePeriodDays)} onChange={(v) => set('noticePeriodDays', v === '' ? '' : String(v))} error={errors.noticePeriodDays || undefined} />
+              {text('howWeKnow', t('network.fields.howWeKnow'), { maxLength: 1000 })}
+              <Textarea label={t('network.edit.notes')} value={values.notes} onChange={(e) => set('notes', e.currentTarget.value)} error={errors.notes || undefined} autosize minRows={3} maxLength={4000} />
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                <NativeSelect label={t('network.profile.source')} value={values.sourceChannel} data={[{ value: '', label: '-' }, ...channels.map((v) => ({ value: v, label: t(`network.pool.channel.${v}`) }))]} onChange={(e) => set('sourceChannel', e.currentTarget.value)} error={errors.sourceChannel || undefined} />
+                <NumberInput label={t('network.profile.notice')} placeholder={t('network.edit.noticeHint')} min={0} max={365} allowDecimal={false} value={values.noticePeriodDays === '' ? '' : Number(values.noticePeriodDays)} onChange={(v) => set('noticePeriodDays', v === '' ? '' : String(v))} error={errors.noticePeriodDays || undefined} />
+              </SimpleGrid>
               <NativeSelect label={t('network.profile.mobility')} value={values.mobility} data={[{ value: '', label: '-' }, ...(['NONE', 'WITHIN_COUNTRY', 'INTERNATIONAL'] as const).map((v) => ({ value: v, label: t(`network.profile.mobilities.${v}`) }))]} onChange={(e) => set('mobility', e.currentTarget.value)} error={errors.mobility || undefined} />
               <RowsEditor legend={t('network.career')} columns={cols.emp} value={values.employments} onChange={(j) => set('employments', j)} addLabel={t('network.edit.addEmployment')} removeLabel={(n) => t('network.edit.removeRow', { n })} error={rowError('employments')} />
               <RowsEditor legend={t('network.profile.languages')} columns={cols.lang} value={values.languages} onChange={(j) => set('languages', j)} addLabel={t('network.edit.addLanguage')} removeLabel={(n) => t('network.edit.removeRow', { n })} error={rowError('languages')} />
               <RowsEditor legend={t('network.profile.education')} columns={cols.edu} value={values.educations} onChange={(j) => set('educations', j)} addLabel={t('network.edit.addEducation')} removeLabel={(n) => t('network.edit.removeRow', { n })} error={rowError('educations')} />
+              {!restricted && (
+                <>
+                  <Text component="p" size="xs" fw={600} c="var(--color-ink2)" mt="xs">
+                    {t('network.profile.compensation')}
+                  </Text>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                    {text('compBase', t('network.profile.base'), { type: 'number', min: 0 })}
+                    {text('compVariable', t('network.profile.variable'), { type: 'number', min: 0 })}
+                    {text('compExpected', t('network.profile.expected'), { type: 'number', min: 0 })}
+                    {text('compCurrency', t('network.edit.currency'), { maxLength: 3 })}
+                    <NativeSelect label={t('network.edit.period')} value={values.compPeriod} data={(['MONTHLY', 'ANNUAL'] as const).map((v) => ({ value: v, label: t(`network.profile.periods.${v}`) }))} onChange={(e) => set('compPeriod', e.currentTarget.value)} />
+                    <NativeSelect label={t('network.edit.basis')} value={values.compBasis} data={(['GROSS', 'NET'] as const).map((v) => ({ value: v, label: t(`network.profile.bases.${v}`) }))} onChange={(e) => set('compBasis', e.currentTarget.value)} />
+                  </SimpleGrid>
+                  {text('compBenefits', t('network.edit.benefits'), { maxLength: 500 })}
+                  {rowError('compensation') && <Text size="sm" c="red.8" role="alert">{rowError('compensation')}</Text>}
+                </>
+              )}
             </>
           ),
         },
-        ...(restricted
-          ? []
-          : [
-              {
-                id: 'comp',
-                title: t('network.profile.compensation'),
-                content: (
-                  <>
-                    <Group grow align="flex-start">
-                      {text('compBase', t('network.profile.base'), { type: 'number', min: 0 })}
-                      {text('compVariable', t('network.profile.variable'), { type: 'number', min: 0 })}
-                      {text('compExpected', t('network.profile.expected'), { type: 'number', min: 0 })}
-                    </Group>
-                    <Group grow align="flex-start">
-                      {text('compCurrency', t('network.edit.currency'), { maxLength: 3 })}
-                      <NativeSelect label={t('network.edit.period')} value={values.compPeriod} data={(['MONTHLY', 'ANNUAL'] as const).map((v) => ({ value: v, label: t(`network.profile.periods.${v}`) }))} onChange={(e) => set('compPeriod', e.currentTarget.value)} />
-                      <NativeSelect label={t('network.edit.basis')} value={values.compBasis} data={(['GROSS', 'NET'] as const).map((v) => ({ value: v, label: t(`network.profile.bases.${v}`) }))} onChange={(e) => set('compBasis', e.currentTarget.value)} />
-                    </Group>
-                    {text('compBenefits', t('network.edit.benefits'), { maxLength: 500 })}
-                    {rowError('compensation') && <Text size="sm" c="red.8" role="alert">{rowError('compensation')}</Text>}
-                  </>
-                ),
-              },
-            ]),
       ]}
     />
   );

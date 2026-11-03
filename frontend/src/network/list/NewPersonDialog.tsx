@@ -1,18 +1,49 @@
 // "+ New person" dialog (F7). Before creating, /duplicates/check runs; a hit shows the "possible duplicate" prompt
 // (use existing / create anyway). A duplicate e-mail (409 DUPLICATE) still links to the existing person.
-import { Anchor, Button, Group, Modal, Select, Stack, Text, TextInput } from '@mantine/core';
-import { useState } from 'react';
+import { Anchor, Box, Button, Collapse, Divider, Group, Modal, Select, SimpleGrid, Stack, Text, TextInput, Tooltip } from '@mantine/core';
+import { IconChevronDown, IconInfoCircle } from '@tabler/icons-react';
+import { useId, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { problemText, type Schemas } from '../../pipeline/shared';
 import { checkRequest, duplicateDecision, type Match } from '../duplicates/duplicateLogic';
 import { DuplicatePrompt } from '../duplicates/DuplicatePrompt';
-import { FormSection, RequiredNote } from '../../shell/components/FormSection';
 import { SOURCE_CHANNELS } from './networkFilters';
 
 const TYPES: Schemas['PersonType'][] = ['EXECUTIVE', 'CLIENT_CONTACT', 'REFERRER', 'CANDIDATE'];
 const EMPTY = { name: '', type: 'EXECUTIVE' as Schemas['PersonType'], title: '', company: '', city: '', email: '', phone: '', linkedinUrl: '', howWeKnow: '', sourceChannel: '' };
+
+/** Closed-by-default group for the fields that are not needed to create the record. Sentence-case label, no box. */
+export function MoreDetails({ children, defaultOpened = false }: { children: ReactNode; defaultOpened?: boolean }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(defaultOpened);
+  const id = useId();
+  return (
+    <Stack gap="sm">
+      <Button
+        variant="subtle"
+        color="gray"
+        justify="flex-start"
+        px={0}
+        fz="xs"
+        fw={600}
+        c="var(--color-ink2)"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((o) => !o)}
+        rightSection={<IconChevronDown size={16} stroke={1.75} aria-hidden style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms ease-out' }} />}
+      >
+        {t('network.moreDetails')}
+      </Button>
+      <Collapse expanded={open}>
+        <Stack id={id} gap="sm">
+          {children}
+        </Stack>
+      </Collapse>
+    </Stack>
+  );
+}
 
 export function NewPersonDialog({ opened, onClose, onCreated }: { opened: boolean; onClose: () => void; onCreated: () => void }) {
   const { t } = useTranslation();
@@ -95,52 +126,67 @@ export function NewPersonDialog({ opened, onClose, onCreated }: { opened: boolea
     await create();
   };
 
+  const onKeyDown = (e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !matches) {
+      e.preventDefault();
+      void save();
+    }
+  };
+
   return (
-    <Modal opened={opened} onClose={cancel} title={t('network.newPerson')} centered>
+    <Modal opened={opened} onClose={cancel} title={t('network.newPerson')} size="lg" centered>
       <form
         noValidate
+        onKeyDown={onKeyDown}
         onSubmit={(e) => {
           e.preventDefault();
           void save();
         }}
       >
-        <Stack>
-          <RequiredNote text={t('shell.requiredNote')} />
-          <FormSection title={t('network.section.who')}>
-            <TextInput label={t('network.fields.name')} description={t('network.help.name')} withAsterisk value={f.name} onChange={set('name')} error={touched.name && !f.name.trim() ? t('network.err.name') : undefined} onBlur={() => setTouched((x) => ({ ...x, name: true }))} data-autofocus />
+        <Stack gap="sm">
+          <TextInput label={t('network.fields.name')} placeholder={t('network.ph.name')} withAsterisk value={f.name} onChange={set('name')} error={touched.name && !f.name.trim() ? t('network.err.name') : undefined} onBlur={() => setTouched((x) => ({ ...x, name: true }))} data-autofocus />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput label={t('network.fields.title')} placeholder={t('network.ph.title')} value={f.title} onChange={set('title')} />
+            <TextInput label={t('network.fields.company')} value={f.company} onChange={set('company')} />
+            <TextInput
+              label={t('network.fields.email')}
+              placeholder={t('network.ph.email')}
+              type="email"
+              value={f.email}
+              onChange={set('email')}
+              error={emailErr}
+              rightSectionPointerEvents="all"
+              rightSection={
+                <Tooltip label={t('network.consentHint')} withArrow position="top">
+                  <Box component="span" tabIndex={0} role="img" aria-label={t('network.consentHint')} style={{ display: 'inline-flex', color: 'var(--color-ink3)' }}>
+                    <IconInfoCircle size={16} stroke={1.75} aria-hidden />
+                  </Box>
+                </Tooltip>
+              }
+            />
+            <TextInput label={t('network.dup.phone')} placeholder={t('network.ph.phone')} value={f.phone} onChange={set('phone')} />
+            <TextInput label={t('network.fields.city')} value={f.city} onChange={set('city')} />
             <Select
               label={t('network.fields.type')}
-              description={t('network.help.type')}
               allowDeselect={false}
               data={TYPES.map((x) => ({ value: x, label: t(`network.types.${x}`) }))}
               value={f.type}
               onChange={(v) => v && setF({ ...f, type: v as Schemas['PersonType'] })}
             />
-          </FormSection>
-          <FormSection title={t('network.section.where')}>
-            <Group grow align="flex-start">
-              <TextInput label={t('network.fields.title')} value={f.title} onChange={set('title')} />
-              <TextInput label={t('network.fields.company')} value={f.company} onChange={set('company')} />
-            </Group>
-            <TextInput label={t('network.fields.city')} value={f.city} onChange={set('city')} />
-          </FormSection>
-          <FormSection title={t('network.section.reach')}>
-            <Group grow align="flex-start">
-              <TextInput label={t('network.fields.email')} description={t('network.help.email')} type="email" value={f.email} onChange={set('email')} error={emailErr} />
-              <TextInput label={t('network.dup.phone')} description={t('network.help.phone')} value={f.phone} onChange={set('phone')} />
-            </Group>
-            <TextInput label="LinkedIn" type="url" value={f.linkedinUrl} onChange={set('linkedinUrl')} error={linkErr} />
-          </FormSection>
-          <FormSection title={t('network.section.origin')}>
-            <Select
-              label={t('network.pool.channels')}
-              clearable
-              value={f.sourceChannel || null}
-              onChange={(v) => setF({ ...f, sourceChannel: v ?? '' })}
-              data={SOURCE_CHANNELS.map((c) => ({ value: c, label: t(`network.pool.channel.${c}`) }))}
-            />
-            <TextInput label={t('network.fields.howWeKnow')} description={t('network.help.howWeKnow')} value={f.howWeKnow} onChange={set('howWeKnow')} />
-          </FormSection>
+          </SimpleGrid>
+          <MoreDetails>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              <TextInput label="LinkedIn" type="url" placeholder="https://" value={f.linkedinUrl} onChange={set('linkedinUrl')} error={linkErr} />
+              <Select
+                label={t('network.pool.channels')}
+                clearable
+                value={f.sourceChannel || null}
+                onChange={(v) => setF({ ...f, sourceChannel: v ?? '' })}
+                data={SOURCE_CHANNELS.map((c) => ({ value: c, label: t(`network.pool.channel.${c}`) }))}
+              />
+            </SimpleGrid>
+            <TextInput label={t('network.fields.howWeKnow')} placeholder={t('network.help.howWeKnow')} value={f.howWeKnow} onChange={set('howWeKnow')} />
+          </MoreDetails>
           {matches && <DuplicatePrompt matches={matches} busy={busy} onBack={() => setMatches(undefined)} onCreateAnyway={() => void create()} />}
           {err && (
             <Text c="red" size="sm" role="alert">
@@ -152,16 +198,24 @@ export function NewPersonDialog({ opened, onClose, onCreated }: { opened: boolea
               )}
             </Text>
           )}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={cancel}>
-              {t('common.cancel')}
-            </Button>
-            {!matches && (
-              <Button type="submit" loading={busy}>
-                {t('common.save')}
-              </Button>
-            )}
-          </Group>
+          <Box pos="sticky" bottom={0} bg="var(--mantine-color-body)" pt="xs">
+            <Divider mb="sm" />
+            <Group justify="space-between" wrap="nowrap" pb="xs">
+              <Text size="xs" c="var(--color-ink3)">
+                {t('network.ctrlSave')}
+              </Text>
+              <Group gap="sm" wrap="nowrap">
+                <Button variant="default" onClick={cancel}>
+                  {t('common.cancel')}
+                </Button>
+                {!matches && (
+                  <Button type="submit" loading={busy}>
+                    {t('network.createCandidate')}
+                  </Button>
+                )}
+              </Group>
+            </Group>
+          </Box>
         </Stack>
       </form>
     </Modal>
