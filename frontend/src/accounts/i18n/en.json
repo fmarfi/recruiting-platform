@@ -39,9 +39,7 @@
     "reason": "Reason",
     "reasonTitle": "Reason for moving to {{status}}",
     "openJobsBlock": "This client still has open searches.",
-    "clientSince": "client since {{date}}",
     "closedBanner": "This client is closed.",
-    "ownerIs": "owner {{name}}",
     "backToList": "Back to clients",
     "notFound": "Client not found.",
     "tab": {
@@ -72,8 +70,7 @@
       "REFUSED": "Consent refused",
       "WITHDRAWN": "Consent withdrawn"
     },
-    "emptyContacts": "No contacts yet",
-    "emptyContactsHint": "Add the people you work with at this client.",
+    "emptyContacts": "No contacts at this client yet.",
     "endedOn": "ended {{date}}",
     "primary": "Primary",
     "showEnded": "Show ended",
@@ -84,10 +81,13 @@
       "openJobs": "Open searches"
     },
     "setNextAction": "Set next action",
-    "emptyJobs": "No searches yet",
-    "emptyJobsHint": "Searches for this client appear here.",
-    "emptyProposals": "No proposals yet",
-    "emptyProposalsHint": "Proposals for this client appear here.",
+    "emptyJobs": "No searches for this client yet.",
+    "emptyProposals": "No proposals for this client yet.",
+    "openSearches": "Open searches",
+    "day": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
     "kind": {
       "ACCOUNT_STATUS": "Status",
       "ACTIVITY": "Activity",
