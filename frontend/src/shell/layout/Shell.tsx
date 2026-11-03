@@ -1,4 +1,4 @@
-import { ActionIcon, AppShell, Burger, Group, Text } from '@mantine/core';
+import { ActionIcon, AppShell, Box, Burger, Group } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +24,10 @@ function readCollapsed() {
   }
 }
 
-/** App frame (UX-09, brand chrome): 232 px midnight rail (collapsible to 64 px) on laptop, bottom bar on phone, 56 px header with search, + New, TR/EN and user menu. */
+/**
+ * App frame (UX-09, brand chrome): midnight rail (collapsible) on laptop; on phone the same nav lives in a burger drawer,
+ * and the bottom-right + button is the only add entry. 56 px header with search, command, + New, TR/EN and user menu.
+ */
 export function Shell() {
   const { pathname } = useLocation();
   const { t } = useTranslation();
@@ -49,7 +52,6 @@ export function Shell() {
     <AppShell
       header={{ height: tokens.layout.headerHeight }}
       navbar={{ width: railCollapsed ? tokens.spacing.sidebarCollapsedWidth : tokens.spacing.sidebarWidth, breakpoint: 'sm', collapsed: { mobile: !drawer || !phone, desktop: !!phone } }}
-      footer={{ height: phone ? tokens.layout.bottomTabBarHeight : 0 }}
       padding="md"
     >
       <a className="skip-link" href="#main-content">
@@ -57,13 +59,16 @@ export function Shell() {
       </a>
       <AppShell.Header className="chrome-header">
         <Group h="100%" px="md" gap="sm" wrap="nowrap">
-          {phone && <Burger opened={drawer} onClick={() => setDrawer((o) => !o)} size="sm" color="white" aria-label={t('shell.menu')} />}
-          <Link to="/" className="brand-link" style={{ marginInlineEnd: 8 }}>
+          {phone && <Burger opened={drawer} onClick={() => setDrawer((o) => !o)} size="sm" color="var(--color-chromeInk)" aria-label={t('shell.menu')} />}
+          <Link to="/" className="brand-link">
             <Logo onDark compact={phone} size={32} />
           </Link>
           <GlobalSearch />
           <CommandButton onClick={() => setCommand(true)} />
-          <NewMenu onChanged={() => setVersion((v) => v + 1)} />
+          {/* On phone the bottom-right + button opens the same quick add, so the header keeps only search and language. */}
+          <Box visibleFrom="sm">
+            <NewMenu onChanged={() => setVersion((v) => v + 1)} />
+          </Box>
           <LanguageSwitch />
           <UserMenu />
         </Group>
@@ -85,7 +90,8 @@ export function Shell() {
           </button>
         )}
       </AppShell.Navbar>
-      <AppShell.Main id="main-content" tabIndex={-1} style={{ outline: 'none' }}>
+      {/* Phone: leave room under the content for the floating + button (56 px button, 16 px inset). */}
+      <AppShell.Main id="main-content" tabIndex={-1} style={{ outline: 'none', paddingBottom: phone ? 'calc(var(--space-8) * 2)' : undefined }}>
         {/* One undo toast host; keyed by path so a pending undo is dropped when another record opens. */}
         <UndoToastProvider key={pathname}>
           <Outlet key={version} />
@@ -93,21 +99,18 @@ export function Shell() {
       </AppShell.Main>
       <CommandPalette opened={command} onClose={() => setCommand(false)} onChanged={() => setVersion((v) => v + 1)} />
       {phone && (
-        <AppShell.Footer p={4} className="chrome-rail">
-          <NavItems vertical={false} />
-        </AppShell.Footer>
-      )}
-      {phone && (
         <>
           <ActionIcon
-            size={56}
+            size="xl"
             radius="xl"
             variant="filled"
             aria-label={t('quickAdd.new')}
             onClick={() => setFab(true)}
-            style={{ position: 'fixed', right: 16, bottom: tokens.layout.bottomTabBarHeight + 16, zIndex: 150 }}
+            style={{ position: 'fixed', right: 'var(--space-4)', bottom: 'var(--space-4)', zIndex: 150, boxShadow: 'var(--shadow-pop)' }}
           >
-            <Text fz={28} lh={1}>+</Text>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden focusable="false">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
           </ActionIcon>
           <QuickAdd opened={fab} onClose={() => setFab(false)} onSaved={() => setVersion((v) => v + 1)} />
         </>
