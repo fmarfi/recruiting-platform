@@ -1,4 +1,4 @@
-// Relationship snapshot: last contact, touchpoints, reach and pipelines as KPI tiles, plus one neutral line on the next step.
+// Relationship snapshot: last contact, touchpoints, reach and pipelines as KPI tiles, the next-step line is exported separately.
 import { Card, SimpleGrid, Text } from '@mantine/core';
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +29,17 @@ function Tile({ label, value, sub }: { label: string; value: ReactNode; sub?: Re
   );
 }
 
+/** One neutral line on the next step; rendered inside the Next actions panel. */
+export function NextStepLine({ person, activities, actions }: { person: Schemas['Person']; activities: Schemas['Activity'][]; actions: Schemas['NextAction'][] }) {
+  const { t } = useTranslation();
+  const s = relationshipSummary(person, activities, actions);
+  return (
+    <Text component="div" size="sm" c={WARN_NEXT.includes(s.next) ? 'var(--tone-warn-fg)' : 'var(--color-ink2)'} data-testid="next-step">
+      {t(`network.snapshot.next.${s.next}`, { count: s.overdue })}
+    </Text>
+  );
+}
+
 export function RelationshipSnapshot({
   person,
   activities,
@@ -46,7 +57,7 @@ export function RelationshipSnapshot({
   const s = relationshipSummary(person, activities, actions);
   return (
     <div data-testid="relationship-snapshot">
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" mb="sm">
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
         <Tile
           label={t('network.snapshot.warmth')}
           value={s.days === undefined ? '–' : t('network.daysShort', { count: s.days })}
@@ -56,9 +67,6 @@ export function RelationshipSnapshot({
         <Tile label={t('network.snapshot.reach')} value={linkCount} sub={t('network.snapshot.reachSub')} />
         <Tile label={t('network.snapshot.pipelines')} value={jobCount} sub={t('network.snapshot.openActions', { count: actions.length })} />
       </SimpleGrid>
-      <Text component="div" size="sm" c={WARN_NEXT.includes(s.next) ? 'var(--tone-warn-fg)' : 'var(--color-ink2)'} data-testid="next-step">
-        {t(`network.snapshot.next.${s.next}`, { count: s.overdue })}
-      </Text>
     </div>
   );
 }

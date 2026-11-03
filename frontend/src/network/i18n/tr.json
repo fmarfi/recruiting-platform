@@ -386,6 +386,10 @@
       "REFUSED": "Onay reddedildi. Yeni roller için iletişime geçmeyin, müşterilerle paylaşmayın.",
       "WITHDRAWN": "Onay geri çekildi. Yeni roller için iletişime geçmeyin; veriler silinmek üzere planlandı.",
       "NOT_SENT": "Henüz onay isteği gönderilmedi. Onay verilmeden müşterilerle paylaşılamaz."
-    }
+    },
+    "details": "Details",
+    "viewAll": "View all",
+    "lastUpdated": "Last updated",
+    "notes": "Notes"
   }
 }

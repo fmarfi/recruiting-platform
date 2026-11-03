@@ -27,7 +27,7 @@ export function PageHeader({
           </Text>
         )}
         <Group gap="sm" align="center" wrap="wrap">
-          <Title order={1} data-testid="screen-title" style={{ overflowWrap: 'anywhere' }}>
+          <Title order={1} data-testid="screen-title" ff="var(--font-display)" style={{ overflowWrap: 'anywhere' }}>
             {title}
           </Title>
           {badge}
