@@ -20,7 +20,12 @@ export function DashboardStrip({ dashboard: d }: { dashboard: Dashboard | undefi
       label: t('accounts.dash.candidates'),
       value: s ? (
         <span title={STAGES.map((k) => `${ref.label('pipelineStage', k)}: ${s[k] ?? 0}`).join(' / ')}>
-          {total} <Text span size="xs" c="var(--color-ink3)" fw={400}>({STAGES.map((k) => s[k] ?? 0).join('/')})</Text>
+          {total}
+          <Text component="span" display="block" size="xs" c="var(--color-ink3)" fw={400}>
+            {STAGES.filter((k) => (s[k] ?? 0) > 0)
+              .map((k) => `${s[k]} ${ref.label('pipelineStage', k).toLocaleLowerCase()}`)
+              .join(' · ')}
+          </Text>
         </span>
       ) : (
         '-'
