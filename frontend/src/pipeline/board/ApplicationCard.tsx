@@ -1,4 +1,4 @@
-// One candidate card: name, consent badge, stage date, Move menu. Draggable when a legal move exists.
+// One candidate card: name, consent badge, days in stage, Move menu. Draggable when a legal move exists.
 import { useDraggable } from '@dnd-kit/core';
 import { ActionIcon, Anchor, Card, Group, Menu, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,8 @@ import { Link } from 'react-router-dom';
 import { StatusBadge, useFormat, useLabel } from '../shared';
 import { legalMoves, type Application } from './boardRules';
 import type { BoardProps } from './boardTypes';
+
+const DAY_MS = 86_400_000;
 
 export function ApplicationCard({ app, props, dragging }: { app: Application; props: BoardProps; dragging: boolean }) {
   const { t } = useTranslation();
@@ -15,11 +17,14 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
   const draggable = moves.length > 0;
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: app.id, disabled: !draggable });
   const p = app.person;
+  const since = app.stageChangedAt ? new Date(app.stageChangedAt).getTime() : NaN;
+  const days = Number.isNaN(since) ? undefined : Math.max(0, Math.floor((Date.now() - since) / DAY_MS));
   return (
     <Card
       ref={setNodeRef}
       withBorder
-      padding="xs"
+      className="pipe-board-card"
+      data-dragging={dragging ? 'true' : undefined}
       radius="md"
       data-testid={`card-${app.id}`}
       {...(draggable ? { ...attributes, ...listeners } : {})}
@@ -73,10 +78,15 @@ export function ApplicationCard({ app, props, dragging }: { app: Application; pr
           </Menu>
         )}
       </Group>
-      <Group justify="space-between" mt={6} gap="xs">
+      <Group justify="space-between" mt="xs" gap="xs" wrap="nowrap">
         <StatusBadge lifecycle="consent" value={p.consentStatus} />
-        <Text size="xs" c="dimmed">
-          {fmt.date(app.stageChangedAt)}
+        <Text
+          size="xs"
+          c="dimmed"
+          className="pipe-board-days"
+          title={fmt.dateLong(app.stageChangedAt)}
+        >
+          {days === undefined ? '–' : t('pipeline.daysInStage', { count: days })}
         </Text>
       </Group>
       {app.rejectionReason && (
