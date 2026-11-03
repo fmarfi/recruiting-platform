@@ -1,0 +1,98 @@
+/* Pipeline board visuals (UXP-1). Theme tokens only: no hex colours, no raw px spacing. */
+
+.pipe-board-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: var(--space-2);
+}
+
+.pipe-board-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface2);
+  transition:
+    border-color var(--motion-fast),
+    background-color var(--motion-fast),
+    opacity var(--motion-fast);
+}
+
+.pipe-board-col[data-legal="true"] {
+  border-style: dashed;
+  border-color: var(--color-accent);
+}
+
+.pipe-board-col[data-over="true"] {
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: var(--color-accentSoft);
+}
+
+.pipe-board-col[data-legal="false"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pipe-board-colhead {
+  align-items: center;
+  padding: 0 var(--space-1) var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pipe-board-colname {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--color-ink);
+}
+
+.pipe-board-empty {
+  padding: var(--space-3);
+  border: 1px dashed var(--color-borderStrong);
+  border-radius: var(--radius-md);
+}
+
+/* Card: resting state is a flat border; shadow appears only on hover and while lifted by drag. */
+.mantine-Card-root.pipe-board-card {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: none;
+  transition:
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast);
+}
+
+.mantine-Card-root.pipe-board-card:hover {
+  border-color: var(--color-borderStrong);
+  box-shadow: var(--shadow-pop);
+}
+
+.mantine-Card-root.pipe-board-card[data-dragging="true"] {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-pop);
+}
+
+.pipe-board-days {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pipe-board-col,
+  .mantine-Card-root.pipe-board-card {
+    transition: none;
+  }
+}

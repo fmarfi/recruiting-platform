@@ -24,6 +24,7 @@
     "backTo": "{{stage}} aşamasına geri al",
     "changeStatus": "Durumu değiştir",
     "daysOpen": "{{count}} gündür açık",
+    "daysInStage": "Aşamada {{count}} gün",
     "emptyBody": "Süreci başlatmak için ilk adayı ekleyin.",
     "emptyColumn": "Boş",
     "emptyTitle": "Henüz aday yok",
