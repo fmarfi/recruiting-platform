@@ -386,6 +386,10 @@
       "REFUSED": "Consent refused. Do not contact for new roles or share with clients.",
       "WITHDRAWN": "Consent withdrawn. Do not contact for new roles; data is scheduled for deletion.",
       "NOT_SENT": "No consent request sent yet. Not shareable with clients until consent is given."
-    }
+    },
+    "details": "Details",
+    "viewAll": "View all",
+    "lastUpdated": "Last updated",
+    "notes": "Notes"
   }
 }
