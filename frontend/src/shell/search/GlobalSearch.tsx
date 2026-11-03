@@ -92,7 +92,7 @@ export function GlobalSearch() {
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           onKeyDown={onKeyDown}
-          style={{ flex: 1, maxWidth: 520 }}
+          style={{ flex: 1, minWidth: 0, maxWidth: 520 }}
         />
       </Popover.Target>
       <Popover.Dropdown p="xs">

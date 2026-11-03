@@ -17,7 +17,7 @@ function Mark({ size, outline }: { size: number; outline?: boolean }) {
  */
 export function Logo({ compact = false, onDark = false, size = 32, style }: { compact?: boolean; onDark?: boolean; size?: number; style?: CSSProperties }) {
   return (
-    <span role="img" aria-label="Mihenk" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, ...style }}>
+    <span role="img" aria-label="Mihenk" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', ...style }}>
       <Mark size={size} outline={onDark} />
       {!compact && (
         <span
