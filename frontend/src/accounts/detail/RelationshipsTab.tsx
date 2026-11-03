@@ -2,7 +2,7 @@ import { Alert, Anchor, Badge, Button, Card, Group, Progress, Stack, Table, Text
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { components } from '../../api';
-import { EmptyState } from '../../shell/components/EmptyState';
+import { SectionEmpty } from './SectionEmpty';
 
 type Contact = components['schemas']['Contact'];
 type Connection = components['schemas']['AccountConnection'];
@@ -27,7 +27,7 @@ export function RelationshipsTab({ contacts, connections, onAddContact }: { cont
   const { t } = useTranslation();
   const cov = coverage(contacts);
   if (cov.total === 0)
-    return <EmptyState title={t('accounts.emptyContacts')} hint={t('accounts.relationshipsEmpty')} actions={onAddContact && <Button onClick={onAddContact}>+ {t('accounts.addContact')}</Button>} />;
+    return <SectionEmpty text={t('accounts.relationshipsEmpty')} action={onAddContact && <Button size="compact-sm" variant="light" onClick={onAddContact}>+ {t('accounts.addContact')}</Button>} />;
   const pct = Math.round((cov.covered / cov.total) * 100);
   const byContact = new Map<string, Connection[]>();
   (connections ?? []).forEach((c) => byContact.set(c.contact.id, [...(byContact.get(c.contact.id) ?? []), c]));

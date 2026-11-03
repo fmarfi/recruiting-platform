@@ -2,14 +2,14 @@ import { Anchor, Button, Group, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { components } from '../../api';
-import { EmptyState } from '../../shell/components/EmptyState';
 import { StatusBadge } from '../../shell/components/StatusBadge';
+import { SectionEmpty } from './SectionEmpty';
 
 type JobOrder = components['schemas']['JobOrder'];
 
 export function JobsTab({ jobs, onAdd }: { jobs: JobOrder[]; onAdd: () => void }) {
   const { t } = useTranslation();
-  if (jobs.length === 0) return <EmptyState title={t('accounts.emptyJobs')} hint={t('accounts.emptyJobsHint')} actions={<Button onClick={onAdd}>+ {t('accounts.newJob')}</Button>} />;
+  if (jobs.length === 0) return <SectionEmpty text={t('accounts.emptyJobs')} action={<Button size="compact-sm" variant="light" onClick={onAdd}>+ {t('accounts.newJob')}</Button>} />;
   return (
     <Stack gap="xs">
       {jobs.map((j) => (
