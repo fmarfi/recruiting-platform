@@ -63,7 +63,7 @@ export function AccountPage() {
   const contacts = page.contacts.data ?? [];
   const proposals = page.proposals.data?.content ?? [];
   const timeline = (
-    <TimelinePanel entries={page.timeline.data?.content ?? []} kind={page.kind} onKind={(k) => page.setKind(k as typeof page.kind)} />
+    <TimelinePanel entries={page.timeline.data?.content ?? []} kind={page.kind} onKind={(k) => page.setKind(k as typeof page.kind)} onLog={() => setDialog('log')} />
   );
 
   return (
