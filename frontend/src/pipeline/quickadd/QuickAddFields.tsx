@@ -1,8 +1,8 @@
 // Form fields for Quick add (UX-06). Order: type, about (client and candidate), content, when.
-import { Button, Checkbox, Group, SegmentedControl, SimpleGrid, Stack, Text, TextInput, Textarea } from '@mantine/core';
+import { Button, Checkbox, Group, Input, SegmentedControl, SimpleGrid, Stack, Text, TextInput, Textarea } from '@mantine/core';
 import { IconBuilding, IconMail, IconMapPin, IconNote, IconPhone, IconUsers, IconUserStar, type IconProps } from '@tabler/icons-react';
 import type { ComponentType } from 'react';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toIsoDate } from '../shared';
 import { EntityPicker } from './EntityPicker';
@@ -32,6 +32,8 @@ export function QuickAddFields({ f, context }: { f: Form; context?: QuickAddCont
   const { t } = useTranslation();
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const dueRef = useRef<HTMLInputElement>(null);
+  const dueId = useId();
+  const whenId = useId();
   const touch = (k: string) => () => setTouched((x) => ({ ...x, [k]: true }));
 
   // Quick picks only set the same values the inputs hold; they never change validation.
@@ -66,31 +68,35 @@ export function QuickAddFields({ f, context }: { f: Form; context?: QuickAddCont
     />
   );
 
+  // Quick picks and the date input share one row at the default size, so their top and bottom edges align.
   const quick = (label: string, onClick: () => void) => (
-    <Button type="button" variant="default" size="compact-sm" radius="sm" onClick={onClick}>
+    <Button type="button" variant="default" radius="sm" onClick={onClick}>
       {label}
     </Button>
   );
 
+  // The label sits above the whole row (picks + date), not above the input alone.
   const dueRow = (
-    <Group align="flex-end" gap="xs">
-      <Group gap="xs">
+    <Stack gap="xs">
+      <Input.Label htmlFor={dueId} required>
+        {t('quickAdd.due')}
+      </Input.Label>
+      <Group align="center" gap="xs" wrap="wrap">
         {quick(t('quickAdd.tomorrow'), () => pickDue(1))}
         {quick(t('quickAdd.nextWeek'), () => pickDue(7))}
         {quick(t('quickAdd.pickDate'), pickDueByHand)}
+        <TextInput
+          id={dueId}
+          ref={dueRef}
+          type="date"
+          value={f.due}
+          onChange={(e) => f.setDue(e.currentTarget.value)}
+          onBlur={touch('due')}
+          error={touched.due && !f.due ? t('accounts.err.due') : undefined}
+          style={{ flex: '1 1 160px' }}
+        />
       </Group>
-      <TextInput
-        ref={dueRef}
-        type="date"
-        label={t('quickAdd.due')}
-        withAsterisk
-        value={f.due}
-        onChange={(e) => f.setDue(e.currentTarget.value)}
-        onBlur={touch('due')}
-        error={touched.due && !f.due ? t('accounts.err.due') : undefined}
-        style={{ flex: 1 }}
-      />
-    </Group>
+    </Stack>
   );
 
   return (
@@ -176,21 +182,22 @@ export function QuickAddFields({ f, context }: { f: Form; context?: QuickAddCont
 
       {f.mode === 'activity' && (
         <Stack gap="sm">
-          <Group align="flex-end" gap="xs">
-            <Group gap="xs">
+          <Stack gap="xs">
+            <Input.Label htmlFor={whenId}>{t('quickAdd.when')}</Input.Label>
+            <Group align="center" gap="xs" wrap="wrap">
               {quick(t('quickAdd.now'), () => pickWhen('now'))}
               {quick(t('quickAdd.today'), () => pickWhen('today'))}
               {quick(t('quickAdd.yesterday'), () => pickWhen('yesterday'))}
+              <TextInput
+                id={whenId}
+                type="datetime-local"
+                value={f.when}
+                max={nowLocal()}
+                onChange={(e) => f.setWhen(e.currentTarget.value)}
+                style={{ flex: '1 1 200px' }}
+              />
             </Group>
-            <TextInput
-              type="datetime-local"
-              label={t('quickAdd.when')}
-              value={f.when}
-              max={nowLocal()}
-              onChange={(e) => f.setWhen(e.currentTarget.value)}
-              style={{ flex: 1 }}
-            />
-          </Group>
+          </Stack>
           <Checkbox label={t('quickAdd.followUp')} checked={f.followUp} onChange={(e) => f.setFollowUp(e.currentTarget.checked)} />
           {f.followUp && (
             <Stack gap="sm">

@@ -3,9 +3,10 @@ import { AppPagination } from '../../../shell/components/AppPagination';
 import { useAuth } from '../../../shell/auth/useAuth';
 import { Button, Chip, Container, Group, SegmentedControl, Stack, Text, TextInput } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
+import { IconPlus, IconSearch } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyState } from '../../../shell/components/EmptyState';
 import { PageHeader } from '../../../shell/components/PageHeader';
 import { NewJobOrderDialog } from './NewJobOrderDialog';
@@ -22,6 +23,7 @@ type JobView = Pick<JobListState, 'q' | 'status' | 'mine'>;
 export function JobOrdersList() {
   const { t } = useTranslation();
   const me = useCurrentUser();
+  const nav = useNavigate();
   const { isAdmin } = useAuth();
   const { ref, label } = useLabel();
   const phone = useMediaQuery(`(max-width: ${tokens.breakpoints.phone}px)`);
@@ -40,35 +42,49 @@ export function JobOrdersList() {
   const statuses = ref?.lifecycles.jobOrder.statuses ?? [];
   const sort = parseSort(s.sort) ?? parseSort(DEFAULT_JOB_SORT);
   const filtered = !!(s.q || s.status.length || (isAdmin ? s.mine : !s.mine));
+  const newBtn = (
+    <Button leftSection={<IconPlus size={16} stroke={1.75} aria-hidden />} onClick={() => setCreating(true)}>
+      {t('pipeline.list.new')}
+    </Button>
+  );
 
   return (
     <Container maw="var(--content-max-width)" fluid>
       <PageHeader
-        title={t('pipeline.list.title')}
-        subtitle={res.data ? t(filtered ? 'pipeline.list.subtitleFiltered' : 'pipeline.list.subtitle', { count: res.data.page.totalElements }) : undefined}
-        actions={<Button onClick={() => setCreating(true)}>+ {t('pipeline.list.new')}</Button>}
+        title={`${t('pipeline.list.title')}${res.data ? ` (${res.data.page.totalElements})` : ''}`}
+        subtitle={t('pipeline.list.subtitle')}
+        actions={newBtn}
       />
-      <Group mb="sm" align="flex-end">
-        <TextInput label={t('pipeline.list.client')} placeholder={t('pipeline.list.searchPlaceholder')} value={s.q} onChange={(e) => set({ q: e.currentTarget.value })} />
-        <SegmentedControl
-          value={s.mine ? 'me' : 'all'}
-          onChange={(v) => set({ mine: v === 'me' })}
-          data={[
-            { value: 'me', label: t('pipeline.list.mine') },
-            { value: 'all', label: t('pipeline.list.all') },
-          ]}
-        />
-      </Group>
-      <Chip.Group multiple value={s.status} onChange={(v) => set({ status: v as Schemas['JobOrderStatus'][] })}>
-        <Group gap="xs" mb="md">
-          {statuses.map((x) => (
-            <Chip key={x.value} value={x.value} size="sm">
-              {label('jobOrder', x.value)}
-            </Chip>
-          ))}
-        </Group>
-      </Chip.Group>
       <Stack>
+        <Group gap="sm" align="center" wrap="wrap">
+          <TextInput
+            size="sm"
+            aria-label={t('pipeline.list.searchPlaceholder')}
+            placeholder={t('pipeline.list.searchPlaceholder')}
+            leftSection={<IconSearch size={16} stroke={1.75} aria-hidden />}
+            value={s.q}
+            onChange={(e) => set({ q: e.currentTarget.value })}
+            style={{ flex: '1 1 220px', maxWidth: '22.5rem' }}
+          />
+          <SegmentedControl
+            size="sm"
+            value={s.mine ? 'me' : 'all'}
+            onChange={(v) => set({ mine: v === 'me' })}
+            data={[
+              { value: 'me', label: t('pipeline.list.mine') },
+              { value: 'all', label: t('pipeline.list.all') },
+            ]}
+          />
+        </Group>
+        <Chip.Group multiple value={s.status} onChange={(v) => set({ status: v as Schemas['JobOrderStatus'][] })}>
+          <Group gap="xs">
+            {statuses.map((x) => (
+              <Chip key={x.value} value={x.value} size="sm" radius="sm">
+                {label('jobOrder', x.value)}
+              </Chip>
+            ))}
+          </Group>
+        </Chip.Group>
         <DataGrid<JobOrderRow>
           gridId={GRID_ID}
           columns={defs}
@@ -80,6 +96,7 @@ export function JobOrdersList() {
           onRetry={res.reload}
           sort={sort}
           onSort={(next) => set({ sort: formatSort(next) })}
+          onRowClick={(j) => nav(`/job-orders/${j.id}`)}
           exportName="job-orders"
           phone={!!phone}
           renderCard={(j) => <JobCard j={j} />}
@@ -107,11 +124,11 @@ export function JobOrdersList() {
                 hint={filtered ? undefined : t('pipeline.list.emptyHint')}
                 actions={
                   filtered ? (
-                    <Button variant="light" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
+                    <Button variant="default" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
                       {t('pipeline.list.clear')}
                     </Button>
                   ) : (
-                    <Button onClick={() => setCreating(true)}>+ {t('pipeline.list.new')}</Button>
+                    newBtn
                   )
                 }
               />
