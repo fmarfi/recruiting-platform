@@ -141,7 +141,7 @@
     "actionTitle": "Aksiyon",
     "due": "Son tarih",
     "failed": "Kaydedilemedi.",
-    "followUp": "Takip",
+    "followUp": "Takip ekle",
     "job": "Arama",
     "modeAction": "Aksiyon",
     "modeActivity": "Hareket",
@@ -159,6 +159,28 @@
       "EMAIL": "E-posta",
       "NOTE": "Not"
     },
-    "when": "Ne zaman"
+    "when": "Ne zaman",
+    "needNote": "Bir not ekleyin.",
+    "needTitle": "Aksiyonu ekleyin.",
+    "needDue": "Son tarih seçin.",
+    "saveHint": "Kaydetmek için Ctrl+Enter",
+    "addAction": "Aksiyon ekle",
+    "logVerb": {
+      "CALL": "Arama kaydet",
+      "VISIT": "Ziyaret kaydet",
+      "MEETING": "Toplantı kaydet",
+      "EMAIL": "E-posta kaydet",
+      "NOTE": "Not kaydet"
+    },
+    "searchClients": "Müşteri ara…",
+    "searchCandidates": "Aday ara…",
+    "notePlaceholder": "Ne konuşuldu veya kararlaştırıldı",
+    "actionPlaceholder": "ör. Teklifi gönder",
+    "now": "Şimdi",
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "tomorrow": "Yarın",
+    "nextWeek": "Gelecek hafta",
+    "pickDate": "Tarih seç"
   }
 }
