@@ -34,6 +34,7 @@
     "duplicate": "A client with this name already exists.",
     "name": "Name",
     "newAccount": "New client",
+    "openRecord": "Open client record",
     "sector": "Sector",
     "reason": "Reason",
     "reasonTitle": "Reason for moving to {{status}}",

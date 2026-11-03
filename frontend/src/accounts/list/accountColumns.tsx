@@ -9,6 +9,15 @@ import { fmtDate, fmtRelative } from '../../shell/lib/format';
 
 export type Account = components['schemas']['Account'];
 
+/** Affordance that the name opens the record: a small chevron in the token ink colour, decorative only. */
+function OpenChevron() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden focusable="false" style={{ color: 'var(--color-ink3)', flexShrink: 0 }}>
+      <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /** Column definitions of the accounts grid. Sort keys are the ones /accounts documents. */
 export function useAccountColumns(): ColumnDef<Account>[] {
   const { t, i18n } = useTranslation();
@@ -23,8 +32,11 @@ export function useAccountColumns(): ColumnDef<Account>[] {
         minWidth: 180,
         accessor: (a) => a.name,
         cell: (a) => (
-          <Anchor component={Link} to={`/accounts/${a.id}`} fw={600}>
-            {a.name}
+          <Anchor component={Link} to={`/accounts/${a.id}`} fw={600} underline="hover" title={t('accounts.openRecord')}>
+            <Group component="span" gap="xs" wrap="nowrap" display="inline-flex" align="center">
+              {a.name}
+              <OpenChevron />
+            </Group>
           </Anchor>
         ),
       },
@@ -40,7 +52,11 @@ export function useAccountColumns(): ColumnDef<Account>[] {
         sortable: true,
         firstSortDir: 'desc',
         accessor: (a) => a.lastActivityAt ?? '',
-        cell: (a) => <span title={a.lastActivityAt ? fmtDate(a.lastActivityAt, lng) : undefined}>{fmtRelative(a.lastActivityAt, lng)}</span>,
+        cell: (a) => (
+          <Text component="span" size="sm" c="dimmed" title={a.lastActivityAt ? fmtDate(a.lastActivityAt, lng) : undefined}>
+            {fmtRelative(a.lastActivityAt, lng)}
+          </Text>
+        ),
       },
       { id: 'openedOn', header: t('accounts.openedOn'), numeric: true, sortable: true, firstSortDir: 'desc', defaultVisible: false, accessor: (a) => a.openedOn, cell: (a) => fmtDate(a.openedOn, lng) },
       { id: 'website', header: t('accounts.website'), defaultVisible: false, accessor: (a) => a.website },
