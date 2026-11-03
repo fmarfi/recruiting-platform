@@ -189,6 +189,18 @@
     "namePlaceholder": "Şirket adı",
     "moreDetails": "Daha fazla ayrıntı",
     "createClient": "Müşteri oluştur",
-    "saveHint": "Kaydetmek için Ctrl+Enter"
+    "saveHint": "Kaydetmek için Ctrl+Enter",
+    "record": {
+      "overview": "Genel bakış",
+      "activity": "Etkinlik",
+      "details": "Detaylar",
+      "nextActions": "Sonraki işler",
+      "noNextAction": "Sonraki iş belirlenmedi.",
+      "moreActions": "Diğer işlemler",
+      "website": "Web sitesi",
+      "status": "Durum",
+      "notes": "Notlar",
+      "lastUpdated": "Son güncelleme"
+    }
   }
 }
