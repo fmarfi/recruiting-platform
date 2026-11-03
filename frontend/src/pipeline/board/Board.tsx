@@ -7,10 +7,11 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { Button, Group, Text } from '@mantine/core';
+import { Box, Button, Group, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Panel } from '../../shell/components/Panel';
 import { useLabel } from '../shared';
 import { BoardColumn } from './BoardColumn';
 import { canMove, type Application, type Stage } from './boardRules';
@@ -26,7 +27,10 @@ const EMPTY_COLUMN_WEIGHT = '0.6fr';
 
 const columnTrack = (hasCards: boolean) => (hasCards ? `minmax(${COLUMN_MIN}, 1fr)` : `minmax(${EMPTY_COLUMN_MIN}, ${EMPTY_COLUMN_WEIGHT})`);
 
-/** Kanban board (UX-04). Drag on desktop, Move menu everywhere; only moves from /reference-data are offered. */
+/**
+ * Kanban board (UX-04). Drag on desktop, Move menu everywhere; only moves from /reference-data are offered.
+ * Renders two sibling panels in one drag context: "Pipeline" (the stages) and "Rejected" (the drop lane below).
+ */
 export function Board(props: BoardProps) {
   const { t } = useTranslation();
   const { label } = useLabel();
@@ -63,40 +67,44 @@ export function Board(props: BoardProps) {
       onDragEnd={onDragEnd}
       onDragCancel={() => setActiveId(undefined)}
     >
-      {!props.readOnly && !phone && (
-        <Text size="xs" c="dimmed" mb="xs">
-          {t('pipeline.hint')}
-        </Text>
-      )}
-      {phone && (
-        <Group gap="xs" wrap="nowrap" mb="sm" style={{ overflowX: 'auto' }} role="tablist">
-          {columns.map((c) => (
-            <Button
-              key={c}
-              role="tab"
-              aria-selected={c === phoneStage}
-              size="compact-md"
-              variant={c === phoneStage ? 'filled' : 'light'}
-              onClick={() => setPhoneStage(c)}
+      <Panel title={t('pipeline.panelPipeline')} count={props.apps.length - rejected.length} padding="none" testId="pipeline-panel">
+        <Box px="md" pb="md">
+          {!props.readOnly && !phone && (
+            <Text size="xs" c="dimmed" mb="xs">
+              {t('pipeline.hint')}
+            </Text>
+          )}
+          {phone && (
+            <Group gap="xs" wrap="nowrap" mb="sm" style={{ overflowX: 'auto' }} role="tablist">
+              {columns.map((c) => (
+                <Button
+                  key={c}
+                  role="tab"
+                  aria-selected={c === phoneStage}
+                  size="compact-md"
+                  variant={c === phoneStage ? 'filled' : 'light'}
+                  onClick={() => setPhoneStage(c)}
+                >
+                  {label('pipelineStage', c)} {props.apps.filter((a) => a.stage === c).length}
+                </Button>
+              ))}
+            </Group>
+          )}
+          <div className="pipe-board-scroll">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: phone ? '1fr' : visible.map((s) => columnTrack(props.apps.some((a) => a.stage === s))).join(' '),
+                gap: 'var(--space-3)',
+              }}
             >
-              {label('pipelineStage', c)} {props.apps.filter((a) => a.stage === c).length}
-            </Button>
-          ))}
-        </Group>
-      )}
-      <div className="pipe-board-scroll">
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: phone ? '1fr' : visible.map((s) => columnTrack(props.apps.some((a) => a.stage === s))).join(' '),
-            gap: 'var(--space-3)',
-          }}
-        >
-          {visible.map((s) => (
-            <BoardColumn key={s} stage={s} apps={props.apps.filter((a) => a.stage === s)} props={guarded} activeApp={activeApp} />
-          ))}
-        </div>
-      </div>
+              {visible.map((s) => (
+                <BoardColumn key={s} stage={s} apps={props.apps.filter((a) => a.stage === s)} props={guarded} activeApp={activeApp} />
+              ))}
+            </div>
+          </div>
+        </Box>
+      </Panel>
       <RejectedLane apps={rejected} props={guarded} activeApp={activeApp} />
       <ReasonDialog
         opened={!!pendingReject}

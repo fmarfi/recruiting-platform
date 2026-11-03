@@ -135,7 +135,14 @@
       "saved": "{{name}} updated",
       "history": "History"
     },
-    "brief": "Brief"
+    "brief": "Brief",
+    "panelPipeline": "Pipeline",
+    "panelRejected": "Rejected",
+    "panelDetails": "Details",
+    "factRejected": "Rejected",
+    "moreActions": "More actions",
+    "lastUpdated": "Last updated",
+    "noBrief": "No description or fee terms yet."
   },
   "quickAdd": {
     "account": "Client",
