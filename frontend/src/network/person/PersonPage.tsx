@@ -1,5 +1,5 @@
 // Person page (A-12, A-13, S-01): relationship, every pipeline the person is in, network links, consent status.
-import { Alert, Anchor, Badge, Button, Container, Skeleton, Stack, Tabs, Text } from '@mantine/core';
+import { Alert, Button, Container, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core';
 import { ErrorBanner } from '../../shell/components/ErrorBanner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +8,7 @@ import { api } from '../../api';
 import { HistoryPanel } from '../../shell/edit';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 import { problemText, type Schemas } from '../../pipeline/shared';
+import { ICON_SIZE, ICON_STROKE, ConsentIcon } from '../../shell/components/objectIcons';
 import { ExposureTab } from './ExposureTab';
 import { FilesTab } from './FilesTab';
 import { ProfileSection } from './ProfileSection';
@@ -26,10 +27,11 @@ import { SendConsentDialog } from './SendConsentDialog';
 import { usePerson } from './usePerson';
 
 const tabStyle = { whiteSpace: 'nowrap' } as const;
+/** Tab count: plain ink3 text after the label (visual system v3, section 6). */
 const Count = ({ n }: { n: number }) => (
-  <Badge size="sm" variant="light" style={{ fontVariantNumeric: 'tabular-nums' }}>
+  <Text span size="sm" c="var(--color-ink3)" style={{ fontVariantNumeric: 'tabular-nums' }}>
     {n}
-  </Badge>
+  </Text>
 );
 
 export function PersonPage() {
@@ -84,26 +86,33 @@ export function PersonPage() {
   const apps = d.applications.data ?? [];
   const activities = d.activities.data?.content ?? [];
   const blocked = p.consentStatus === 'REFUSED' || p.consentStatus === 'WITHDRAWN';
+  // Consent problems: full-width banner under the header (refused and withdrawn are danger, not yet requested is a warning).
+  const consentProblem = blocked || p.consentStatus === 'NOT_SENT';
+  const canSendConsent = !!p.email && !p.anonymised;
 
   return (
     <Container maw="var(--content-max-width)" fluid>
-      <Anchor component={Link} to="/network" size="sm">
-        {t('nav.network')}
-      </Anchor>{' '}
-      <Text span size="sm" c="dimmed">
-        / {p.name}
-      </Text>
-      {blocked && (
-        <Alert color="red" my="sm" data-testid="do-not-contact">
-          {t('network.doNotContact')}
-        </Alert>
-      )}
       {notice && (
         <Alert color={notice.color} mb="sm" role={notice.color === 'red' ? 'alert' : 'status'} withCloseButton onClose={() => setNotice(undefined)}>
           {notice.text}
         </Alert>
       )}
       <PersonHeader person={p} onLog={() => setDialog('log')} onAction={() => setDialog('action')} onResend={() => void resend(p)} onEdit={() => setDialog('edit')} resending={resending} />
+      {consentProblem && !p.anonymised && (
+        <Alert color={blocked ? 'red' : 'yellow'} variant="light" mb="md" icon={<ConsentIcon size={ICON_SIZE} stroke={ICON_STROKE} />} data-testid="consent-banner">
+          <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+            <Text size="sm" c="var(--color-ink)">
+              {t(`network.consentBanner.${p.consentStatus}`)}
+              {!p.email && ` ${t('network.consentNoEmail')}`}
+            </Text>
+            {canSendConsent && (
+              <Button variant="default" onClick={() => setDialog('consent')}>
+                {t('network.sendConsent')}
+              </Button>
+            )}
+          </Group>
+        </Alert>
+      )}
       <Tabs defaultValue="overview" keepMounted={false}>
         <Tabs.List mb="md" style={{ flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden' }}>
           <Tabs.Tab value="overview" style={tabStyle}>{t('network.tabs.overview')}</Tabs.Tab>
