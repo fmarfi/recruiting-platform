@@ -44,7 +44,7 @@ describe('PersonEditDrawer', () => {
     const tags = screen.getByLabelText(/Tags/);
     fireEvent.change(tags, { target: { value: 'finance' } });
     fireEvent.keyDown(tags, { key: 'Enter' });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(PATCH).toHaveBeenCalledWith('/people/{id}', { params: { path: { id: 'p1' } }, body: { phone: '+90 555 000 00 00', version: 2 } });
     expect(POST).toHaveBeenCalledWith('/bulk-actions', { body: { entity: 'PEOPLE', ids: ['p1'], action: 'ADD_TAG', params: { tag: 'finance' } } });
@@ -59,7 +59,7 @@ describe('PersonEditDrawer', () => {
     PATCH.mockResolvedValueOnce({ error: { code: 'VALIDATION_FAILED', errors: [{ field: 'email', code: 'EMAIL', message: 'must be a well-formed email address' }] }, response: { status: 400 } });
     const { onClose } = setup();
     type(/^Email/, 'bad');
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(screen.getByText('must be a well-formed email address')).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
