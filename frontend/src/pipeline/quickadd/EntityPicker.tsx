@@ -1,6 +1,7 @@
 // Type-ahead picker for an account or a person (used by quick add).
 import { Select } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { api } from '../../api';
 
@@ -14,6 +15,8 @@ export function EntityPicker({
   description,
   error,
   required,
+  placeholder,
+  icon,
 }: {
   kind: 'account' | 'person';
   label: string;
@@ -22,6 +25,10 @@ export function EntityPicker({
   description?: string;
   error?: string;
   required?: boolean;
+  /** Shown in the input while nothing is picked (quick add uses "Search clients…"). */
+  placeholder?: string;
+  /** Object icon shown at the left edge of the input. */
+  icon?: ReactNode;
 }) {
   const [search, setSearch] = useState('');
   const [q] = useDebouncedValue(search, 200);
@@ -45,6 +52,8 @@ export function EntityPicker({
       description={description}
       error={error}
       withAsterisk={required}
+      placeholder={placeholder}
+      leftSection={icon}
       searchable
       clearable
       data={data}
