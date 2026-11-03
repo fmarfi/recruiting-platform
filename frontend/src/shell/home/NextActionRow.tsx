@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ICON_SIZE, ICON_STROKE } from '../components/objectIcons';
 import { addDays, daysAgo, fmtDate } from '../lib/format';
-import { rowDivider } from './HomeSection';
 import type { NextAction } from './useMyDay';
 
 interface Props {
@@ -20,7 +19,7 @@ export function NextActionRow({ action: a, today, divided, onDone, onSnooze }: P
   const { t, i18n } = useTranslation();
   const due = a.overdue ? t('myday.overdueBy', { n: daysAgo(a.dueOn, today) }) : a.dueOn === today ? t('myday.group.today') : fmtDate(a.dueOn, i18n.language);
   return (
-    <Group wrap="wrap" justify="space-between" align="center" gap="xs" py="var(--space-2)" style={rowDivider(divided)}>
+    <Group wrap="wrap" justify="space-between" align="center" gap="xs" py="var(--space-2)" style={{ borderTop: divided ? '1px solid var(--color-border)' : undefined }}>
       <Checkbox size="sm" label={a.title} checked={false} onChange={onDone} aria-label={a.title} style={{ flex: '1 1 220px', minWidth: 0 }} styles={{ label: { overflowWrap: 'anywhere' } }} />
       <Group gap="sm" wrap="nowrap">
         {a.account && (

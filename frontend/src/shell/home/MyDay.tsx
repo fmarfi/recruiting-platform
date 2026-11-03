@@ -12,13 +12,12 @@ import { PageHeader } from '../components/PageHeader';
 import { SkeletonRows } from '../components/SkeletonRows';
 import { ICON_SIZE, ICON_STROKE } from '../components/objectIcons';
 import { fmtDate } from '../lib/format';
-import { HomePanel } from './HomeSection';
 import { NextActionsSection } from './NextActionsSection';
-import { OpenSearchesSection, RecentClientsSection } from './SideSections';
+import { OpenSearchesSection, RecentClientsSection, useFirmJobs } from './SideSections';
 import { StatsStrip } from './StatsStrip';
 import { useMyDay } from './useMyDay';
 
-/** Home screen (UX-01): what should I do next? Content sits on the canvas; one white panel per column. */
+/** Home screen (UX-01): what should I do next? KPI tiles, then panels per column (shared Panel). */
 export function MyDay() {
   const { t, i18n } = useTranslation();
   const { isManager } = useAuth();
@@ -27,6 +26,10 @@ export function MyDay() {
   const [adding, setAdding] = useState(false);
   const [newAccount, setNewAccount] = useState(false);
   const d = home.data;
+  // Average days open uses the searches loaded on the page: mine, or the firm's oldest when I have none.
+  const own = d?.openJobOrders ?? [];
+  const firm = useFirmJobs(own.length === 0 && (d?.stats.openJobOrders ?? 0) > 0);
+  const openPool = own.length > 0 ? own : firm;
 
   if (home.loading && !d)
     return (
@@ -71,16 +74,16 @@ export function MyDay() {
         />
       ) : (
         <Stack gap="var(--space-6)">
-          <StatsStrip stats={d.stats} openJobs={d.openJobOrders} />
+          <StatsStrip stats={d.stats} openJobs={openPool} mineOnly={own.length > 0} />
           <Grid>
             <Grid.Col span={{ base: 12, md: 7 }}>
               <NextActionsSection actions={actions} today={d.today} undo={home.undo} onDone={(a, v) => void home.setDone(a, v)} onSnooze={(a, due) => void home.snooze(a, due)} onAdd={() => setAdding(true)} />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 5 }}>
-              <HomePanel>
-                <OpenSearchesSection jobs={d.openJobOrders} openTotal={d.stats.openJobOrders} />
+              <Stack gap="var(--space-6)">
+                <OpenSearchesSection jobs={openPool} openTotal={d.stats.openJobOrders} />
                 <RecentClientsSection accounts={d.recentAccounts} today={d.today} />
-              </HomePanel>
+              </Stack>
             </Grid.Col>
           </Grid>
         </Stack>
