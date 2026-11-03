@@ -50,7 +50,8 @@
       "done": "{{name}} archived",
       "restored": "{{name}} restored",
       "error": "Could not archive. Try again."
-    }
+    },
+    "saveChanges": "Save changes"
   },
   "bulk": {
     "bar": "Bulk actions",

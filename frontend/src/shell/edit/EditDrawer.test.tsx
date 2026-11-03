@@ -47,7 +47,7 @@ describe('EditDrawer', () => {
   it('saves with the button and with Ctrl+Enter, then closes', async () => {
     const p = base({ dirty: true });
     renderShell(<EditDrawer {...p} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(p.onSave).toHaveBeenCalledTimes(1);
     expect(p.onClose).toHaveBeenCalledTimes(1);
@@ -59,7 +59,7 @@ describe('EditDrawer', () => {
   it('keeps the drawer open and announces a failed save', async () => {
     const p = base({ dirty: true, onSave: () => Promise.reject({ detail: 'Server said no' }) });
     renderShell(<EditDrawer {...p} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(screen.getByRole('alert')).toHaveTextContent('Server said no');
     expect(p.onClose).not.toHaveBeenCalled();
@@ -73,7 +73,7 @@ describe('EditDrawer', () => {
       onResolveConflict,
     });
     renderShell(<EditDrawer {...p} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     const dlg = screen.getByRole('dialog', { name: 'Compare and save' });
     expect(within(dlg).getByRole('rowheader', { name: 'City' })).toBeInTheDocument();
