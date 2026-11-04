@@ -69,24 +69,24 @@ export function LonglistPanel({ jobId, apps, readOnly, reload, onBulkAdd }: { jo
               <Table.Tr key={a.id} data-testid={`ll-row-${a.id}`}>
                 <Table.Td>
                   <Group gap="xs" wrap="nowrap">
-                    <Text span fz="0.875rem" style={{ fontVariantNumeric: 'tabular-nums' }} data-testid="ll-rank">
+                    <Text span fz="sm" style={{ fontVariantNumeric: 'tabular-nums' }} data-testid="ll-rank">
                       {a.rank ?? i + 1}
                     </Text>
-                    <ActionIcon variant="subtle" size="sm" aria-label={t('pipeline.ll.up', { name: a.person.name })} disabled={readOnly || i === 0} onClick={() => void ll.move(a.id, -1)}>
+                    <ActionIcon variant="subtle" size="sm" aria-label={t('pipeline.ll.up', { name: a.person.name })} disabled={readOnly || ll.pending || i === 0} onClick={() => void ll.move(a.id, -1)}>
                       <IconArrowUp size={ICON_SIZE} stroke={ICON_STROKE} />
                     </ActionIcon>
-                    <ActionIcon variant="subtle" size="sm" aria-label={t('pipeline.ll.down', { name: a.person.name })} disabled={readOnly || i === ll.rows.length - 1} onClick={() => void ll.move(a.id, 1)}>
+                    <ActionIcon variant="subtle" size="sm" aria-label={t('pipeline.ll.down', { name: a.person.name })} disabled={readOnly || ll.pending || i === ll.rows.length - 1} onClick={() => void ll.move(a.id, 1)}>
                       <IconArrowDown size={ICON_SIZE} stroke={ICON_STROKE} />
                     </ActionIcon>
                   </Group>
                 </Table.Td>
                 <Table.Td>
-                  <Text component={Link} to={`/people/${a.person.id}`} fz="0.875rem" c="var(--color-navy)">
+                  <Text component={Link} to={`/people/${a.person.id}`} fz="sm" c="var(--color-navy)">
                     {a.person.name}
                   </Text>
                 </Table.Td>
                 <Table.Td>
-                  <Text fz="0.875rem" c="var(--color-ink2)">
+                  <Text fz="sm" c="var(--color-ink2)">
                     {[a.person.title, a.person.company].filter(Boolean).join(', ') || '–'}
                   </Text>
                 </Table.Td>
@@ -97,7 +97,7 @@ export function LonglistPanel({ jobId, apps, readOnly, reload, onBulkAdd }: { jo
                     data={OUTREACH.map((s) => ({ value: s, label: t(`pipeline.ll.outreach.${s}`) }))}
                     value={a.outreachStatus ?? 'TO_CALL'}
                     allowDeselect={false}
-                    disabled={readOnly}
+                    disabled={readOnly || ll.pending}
                     onChange={(v) => v && void ll.patch(a, { outreachStatus: v as Schemas['OutreachStatus'] })}
                   />
                 </Table.Td>
@@ -107,12 +107,12 @@ export function LonglistPanel({ jobId, apps, readOnly, reload, onBulkAdd }: { jo
                     aria-label={t('pipeline.ll.rating')}
                     data={['1', '2', '3', '4', '5']}
                     value={a.rating ? String(a.rating) : null}
-                    disabled={readOnly}
+                    disabled={readOnly || ll.pending}
                     onChange={(v) => void ll.patch(a, { rating: v ? Number(v) : null })}
                   />
                 </Table.Td>
                 <Table.Td>
-                  <RationaleCell key={`${a.id}-${a.version}`} app={a} disabled={readOnly} onSave={(v) => void ll.patch(a, { rationale: v || null })} />
+                  <RationaleCell key={`${a.id}-${a.version}`} app={a} disabled={readOnly || ll.pending} onSave={(v) => void ll.patch(a, { rationale: v || null })} />
                 </Table.Td>
                 <Table.Td>
                   <Button size="compact-sm" variant="default" disabled={readOnly} onClick={() => setAsk(a)}>
