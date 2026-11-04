@@ -39,3 +39,15 @@
 **Change requests**
 - frontend-shell: `UndoToastProvider` is not mounted anywhere in the app; I wrapped the three pages in it. Mount it once in the layout, then the page wrappers can go.
 - `NewRecordDialog` kind="job" (accounts/components) is now unused for jobs.
+
+## 2026-11-04 - S5 longlist UI (R65)
+Branch s5-longlist-ui, base cf78ca8. Files: frontend/src/pipeline/longlist/ (LonglistPanel, BulkAddDialog, ShortlistDialog, useLonglist, longlist.test.tsx), JobOrderPage.tsx (Board/Longlist switch, Bulk add in empty state), pipeline i18n pipeline.ll.* (en and tr, English text).
+- Longlist panel: ranked table (rank with up/down, name, role/company, call status select, rating select, rationale on blur, To shortlist). Uses PUT /job-orders/{id}/ranking, PATCH /applications/{id}, PATCH /applications/{id}/stage (PRESENTED with rating and rationale; contract errors[].message shown inline in the dialog).
+- Bulk add: GET /people (q, city, functionArea), checkboxes plus select all, one POST /job-orders/{id}/applications per person in parallel; failures listed inline. People already on the search are hidden.
+- Tests: 3 new (reorder, bulk add of 2, shortlist validation message). tsc clean, vitest 261/261.
+
+**Contract gaps**
+- No bulk-add endpoint: N single POSTs (fine for 10; a bulk endpoint would suit 100).
+- Pool filter is GET /people (city, functionArea, tag); there is no location param, city is used.
+- Drag reorder not built (up/down buttons only).
+- package-lock.json is out of sync with package.json (@tabler/icons-react missing), so npm ci fails; used npm install --no-package-lock.
