@@ -1,3 +1,4 @@
+import { IconChevronDown } from '@tabler/icons-react';
 import { Button, Group, Menu, Modal, Popover, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useContext, useState } from 'react';
 import { api, type components } from '../../api';
@@ -122,7 +123,7 @@ export function BulkBar({ entity, selectedIds, clear, actions = ALL_BULK_ACTIONS
       <Menu position="bottom-end" withinPortal>
         <Menu.Target>
           <Button size="xs" variant="default" loading={busy && !pending} aria-haspopup="menu">
-            {tx('bulk.actions')} <span aria-hidden>{' ▾'}</span>
+            {tx('bulk.actions')} <IconChevronDown size={14} stroke={1.75} aria-hidden style={{ marginLeft: 4, verticalAlign: 'middle' }} />
           </Button>
         </Menu.Target>
         <Menu.Dropdown>

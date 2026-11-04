@@ -4,18 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../auth/useAuth';
+import { ClientIcon, HomeIcon, ICON_SIZE_NAV, ICON_STROKE, PersonIcon, SearchIcon, SettingsIcon } from '../components/objectIcons';
 
-const icon = (d: ReactNode) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false" style={{ flex: 'none' }}>
-    {d}
-  </svg>
-);
 const ICONS: Record<string, ReactNode> = {
-  'nav.myDay': icon(<><path d="M5 12l7-7 7 7" /><path d="M6 10v9h12v-9" /></>),
-  'nav.accounts': icon(<><path d="M4 20V6l8-2v16" /><path d="M12 9h8v11" /><path d="M8 9h1M8 13h1M8 17h1M16 13h1M16 17h1" /></>),
-  'nav.jobOrders': icon(<><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /><path d="M12 12l6-6" /></>),
-  'nav.network': icon(<><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-3.9 3.1-6 7-6s7 2.1 7 6" /></>),
-  'nav.settings': icon(<><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /></>),
+  'nav.myDay': <HomeIcon size={ICON_SIZE_NAV} stroke={ICON_STROKE} aria-hidden style={{ flex: 'none' }} />,
+  'nav.accounts': <ClientIcon size={ICON_SIZE_NAV} stroke={ICON_STROKE} aria-hidden style={{ flex: 'none' }} />,
+  'nav.jobOrders': <SearchIcon size={ICON_SIZE_NAV} stroke={ICON_STROKE} aria-hidden style={{ flex: 'none' }} />,
+  'nav.network': <PersonIcon size={ICON_SIZE_NAV} stroke={ICON_STROKE} aria-hidden style={{ flex: 'none' }} />,
+  'nav.settings': <SettingsIcon size={ICON_SIZE_NAV} stroke={ICON_STROKE} aria-hidden style={{ flex: 'none' }} />,
 };
 
 function useNavItems() {
@@ -62,7 +58,7 @@ export function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; 
   if (collapsed) return null;
   return (
     <Stack gap={2} component="nav" aria-label={t('nav.pinned')} mt="md">
-      <Text size="xs" fw={700} tt="uppercase" px="var(--space-3)" style={{ color: 'var(--color-chromeInk2)' }}>
+      <Text size="sm" fw={600} px="var(--space-3)" style={{ color: 'var(--color-chromeInk2)' }}>
         {t('nav.pinned')}
       </Text>
       {rows === null && (
@@ -106,7 +102,7 @@ export function PinnedSearches({ collapsed, onNavigate }: { collapsed: boolean; 
   );
 }
 
-/** Main navigation on midnight chrome: a column in the rail on laptop (icons only when collapsed), a row in the bottom bar on phone. */
+/** Main navigation on midnight chrome: a column in the rail or the phone drawer (icons only when the rail is collapsed); the row variant is kept for callers that need a horizontal bar. */
 export function NavItems({ vertical, collapsed = false, onNavigate }: { vertical: boolean; collapsed?: boolean; onNavigate?: () => void }) {
   const { t } = useTranslation();
   const items = useNavItems();
@@ -133,9 +129,9 @@ export function NavItems({ vertical, collapsed = false, onNavigate }: { vertical
             flexDirection: vertical ? 'row' : 'column',
             alignItems: 'center',
             justifyContent: vertical && !collapsed ? 'flex-start' : 'center',
-            gap: vertical ? 12 : 2,
-            padding: vertical ? (collapsed ? 0 : '0 var(--space-3)') : '4px 2px',
-            fontSize: vertical ? '0.9375rem' : 12,
+            gap: vertical ? 'var(--space-3)' : 'var(--space-1)',
+            padding: vertical ? (collapsed ? 0 : '0 var(--space-3)') : 'var(--space-1) var(--space-0)',
+            fontSize: vertical ? '0.9375rem' : '0.75rem',
             whiteSpace: 'nowrap',
             minWidth: 0,
             overflow: 'hidden',
@@ -143,7 +139,7 @@ export function NavItems({ vertical, collapsed = false, onNavigate }: { vertical
             textAlign: 'center',
             borderRadius: 'var(--radius-md)',
             textDecoration: 'none',
-            fontWeight: 600,
+            fontWeight: 500,
             flex: vertical ? undefined : 1,
             color: isActive ? 'var(--color-chromeInk)' : 'var(--color-chromeInk2)',
             background: isActive ? 'var(--color-chromeActive)' : 'transparent',

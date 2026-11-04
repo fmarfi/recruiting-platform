@@ -1,11 +1,13 @@
 import { AppPagination } from '../../shell/components/AppPagination';
 import { Button, Container, Stack } from '@mantine/core';
+import { IconPlus } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shell/auth/useAuth';
 import { EmptyState } from '../../shell/components/EmptyState';
+import { ICON_SIZE, ICON_STROKE } from '../../shell/components/objectIcons';
 import { PageHeader } from '../../shell/components/PageHeader';
 import { DataGrid, ViewsMenu, formatSort, parseSort, useGridColumns, useViewStore } from '../../shell/grid';
 import { tokens } from '../../theme/tokens';
@@ -38,7 +40,11 @@ export function AccountsList() {
   const clear = () => setFilters((f) => ({ ...f, q: '', status: '', ownerId: '', page: 0 }));
   const filtered = !!(filters.q || filters.status || filters.ownerId);
   const d = res.data;
-  const newBtn = <Button onClick={() => setCreating(true)}>+ {t('accounts.newAccount')}</Button>;
+  const newBtn = (
+    <Button leftSection={<IconPlus size={ICON_SIZE} stroke={ICON_STROKE} aria-hidden />} onClick={() => setCreating(true)}>
+      {t('accounts.newAccount')}
+    </Button>
+  );
   const sort = parseSort(filters.sort) ?? parseSort(DEFAULT_SORT);
 
   return (
@@ -72,6 +78,7 @@ export function AccountsList() {
           onSort={(s) => change({ sort: formatSort(s) })}
           exportName="accounts"
           phone={!!phone}
+          onRowClick={(a) => nav(`/accounts/${a.id}`)}
           renderCard={(a) => <AccountCard a={a} />}
           toolbar={
             <>
@@ -91,7 +98,7 @@ export function AccountsList() {
               <EmptyState
                 title={t('accounts.emptyFilter')}
                 actions={
-                  <Button variant="default" onClick={clear}>
+                  <Button onClick={clear}>
                     {t('accounts.clear')}
                   </Button>
                 }

@@ -1,4 +1,4 @@
-﻿import { Anchor, Group, Text } from '@mantine/core';
+import { Anchor, Group, Text } from '@mantine/core';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -22,8 +22,9 @@ export function useAccountColumns(): ColumnDef<Account>[] {
         locked: true,
         minWidth: 180,
         accessor: (a) => a.name,
+        // Plain ink text. The link keeps the name keyboard reachable; the whole row also opens the record (DataGrid onRowClick).
         cell: (a) => (
-          <Anchor component={Link} to={`/accounts/${a.id}`} fw={600}>
+          <Anchor component={Link} to={`/accounts/${a.id}`} underline="never" fw={500} c="var(--color-ink)">
             {a.name}
           </Anchor>
         ),
@@ -40,7 +41,11 @@ export function useAccountColumns(): ColumnDef<Account>[] {
         sortable: true,
         firstSortDir: 'desc',
         accessor: (a) => a.lastActivityAt ?? '',
-        cell: (a) => <span title={a.lastActivityAt ? fmtDate(a.lastActivityAt, lng) : undefined}>{fmtRelative(a.lastActivityAt, lng)}</span>,
+        cell: (a) => (
+          <Text component="span" size="sm" c="dimmed" title={a.lastActivityAt ? fmtDate(a.lastActivityAt, lng) : undefined}>
+            {fmtRelative(a.lastActivityAt, lng)}
+          </Text>
+        ),
       },
       { id: 'openedOn', header: t('accounts.openedOn'), numeric: true, sortable: true, firstSortDir: 'desc', defaultVisible: false, accessor: (a) => a.openedOn, cell: (a) => fmtDate(a.openedOn, lng) },
       { id: 'website', header: t('accounts.website'), defaultVisible: false, accessor: (a) => a.website },
@@ -55,7 +60,7 @@ export function AccountCard({ a }: { a: Account }) {
   return (
     <Anchor component={Link} to={`/accounts/${a.id}`} underline="never" c="inherit">
       <Group justify="space-between" wrap="nowrap">
-        <Text fw={600}>{a.name}</Text>
+        <Text fw={500}>{a.name}</Text>
         <StatusBadge kind="account" value={a.status} size="sm" />
       </Group>
       <Text size="sm" c="dimmed">
