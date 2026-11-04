@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Recruiting Platform API
-  version: 1.3.0
+  version: 1.4.0
   summary: Phase 1 (non-AI) REST contract — CRM, candidate pool, CV files, KVKK consent engine and audit.
   description: |
     Contract owned by the architect (Wave 0). Backends implement it, frontends build against the
@@ -74,6 +74,12 @@ info:
       activity outcome, direction, attendees, duration, source and external message id; brief team size
       (band encrypted at rest); agreement signed file, guarantee start basis, VAT per fee item. Cut from
       1.3: proposal archive/restore, proposal exports and `proposalId` on conflict checks.
+    - 1.4.0 (additive; ADR 0014): Home v2 aggregate for the consultant preset (R46). `GET /home` stays the
+      one call; `MyDay` gains optional `generatedAt`, `needsYouCount`, `todayItems` (ACTION or EVENT),
+      `needsYou` (typed risk items with one `action` code each, `HomeRiskType`, `HomeAction`) and
+      `searches` (live-search health with list counts, next milestone and `SearchHealthFlag`). The
+      thresholds are named constants on `HomeRiskType`. R17 confidentiality filters every Home list and
+      count. No new endpoint, no new column; 1.3 clients ignore the new fields.
   contact:
     name: architect agent
   license:
@@ -1941,6 +1947,12 @@ paths:
       tags: [Home]
       operationId: getMyDay
       summary: My day — next actions, overdue follow-ups, recent accounts, open jobs (UX-01)
+      description: |
+        Since 1.4.0 (ADR 0014, R46) also the Home v2 consultant aggregate: `todayItems`, `needsYou` and
+        `searches`, computed for the current user in one read-only transaction, target p95 ≤ 300 ms with
+        the seeded volume. Every list and count respects search confidentiality (R17): a CONFIDENTIAL job
+        order, and everything anchored on it, only counts for its owner and team members. "My searches"
+        are open, unarchived job orders the user owns or is a team member of (`job_order_team_member`).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       responses:
@@ -6192,12 +6204,132 @@ components:
           items: { $ref: '#/components/schemas/Account' }
         stats:
           type: object
+          description: Since 1.4.0 the job-order-based counts leave out CONFIDENTIAL job orders (and their applications) the user is not owner or team member of (R17).
           required: [activeAccounts, openJobOrders, candidatesInProcess, placedThisYear]
           properties:
             activeAccounts: { type: integer }
             openJobOrders: { type: integer }
             candidatesInProcess: { type: integer }
             placedThisYear: { type: integer }
+        generatedAt:
+          type: string
+          format: date-time
+          description: Since 1.4.0. When the server computed this response (the "updated 08:42" stamp, R46).
+        needsYouCount:
+          type: integer
+          minimum: 0
+          description: Since 1.4.0. Total NEEDS YOU items before the cap of `needsYou` ("N things need you today").
+          examples: [4]
+        todayItems:
+          type: array
+          maxItems: 30
+          description: |
+            Since 1.4.0. The TODAY block (named `todayItems` because `today` is already the date). ACTION rows:
+            the user's open next actions with `dueOn` ≤ today and fewer than `HomeRiskType.ACTION_OVERDUE_DAYS`
+            (3) days overdue (older ones are `needsYou` ACTION_OVERDUE). EVENT rows: MEETING and VISIT activities
+            with `occurredAt` today (Europe/Istanbul), logged by the user or on one of the user's searches.
+            Order: overdue ACTIONs (most overdue first), then by `at` (EVENTs) and dueOn, ACTIONs without time last.
+            The legacy `nextActions` list stays unchanged.
+          items: { $ref: '#/components/schemas/MyDayTodayItem' }
+        needsYou:
+          type: array
+          maxItems: 20
+          description: Since 1.4.0. The NEEDS YOU block; ordered by type in `HomeRiskType` declaration order, then `days` descending.
+          items: { $ref: '#/components/schemas/MyDayRiskItem' }
+        searches:
+          type: array
+          maxItems: 30
+          description: Since 1.4.0. MY LIVE SEARCHES health table, one row per open, unarchived job order the user owns or is a team member of; ordered by `flag` (declaration order), then `daysOpen` descending.
+          items: { $ref: '#/components/schemas/MySearchHealth' }
+    MyDayTodayItem:
+      type: object
+      description: Since 1.4.0 (ADR 0014). One TODAY row.
+      required: [kind, id, overdueDays]
+      properties:
+        kind: { $ref: '#/components/schemas/TodayItemKind' }
+        id: { $ref: '#/components/schemas/Id', description: 'The next action id (ACTION) or the activity id (EVENT).' }
+        at:
+          type: [string, 'null']
+          format: date-time
+          description: 'EVENT: the activity `occurredAt`. ACTION: null (next actions have a date, no time).'
+        dueOn: { type: [string, 'null'], format: date, description: 'ACTION: the next action `dueOn`; EVENT: null.' }
+        title:
+          type: [string, 'null']
+          description: 'ACTION: the next action title. EVENT: null; the client builds the label from `activityType` and the refs (activity notes are not sent to Home).'
+        activityType:
+          oneOf: [{ $ref: '#/components/schemas/ActivityType' }, { type: 'null' }]
+          description: 'EVENT only: MEETING or VISIT.'
+        overdueDays: { type: integer, minimum: 0, description: 'ACTION: days since `dueOn` (0 = due today). EVENT: 0.' }
+        person: { oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }] }
+        jobOrder: { oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }] }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+        nextAction:
+          oneOf: [{ $ref: '#/components/schemas/NextAction' }, { type: 'null' }]
+          description: 'ACTION only: the full next action, so Done and Snooze can send its `version` to `PATCH /next-actions/{id}`.'
+    MyDayRiskItem:
+      type: object
+      description: |
+        Since 1.4.0 (ADR 0014). One NEEDS YOU row: a typed risk with the figure that makes it urgent and one
+        action. Refs say what the row and its action target:
+        CONSENT_ON_CLIENT_STAGE — applicationId, person, jobOrder, account; days since the application entered its client-facing stage.
+        FEEDBACK_LATE — applicationId, person, jobOrder, account; days in PRESENTED without client feedback or non-outbound client activity.
+        STUCK_IN_STAGE — applicationId, person, jobOrder, account, stage; days since `stageChangedAt`.
+        SEARCH_STALLED — jobOrder, account; days since the last activity or stage change on the search.
+        ACTION_OVERDUE — nextActionId, and person, jobOrder, account when the action has them; days past `dueOn`.
+      required: [type, action, days, since]
+      properties:
+        type: { $ref: '#/components/schemas/HomeRiskType' }
+        action: { $ref: '#/components/schemas/HomeAction' }
+        days: { type: integer, minimum: 0, description: 'The figure that makes it urgent (see the type list).', examples: [5] }
+        since: { type: string, format: date, description: The date `days` counts from. }
+        applicationId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
+        nextActionId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
+        targetVersion:
+          oneOf: [{ $ref: '#/components/schemas/Version' }, { type: 'null' }]
+          description: Version of the application or next action the action changes; send it back for optimistic locking.
+        stage:
+          oneOf: [{ $ref: '#/components/schemas/PipelineStage' }, { type: 'null' }]
+          description: Current stage for application-based items.
+        consentStatus:
+          oneOf: [{ $ref: '#/components/schemas/ConsentStatus' }, { type: 'null' }]
+          description: 'CONSENT_ON_CLIENT_STAGE only. NOT_SENT or SENT: action REQUEST_CONSENT; REFUSED or WITHDRAWN: action REMOVE_FROM_SHORTLIST.'
+        person: { oneOf: [{ $ref: '#/components/schemas/PersonRef' }, { type: 'null' }] }
+        jobOrder: { oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }] }
+        account: { oneOf: [{ $ref: '#/components/schemas/AccountRef' }, { type: 'null' }] }
+    MySearchHealth:
+      type: object
+      description: Since 1.4.0 (ADR 0014). One MY LIVE SEARCHES row.
+      required: [jobOrder, account, longlist, shortlist, clientInterview, daysOpen, flag, confidentialityLevel]
+      properties:
+        jobOrder: { $ref: '#/components/schemas/JobOrderRef', description: 'Id, title and status of the search.' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
+        longlist: { type: integer, minimum: 0, description: Active applications on the LONGLIST (SOURCED, SCREENED)., examples: [18] }
+        shortlist: { type: integer, minimum: 0, description: Active applications on the SHORTLIST (PRESENTED, CLIENT_INTERVIEW, OFFER; PLACED not counted)., examples: [4] }
+        clientInterview: { type: integer, minimum: 0, description: Applications in CLIENT_INTERVIEW (also counted in `shortlist`)., examples: [2] }
+        daysOpen: { type: integer, minimum: 0, description: Same as `JobOrder.daysOpen`., examples: [31] }
+        lastActivityAt:
+          type: [string, 'null']
+          format: date-time
+          description: Latest of the job order's activities (`occurredAt`) and its applications' `stageChangedAt`; null when neither exists.
+        nextMilestone:
+          oneOf: [{ $ref: '#/components/schemas/SearchMilestone' }, { type: 'null' }]
+          description: The earliest candidate milestone (see `MilestoneSource`); null when none applies.
+        flag: { $ref: '#/components/schemas/SearchHealthFlag' }
+        flagDays:
+          type: [integer, 'null']
+          minimum: 0
+          description: 'Days behind the flag: STALLED days since `lastActivityAt` (or `openedOn`), WAITING_ON_CLIENT the largest FEEDBACK_LATE `days`, MILESTONE_OVERDUE days past the milestone, NO_SHORTLIST `daysOpen`; null for ON_TRACK.'
+          examples: [9]
+    SearchMilestone:
+      type: object
+      description: Since 1.4.0 (ADR 0014). The client renders the text from `source` (i18n key) plus `title` for NEXT_ACTION.
+      required: [source, dueOn, overdue]
+      properties:
+        source: { $ref: '#/components/schemas/MilestoneSource' }
+        dueOn: { type: string, format: date }
+        title: { type: [string, 'null'], description: 'NEXT_ACTION only: the next action title.', examples: [Send shortlist to HR Director] }
+        overdue: { type: boolean, description: '`dueOn` before today.' }
     # ---------- privacy ----------
     PrivacyNoticeRef:
       type: object
@@ -7351,6 +7483,30 @@ components:
       type: string
       description: '`contracts/enums/CandidateList.java`; derived from the stage: SOURCED, SCREENED = LONGLIST; PRESENTED, CLIENT_INTERVIEW, OFFER, PLACED = SHORTLIST.'
       enum: [LONGLIST, SHORTLIST]
+    TodayItemKind:
+      type: string
+      description: '`contracts/enums/TodayItemKind.java` (since 1.4.0).'
+      enum: [ACTION, EVENT]
+    HomeRiskType:
+      type: string
+      description: '`contracts/enums/HomeRiskType.java` (since 1.4.0); thresholds are its constants (ADR 0014). More types may follow in a minor version: show unknown ones as a generic row.'
+      enum: [CONSENT_ON_CLIENT_STAGE, FEEDBACK_LATE, STUCK_IN_STAGE, SEARCH_STALLED, ACTION_OVERDUE]
+    HomeAction:
+      type: string
+      description: |
+        `contracts/enums/HomeAction.java` (since 1.4.0). Endpoint per code: REQUEST_CONSENT `POST /people/{id}/consent/requests`;
+        REMOVE_FROM_SHORTLIST `PATCH /applications/{id}/stage` to REJECTED with reason; LOG_CLIENT_CONTACT `POST /activities`
+        (account and job order set) or `POST /applications/{id}/client-feedback`; MOVE_STAGE `PATCH /applications/{id}/stage`;
+        PLAN_NEXT_ACTION `POST /next-actions`; COMPLETE_ACTION `PATCH /next-actions/{id}` with `done: true`.
+      enum: [REQUEST_CONSENT, REMOVE_FROM_SHORTLIST, LOG_CLIENT_CONTACT, MOVE_STAGE, PLAN_NEXT_ACTION, COMPLETE_ACTION]
+    MilestoneSource:
+      type: string
+      description: '`contracts/enums/MilestoneSource.java` (since 1.4.0): NEXT_ACTION `next_action.due_on`; LONGLIST_DUE, SHORTLIST_DUE, TARGET_START from the search brief.'
+      enum: [NEXT_ACTION, LONGLIST_DUE, SHORTLIST_DUE, TARGET_START]
+    SearchHealthFlag:
+      type: string
+      description: '`contracts/enums/SearchHealthFlag.java` (since 1.4.0); the first that applies in this order, else ON_TRACK.'
+      enum: [STALLED, WAITING_ON_CLIENT, MILESTONE_OVERDUE, NO_SHORTLIST, ON_TRACK]
     OutreachStatus:
       type: string
       description: '`contracts/enums/OutreachStatus.java`; not a lifecycle. A move to stage SCREENED sets SCREENED.'

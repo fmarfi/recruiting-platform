@@ -663,6 +663,8 @@ Nightly job in `pipeline`: a next action "Guarantee ends on <date>" for the job 
 
 **activity** — audited
 
+Indexes added in 1.4.0 for the Home aggregate (ADR 0014; no new columns): `activity (job_order_id, occurred_at desc) where job_order_id is not null` (search last activity, SEARCH_STALLED, FEEDBACK_LATE) and `activity (user_id, occurred_at desc)` (today's EVENT rows). Also `application (job_order_id, stage, stage_changed_at)` for the per-search counts and stage-age risks.
+
 | Column | Type | Notes |
 | --- | --- | --- |
 | id | uuid PK | |
