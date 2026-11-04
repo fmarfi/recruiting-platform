@@ -70,7 +70,7 @@ export function OpenSearchesSection({ jobs, openTotal }: { jobs: JobOrder[]; ope
                   {j.account.name}
                 </Text>
                 <Text fz="0.8125rem" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {t('myday.daysOpen', { n: j.daysOpen })}
+                  {t('myday.daysOpen', { count: j.daysOpen })}
                 </Text>
                 <Text fz="0.8125rem" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {t('myday.candidates', { n: j.activeCandidates })}

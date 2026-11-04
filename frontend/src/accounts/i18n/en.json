@@ -58,6 +58,8 @@
       "lastContact": "Last contact",
       "never": "Never",
       "daysAgo": "{{count}} days ago",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago",
       "knownBy": "Known by",
       "warmPaths": "Warm paths",
       "warmHint": "People in our network who know the contacts at this client: ask them for an introduction.",
@@ -201,6 +203,7 @@
       "status": "Status",
       "notes": "Notes",
       "lastUpdated": "Last updated"
-    }
+    },
+    "timelineViewAll": "View all"
   }
 }
