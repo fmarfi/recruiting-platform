@@ -1,5 +1,7 @@
 // Longlist state (R65, S5): ranked rows with optimistic reordering; all edits go to the 1.3.0 contract endpoints.
-import { useEffect, useState } from 'react';
+// Every successful write calls the page's reload() so the board and the longlist share one source; writes are serialised via `pending`.
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
 import { problemText, type Schemas } from '../shared';
 
@@ -14,12 +16,42 @@ export function guardMessages(error: unknown, fallback: string): string[] {
 
 export const byRank = (a: App, b: App) => (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER);
 
+const isConflict = (r: { error?: unknown; response?: { status?: number } }) => r.response?.status === 409 || (r.error as { status?: number } | undefined)?.status === 409;
+
 export function useLonglist(jobId: string, apps: App[], reload: () => void) {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<App[]>([]);
   const [error, setError] = useState<string>();
+  const [pending, setPending] = useState(false);
+  const lock = useRef(false);
   useEffect(() => {
     setRows(apps.filter((a) => a.list === 'LONGLIST').sort(byRank));
   }, [apps]);
+
+  /** One write at a time; on failure reload and tell the user (409 = stale view). */
+  const write = async <R extends { error?: unknown; response?: { status?: number } }>(call: () => Promise<R>, fallback: string): Promise<R | undefined> => {
+    if (lock.current) return undefined;
+    lock.current = true;
+    setPending(true);
+    try {
+      const r = await call();
+      if (r.error) {
+        setError(isConflict(r) ? t('pipeline.ll.conflict') : problemText(r.error, fallback));
+        reload();
+      } else {
+        setError(undefined);
+        reload();
+      }
+      return r;
+    } catch {
+      setError(fallback);
+      reload();
+      return undefined;
+    } finally {
+      lock.current = false;
+      setPending(false);
+    }
+  };
 
   /** Move one row up (-1) or down (+1); the new order is sent as a whole (PUT ranking). */
   const move = async (id: string, dir: -1 | 1) => {
@@ -30,27 +62,15 @@ export function useLonglist(jobId: string, apps: App[], reload: () => void) {
     const a = next[i]!;
     next[i] = next[j]!;
     next[j] = a;
+    const before = rows;
     setRows(next);
-    const r = await api.PUT('/job-orders/{id}/ranking', { params: { path: { id: jobId } }, body: { list: 'LONGLIST', applicationIds: next.map((a) => a.id) } });
-    if (r.error) {
-      setError(problemText(r.error, 'ranking'));
-      reload();
-    } else {
-      setError(undefined);
-      setRows(r.data ?? next);
-    }
+    const r = await write(() => api.PUT('/job-orders/{id}/ranking', { params: { path: { id: jobId } }, body: { list: 'LONGLIST', applicationIds: next.map((x) => x.id) } }), t('pipeline.ll.writeFailed'));
+    if (!r || r.error) setRows(before);
   };
 
   const patch = async (app: App, body: Schemas['ApplicationUpdateRequest']) => {
-    const r = await api.PATCH('/applications/{id}', { params: { path: { id: app.id } }, body: { ...body, version: app.version } });
-    if (r.error) {
-      setError(problemText(r.error, 'update'));
-      reload();
-      return false;
-    }
-    setError(undefined);
-    if (r.data) setRows((rs) => rs.map((x) => (x.id === app.id ? r.data! : x)));
-    return true;
+    const r = await write(() => api.PATCH('/applications/{id}', { params: { path: { id: app.id } }, body: { ...body, version: app.version } }), t('pipeline.ll.writeFailed'));
+    return !!r && !r.error;
   };
 
   /** Longlist to shortlist (first client-facing stage). Resolves with inline messages when the contract refuses. */
@@ -64,5 +84,5 @@ export function useLonglist(jobId: string, apps: App[], reload: () => void) {
     return undefined;
   };
 
-  return { rows, error, move, patch, toShortlist };
+  return { rows, error, pending, move, patch, toShortlist };
 }

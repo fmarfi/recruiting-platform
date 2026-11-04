@@ -51,3 +51,7 @@ Branch s5-longlist-ui, base cf78ca8. Files: frontend/src/pipeline/longlist/ (Lon
 - Pool filter is GET /people (city, functionArea, tag); there is no location param, city is used.
 - Drag reorder not built (up/down buttons only).
 - package-lock.json is out of sync with package.json (@tabler/icons-react missing), so npm ci fails; used npm install --no-package-lock.
+
+### Review fixes (same day)
+- Bulk add: sequential POSTs in try/finally, added/failed summary, failed people stay selected, onAdded when at least one added; pool GET debounced 300 ms; failed GET shows an error Alert.
+- Longlist: every successful write calls the page reload(); arrows and inline edits disabled while a write is pending (single-flight); 409 reloads and shows an inline message. Page passes a memoised existing-ids Set. Tests now 263.

@@ -4,7 +4,7 @@ import { Alert, Anchor, Box, Button, Container, Group, Menu, SegmentedControl, S
 import { BulkAddDialog } from '../../longlist/BulkAddDialog';
 import { LonglistPanel } from '../../longlist/LonglistPanel';
 import { IconDots, IconPlus } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../../api';
@@ -39,6 +39,7 @@ export function JobOrderPage() {
   const moves = useBoardMoves(appsRes.data, job.reload, appsRes.reload);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const existingIds = useMemo(() => new Set(moves.apps.map((a) => a.person.id)), [moves.apps]);
   const [view, setView] = useState('board');
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -290,7 +291,7 @@ export function JobOrderPage() {
       />
       <BulkAddDialog
         jobId={id}
-        existing={new Set(moves.apps.map((a) => a.person.id))}
+        existing={existingIds}
         opened={bulkOpen}
         onClose={() => setBulkOpen(false)}
         onAdded={() => {

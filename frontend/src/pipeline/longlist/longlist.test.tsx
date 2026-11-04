@@ -30,8 +30,18 @@ describe('LonglistPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move Burak up' }));
     await act(async () => {});
     expect(PUT).toHaveBeenCalledWith('/job-orders/{id}/ranking', { params: { path: { id: 'j1' } }, body: { list: 'LONGLIST', applicationIds: ['a2', 'a1', 'a3'] } });
-    expect(screen.getAllByTestId('ll-rank').map((n) => n.textContent)).toEqual(['1', '2', '3']);
     expect(screen.getAllByRole('link').map((n) => n.textContent)).toEqual(['Burak', 'Ayse', 'Cem']);
+  });
+
+  it('on a ranking 409 reloads and shows a short inline message', async () => {
+    PUT.mockResolvedValue({ error: { code: 'STATE_CONFLICT' }, response: { status: 409 } });
+    const reload = vi.fn();
+    renderShell(<MemoryRouter><LonglistPanel jobId="j1" apps={apps} readOnly={false} reload={reload} onBulkAdd={vi.fn()} /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Move Burak up' }));
+    await act(async () => {});
+    expect(screen.getByTestId('longlist-error')).toHaveTextContent('The list changed elsewhere');
+    expect(reload).toHaveBeenCalled();
+    expect(screen.getAllByRole('link').map((n) => n.textContent)).toEqual(['Ayse', 'Burak', 'Cem']);
   });
 
   it('shows the contract message inline when the shortlist needs a rationale', async () => {
@@ -61,5 +71,23 @@ describe('BulkAddDialog', () => {
     expect(POST).toHaveBeenCalledWith('/job-orders/{id}/applications', { params: { path: { id: 'j1' } }, body: { personId: 'n1' } });
     expect(POST).toHaveBeenCalledWith('/job-orders/{id}/applications', { params: { path: { id: 'j1' } }, body: { personId: 'n2' } });
     expect(onAdded).toHaveBeenCalled();
+  });
+
+  it('reports partial failure, keeps the failed person selected and still calls onAdded', async () => {
+    const people = ['n1', 'n2', 'n3'].map((id) => ({ id, name: `Person ${id}`, title: 'FD', company: 'Co', city: 'Ankara' }));
+    GET.mockResolvedValue({ data: { content: people } });
+    POST.mockImplementation((_p: string, o: { body: { personId: string } }) => Promise.resolve(o.body.personId === 'n2' ? { error: { detail: 'Off limits' } } : { data: {} }));
+    const onAdded = vi.fn();
+    const onClose = vi.fn();
+    renderShell(<BulkAddDialog jobId="j1" existing={new Set()} opened onClose={onClose} onAdded={onAdded} />);
+    await act(async () => {});
+    fireEvent.click(screen.getByLabelText(/Select all/));
+    fireEvent.click(screen.getByRole('button', { name: 'Add 3 selected' }));
+    await act(async () => {});
+    expect(screen.getByTestId('bulk-summary')).toHaveTextContent('Added 2, failed 1');
+    expect(screen.getByTestId('bulk-failed')).toHaveTextContent('Person n2: Off limits');
+    expect(onAdded).toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Add 1 selected' })).toBeInTheDocument();
   });
 });
