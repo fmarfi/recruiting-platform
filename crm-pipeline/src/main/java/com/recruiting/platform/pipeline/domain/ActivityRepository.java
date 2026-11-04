@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface ActivityRepository extends JpaRepository<Activity, UUID>, JpaSpecificationExecutor<Activity> {
 
+    java.util.Optional<Activity> findByExternalMessageId(String externalMessageId);
+
     Page<Activity> findByAccountIdOrderByOccurredAtDesc(UUID accountId, Pageable pageable);
 
     Page<Activity> findByPersonIdOrderByOccurredAtDesc(UUID personId, Pageable pageable);
