@@ -36,7 +36,7 @@ describe('JobOrderEditDrawer', () => {
     const { onSaved } = setup();
     type(/Description/, 'Lead finance team');
     type(/Fee terms/, '33% retained');
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(PATCH).toHaveBeenCalledWith('/job-orders/{id}', { params: { path: { id: 'j1' } }, body: { description: 'Lead finance team', feeTerms: '33% retained', version: 7 } });
     expect(onSaved).toHaveBeenCalled();
@@ -49,7 +49,7 @@ describe('JobOrderEditDrawer', () => {
     PATCH.mockResolvedValueOnce({ error: { code: 'VALIDATION_FAILED', errors: [{ field: 'title', code: 'SIZE', message: 'size must be between 1 and 200' }] }, response: { status: 400 } });
     const { onClose } = setup();
     type(/Job title/, 'x');
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(screen.getByText('size must be between 1 and 200')).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();

@@ -1,10 +1,12 @@
 // Column definitions and phone card of the network grid. Sort keys are the ones /people documents.
 import { ActionIcon, Anchor, Badge, Group, Stack, Text } from '@mantine/core';
+import { IconMail } from '@tabler/icons-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { StatusBadge, useFormat, useLabel, type Schemas } from '../../pipeline/shared';
 import type { ColumnDef } from '../../shell/grid';
+import { ICON_SIZE, ICON_STROKE } from '../../shell/components/objectIcons';
 import { splitCvMatch } from './PoolFilters';
 
 export type Person = Schemas['PersonSummary'];
@@ -16,7 +18,7 @@ function LastContact({ at }: { at?: string | null }) {
   if (!at) return <Text size="sm" c="dimmed">{t('network.never')}</Text>;
   const stale = Date.now() - new Date(at).getTime() > STALE_MS;
   return (
-    <Text size="sm" data-stale={stale} style={stale ? { color: 'var(--tone-warn-fg)' } : undefined}>
+    <Text size="sm" c={stale ? undefined : 'dimmed'} data-stale={stale} style={stale ? { color: 'var(--tone-warn-fg)' } : undefined}>
       {fmt.dateLong(at)}
     </Text>
   );
@@ -36,15 +38,26 @@ export function usePersonColumns(withCv = false): ColumnDef<Person>[] {
         minWidth: 160,
         accessor: (p) => p.name,
         cell: (p) => (
-          <Anchor component={Link} to={`/people/${p.id}`} fw={600}>
+          <Anchor component={Link} to={`/people/${p.id}`} fw={500} c="var(--color-ink)" underline="never">
             {p.name}
           </Anchor>
         ),
       },
-      { id: 'company', header: t('network.fields.titleCompany'), sortable: true, accessor: (p) => [p.title, p.company].filter(Boolean).join(', ') },
-      { id: 'type', header: t('network.fields.type'), accessor: (p) => t(`network.types.${p.type}`) },
-      { id: 'city', header: t('network.fields.city'), accessor: (p) => p.city },
-      { id: 'owner', header: t('network.fields.owner'), accessor: (p) => p.owner.name },
+      {
+        id: 'company',
+        header: t('network.fields.titleCompany'),
+        sortable: true,
+        accessor: (p) => [p.title, p.company].filter(Boolean).join(', '),
+        cell: (p) => (
+          <Stack gap={0}>
+            <Text size="sm" c="var(--color-ink2)" lineClamp={1}>{p.title || p.company}</Text>
+            {p.title && p.company && <Text size="xs" c="dimmed" lineClamp={1}>{p.company}</Text>}
+          </Stack>
+        ),
+      },
+      { id: 'type', header: t('network.fields.type'), accessor: (p) => t(`network.types.${p.type}`), cell: (p) => <Text size="sm" c="dimmed">{t(`network.types.${p.type}`)}</Text> },
+      { id: 'city', header: t('network.fields.city'), accessor: (p) => p.city, cell: (p) => <Text size="sm" c="dimmed">{p.city}</Text> },
+      { id: 'owner', header: t('network.fields.owner'), accessor: (p) => p.owner.name, cell: (p) => <Text size="sm" c="dimmed">{p.owner.name}</Text> },
       { id: 'lastContactAt', header: t('network.fields.lastContact'), numeric: true, sortable: true, firstSortDir: 'desc', accessor: (p) => p.lastContactAt?.slice(0, 10) ?? '', cell: (p) => <LastContact at={p.lastContactAt} /> },
       { id: 'consent', header: t('network.fields.consent'), accessor: (p) => label('consent', p.consentStatus), cell: (p) => <StatusBadge lifecycle="consent" value={p.consentStatus} /> },
       { id: 'tags', header: t('network.pool.tags'), defaultVisible: false, accessor: (p) => (p.tags ?? []).join(', '), cell: (p) => <Group gap={4}>{(p.tags ?? []).map((x) => <Badge key={x} variant='light' tt='none' size='sm'>{x}</Badge>)}</Group> },
@@ -69,7 +82,7 @@ export function usePersonColumns(withCv = false): ColumnDef<Person>[] {
         cell: (p) =>
           p.email ? (
             <ActionIcon component="a" href={`mailto:${p.email}`} variant="subtle" size="sm" aria-label={`${t('network.fields.email')}: ${p.name}`} title={p.email}>
-              {'✉'}
+              <IconMail size={ICON_SIZE} stroke={ICON_STROKE} />
             </ActionIcon>
           ) : (
             '-'
@@ -86,7 +99,7 @@ export function PersonCard({ p }: { p: Person }) {
   return (
     <Stack gap={2}>
       <Group gap="xs">
-        <Anchor component={Link} to={`/people/${p.id}`} fw={600}>
+        <Anchor component={Link} to={`/people/${p.id}`} fw={500} underline="never">
           {p.name}
         </Anchor>
         <Text span size="xs" c="dimmed">

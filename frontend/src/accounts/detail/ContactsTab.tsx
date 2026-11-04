@@ -1,12 +1,13 @@
-import { Alert, Anchor, Badge, Button, Group, Stack, Switch, Text } from '@mantine/core';
+import { Alert, Anchor, Button, Group, Stack, Switch, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api, type components } from '../../api';
 import { ConfirmDialog } from '../../shell/components/ConfirmDialog';
-import { EmptyState } from '../../shell/components/EmptyState';
 import { ToneBadge } from '../../shell/components/ToneBadge';
 import { fmtDate } from '../../shell/lib/format';
+import { AddButton } from './AddButton';
+import { SectionEmpty } from './SectionEmpty';
 
 type Contact = components['schemas']['Contact'];
 
@@ -46,15 +47,19 @@ export function ContactsTab({ contacts, showEnded, onShowEnded, accountId, onCha
       <ConfirmDialog opened={!!ending} title={t('accounts.endContactTitle')} body={ending ? t('accounts.endContactBody', { name: ending.person.name }) : undefined} confirmLabel={t('accounts.endContact')} danger busy={busy} onConfirm={() => void end()} onCancel={() => setEnding(null)} />
       <Switch label={t('accounts.showEnded')} checked={showEnded} onChange={(e) => onShowEnded(e.currentTarget.checked)} />
       {contacts.length === 0 ? (
-        <EmptyState title={t('accounts.emptyContacts')} hint={t('accounts.emptyContactsHint')} actions={<Button onClick={onAdd}>+ {t('accounts.addContact')}</Button>} />
+        <SectionEmpty text={t('accounts.emptyContacts')} action={<AddButton label={t('accounts.addContact')} onClick={onAdd} />} />
       ) : (
         contacts.map((c) => (
           <Group key={c.id} justify="space-between" wrap="nowrap" style={{ opacity: c.active ? 1 : 0.6 }}>
             <div>
-              <Anchor component={Link} to={`/people/${c.person.id}`} fw={600}>
+              <Anchor component={Link} to={`/people/${c.person.id}`} fw={500} underline="never" c="var(--color-ink)">
                 {c.person.name}
               </Anchor>{' '}
-              {c.primary && <Badge size="xs">{t('accounts.primary')}</Badge>}
+              {c.primary && (
+                <Text span size="xs" c="dimmed" ml={4}>
+                  {t('accounts.primary')}
+                </Text>
+              )}
               <Text size="sm" c="dimmed">
                 {[c.role ?? c.person.title, c.person.email].filter(Boolean).join(' - ')}
                 {c.endedOn ? ` - ${t('accounts.endedOn', { date: fmtDate(c.endedOn, i18n.language) })}` : ''}

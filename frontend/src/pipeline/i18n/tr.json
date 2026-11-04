@@ -24,6 +24,8 @@
     "backTo": "{{stage}} aşamasına geri al",
     "changeStatus": "Durumu değiştir",
     "daysOpen": "{{count}} gündür açık",
+    "daysInStage": "Aşamada {{count}} gün",
+    "consentLabel": "Rıza",
     "emptyBody": "Süreci başlatmak için ilk adayı ekleyin.",
     "emptyColumn": "Boş",
     "emptyTitle": "Henüz aday yok",
@@ -40,7 +42,7 @@
       "searchPlaceholder": "Arama ara",
       "status": "Durum",
       "title": "Aramalar",
-      "subtitle": "{{count}} açık arama; açık kalma günü ve aktif adaylar tek bakışta.",
+      "subtitle": "Açık aramalar; açık kalma günü ve aktif adaylar tek bakışta.",
       "subtitleFiltered": "{{count}} arama filtrelerle eşleşiyor.",
       "new": "Yeni arama",
       "newPickClient": "Önce müşteriyi seçin",
@@ -132,14 +134,22 @@
       "titleRequired": "Pozisyon adını girin.",
       "saved": "{{name}} güncellendi",
       "history": "Geçmiş"
-    }
+    },
+    "brief": "Brief",
+    "panelPipeline": "Pipeline",
+    "panelRejected": "Rejected",
+    "panelDetails": "Details",
+    "factRejected": "Rejected",
+    "moreActions": "More actions",
+    "lastUpdated": "Last updated",
+    "noBrief": "No description or fee terms yet."
   },
   "quickAdd": {
     "account": "Müşteri",
     "actionTitle": "Aksiyon",
     "due": "Son tarih",
     "failed": "Kaydedilemedi.",
-    "followUp": "Takip",
+    "followUp": "Takip ekle",
     "job": "Arama",
     "modeAction": "Aksiyon",
     "modeActivity": "Hareket",
@@ -157,6 +167,28 @@
       "EMAIL": "E-posta",
       "NOTE": "Not"
     },
-    "when": "Ne zaman"
+    "when": "Ne zaman",
+    "needNote": "Bir not ekleyin.",
+    "needTitle": "Aksiyonu ekleyin.",
+    "needDue": "Son tarih seçin.",
+    "saveHint": "Kaydetmek için Ctrl+Enter",
+    "addAction": "Aksiyon ekle",
+    "logVerb": {
+      "CALL": "Arama kaydet",
+      "VISIT": "Ziyaret kaydet",
+      "MEETING": "Toplantı kaydet",
+      "EMAIL": "E-posta kaydet",
+      "NOTE": "Not kaydet"
+    },
+    "searchClients": "Müşteri ara…",
+    "searchCandidates": "Aday ara…",
+    "notePlaceholder": "Ne konuşuldu veya kararlaştırıldı",
+    "actionPlaceholder": "ör. Teklifi gönder",
+    "now": "Şimdi",
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "tomorrow": "Yarın",
+    "nextWeek": "Gelecek hafta",
+    "pickDate": "Tarih seç"
   }
 }

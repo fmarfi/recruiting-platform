@@ -1,5 +1,5 @@
 // Talent pool filters (ADR 0011): tag = pool, source channel, CV full text, shareable. Chips and inputs write the URL through the parent.
-import { Chip, Group, TagsInput, Text, TextInput } from '@mantine/core';
+import { Chip, Group, Stack, TagsInput, Text, TextInput } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Schemas } from '../../pipeline/shared';
@@ -16,41 +16,39 @@ export function PoolFilters({ f, onChange }: { f: ViewFilters; onChange: (patch:
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cv]);
+  // Fields only: the parent lays them out in its grid next to the other advanced filters.
   return (
     <>
-      <Group mb="sm" align="flex-end">
-        <TagsInput
-          label={t('network.pool.tags')}
-          description={t('network.pool.tagsHint')}
-          value={f.tags}
-          maxTags={20}
-          onChange={(v) => onChange({ tags: normTags(v) })}
-          splitChars={[',']}
-          maxLength={MAX_TAG_LENGTH}
-          clearable
-          style={{ minWidth: 240 }}
-        />
-        <TextInput
-          label={t('network.pool.cv')}
-          description={t('network.pool.cvHint')}
-          value={cv}
-          onChange={(e) => setCv(e.currentTarget.value)}
-          style={{ minWidth: 240 }}
-        />
-      </Group>
-      <Group gap="xs" style={{ overflowX: 'auto' }} wrap="nowrap" role="group" aria-label={t('network.pool.channels')}>
-        <Text size="xs" c="dimmed" fw={600} tt="uppercase" w={112} style={{ flex: 'none' }}>{t('network.pool.channels')}</Text>
-        <Chip.Group multiple value={f.channels} onChange={(v) => onChange({ channels: v as Schemas['SourceChannel'][] })}>
-          {SOURCE_CHANNELS.map((c) => (
-            <Chip key={c} value={c} size="sm">
-              {t(`network.pool.channel.${c}`)}
-            </Chip>
-          ))}
-        </Chip.Group>
-        <Chip checked={f.shareable} onChange={(v) => onChange({ shareable: v })} size="sm" color="green">
-          {t('network.pool.shareable')}
-        </Chip>
-      </Group>
+      <TagsInput
+        label={t('network.pool.tags')}
+        description={t('network.pool.tagsHint')}
+        value={f.tags}
+        maxTags={20}
+        onChange={(v) => onChange({ tags: normTags(v) })}
+        splitChars={[',']}
+        maxLength={MAX_TAG_LENGTH}
+        clearable
+      />
+      <TextInput label={t('network.pool.cv')} description={t('network.pool.cvHint')} value={cv} onChange={(e) => setCv(e.currentTarget.value)} />
+      <Stack gap="xs">
+        <Text id="pool-channels-label" size="sm" fw={500}>
+          {t('network.pool.channels')}
+        </Text>
+        <Group gap="xs" role="group" aria-labelledby="pool-channels-label">
+          <Chip.Group multiple value={f.channels} onChange={(v) => onChange({ channels: v as Schemas['SourceChannel'][] })}>
+            <Group gap="xs">
+              {SOURCE_CHANNELS.map((c) => (
+                <Chip key={c} value={c} size="sm">
+                  {t(`network.pool.channel.${c}`)}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Chip checked={f.shareable} onChange={(v) => onChange({ shareable: v })} size="sm" color="green">
+            {t('network.pool.shareable')}
+          </Chip>
+        </Group>
+      </Stack>
     </>
   );
 }
