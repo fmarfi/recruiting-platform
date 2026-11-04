@@ -70,4 +70,15 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, JpaSpecif
     @Query(value = "SELECT p.id FROM person p WHERE p.tags && CAST(string_to_array(:csv, ',') AS varchar(50)[])",
             nativeQuery = true)
     List<UUID> findIdsByAnyTag(@Param("csv") String csv);
+
+    /** The {@code skill} filter (1.3.0): at least one of the (lower-case, comma delimited) skills; GIN index. */
+    @Query(value = "SELECT p.id FROM person p WHERE p.skills && CAST(string_to_array(:csv, ',') AS varchar(50)[])",
+            nativeQuery = true)
+    List<UUID> findIdsByAnySkill(@Param("csv") String csv);
+
+    /** The {@code language} filter (1.3.0): speaks all of the (comma delimited ISO 639-1) languages, any level. */
+    @Query(value = "SELECT p.id FROM person p WHERE NOT EXISTS (SELECT 1 FROM unnest(string_to_array(:csv, ',')) AS x "
+            + "WHERE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p.languages) e WHERE lower(e->>'language') = x))",
+            nativeQuery = true)
+    List<UUID> findIdsByAllLanguages(@Param("csv") String csv);
 }

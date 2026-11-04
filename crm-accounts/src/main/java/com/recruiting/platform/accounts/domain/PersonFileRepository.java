@@ -44,4 +44,9 @@ public interface PersonFileRepository extends JpaRepository<PersonFile, UUID> {
             + "'StartSel=«, StopSel=», MaxFragments=1, MaxWords=25, MinWords=8') "
             + "FROM person_file WHERE kind = 'CV' AND is_current AND person_id IN (:ids)", nativeQuery = true)
     List<Object[]> headlines(@Param("q") String q, @Param("ids") java.util.Collection<UUID> ids);
+
+    /** The {@code hasCv} filter (1.3.0): people with a current CV whose text is searchable. */
+    @Query(value = "SELECT DISTINCT person_id FROM person_file WHERE kind = 'CV' AND is_current "
+            + "AND text_status = 'DONE'", nativeQuery = true)
+    List<UUID> findPersonIdsWithSearchableCv();
 }
