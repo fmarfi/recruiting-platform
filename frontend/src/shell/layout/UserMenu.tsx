@@ -1,10 +1,13 @@
 import { Avatar, Group, Menu, Text, UnstyledButton } from '@mantine/core';
+import { IconCheck } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../../api';
 import { useAuth } from '../auth/useAuth';
+import { ICON_SIZE, ICON_STROKE } from '../components/objectIcons';
 
 export function UserMenu() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, logout, isManager } = useAuth();
   const nav = useNavigate();
   return (
@@ -21,13 +24,29 @@ export function UserMenu() {
                 .toUpperCase()}
             </Avatar>
             <Text size="sm" fw={600} visibleFrom="md">
-              {user?.name ?? ''} ▾
+              {user?.name ?? ''}
             </Text>
           </Group>
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{user?.email}</Menu.Label>
+        <Menu.Divider />
+        <Menu.Label>{t('shell.language')}</Menu.Label>
+        {(['tr', 'en'] as const).map((l) => (
+          <Menu.Item
+            key={l}
+            closeMenuOnClick={false}
+            rightSection={i18n.language.startsWith(l) ? <IconCheck size={ICON_SIZE} stroke={ICON_STROKE} aria-hidden /> : null}
+            onClick={() => {
+              void i18n.changeLanguage(l);
+              if (user) void api.PATCH('/auth/me', { body: { language: l.toUpperCase() as 'TR' | 'EN' } });
+            }}
+          >
+            {l.toUpperCase()}
+          </Menu.Item>
+        ))}
+        <Menu.Divider />
         {isManager && <Menu.Item onClick={() => nav('/settings/users')}>{t('nav.settings')}</Menu.Item>}
         <Menu.Item onClick={() => void logout().then(() => nav('/login'))}>{t('shell.logout')}</Menu.Item>
       </Menu.Dropdown>

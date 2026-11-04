@@ -34,13 +34,12 @@
     "duplicate": "Bu adla bir müşteri zaten var.",
     "name": "Ad",
     "newAccount": "Yeni müşteri",
+    "openRecord": "Müşteri kaydını aç",
     "sector": "Sektör",
     "reason": "Neden",
     "reasonTitle": "{{status}} durumuna geçiş nedeni",
     "openJobsBlock": "Bu müşterinin hâlâ açık aramaları var.",
-    "clientSince": "{{date}} tarihinden beri müşteri",
     "closedBanner": "Bu müşteri kapatıldı.",
-    "ownerIs": "sorumlu {{name}}",
     "backToList": "Müşterilere dön",
     "notFound": "Müşteri bulunamadı.",
     "tab": {
@@ -71,8 +70,7 @@
       "REFUSED": "Onay reddedildi",
       "WITHDRAWN": "Onay geri çekildi"
     },
-    "emptyContacts": "Henüz kişi yok",
-    "emptyContactsHint": "Bu müşteride çalıştığınız kişileri ekleyin.",
+    "emptyContacts": "Bu müşteride henüz kişi yok.",
     "endedOn": "{{date}} tarihinde sona erdi",
     "primary": "Asıl",
     "showEnded": "Sona erenleri göster",
@@ -83,10 +81,13 @@
       "openJobs": "Açık aramalar"
     },
     "setNextAction": "Sıradaki işi belirle",
-    "emptyJobs": "Henüz arama yok",
-    "emptyJobsHint": "Bu müşterinin aramaları burada görünür.",
-    "emptyProposals": "Henüz teklif yok",
-    "emptyProposalsHint": "Bu müşterinin teklifleri burada görünür.",
+    "emptyJobs": "Bu müşteriye ait arama yok.",
+    "emptyProposals": "Bu müşteriye ait teklif yok.",
+    "openSearches": "Açık aramalar",
+    "day": {
+      "today": "Bugün",
+      "yesterday": "Dün"
+    },
     "kind": {
       "ACCOUNT_STATUS": "Durum",
       "ACTIVITY": "Hareket",
@@ -184,6 +185,22 @@
       "saved": "{{name}} güncellendi",
       "statusChanged": "Durum {{status}} olarak değiştirildi",
       "tagsFailed": "Kaydedildi, ancak etiketler değiştirilemedi. Etiketleri tekrar deneyin."
+    },
+    "namePlaceholder": "Şirket adı",
+    "moreDetails": "Daha fazla ayrıntı",
+    "createClient": "Müşteri oluştur",
+    "saveHint": "Kaydetmek için Ctrl+Enter",
+    "record": {
+      "overview": "Genel bakış",
+      "activity": "Etkinlik",
+      "details": "Detaylar",
+      "nextActions": "Sonraki işler",
+      "noNextAction": "Sonraki iş belirlenmedi.",
+      "moreActions": "Diğer işlemler",
+      "website": "Web sitesi",
+      "status": "Durum",
+      "notes": "Notlar",
+      "lastUpdated": "Son güncelleme"
     }
   }
 }

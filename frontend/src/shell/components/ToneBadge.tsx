@@ -1,15 +1,23 @@
+import type { ReactNode } from 'react';
 import { toneOf } from '../../theme/tokens';
 
-/** Badge = coloured dot + text, tone from the theme tokens (never colour alone). */
-export function ToneBadge({ tone, label, size = 'md' }: { tone: string; label: string; size?: 'sm' | 'md' | 'lg' }) {
+/**
+ * Visual system v3 badge: soft tone background, tone text, 12/500, height 20, radius 4, no dot. `size` is accepted for
+ * old callers and ignored. Pass `icon` (a 14 px Tabler icon) to show icon plus words for consent and off-limits problems.
+ */
+export function ToneBadge({ tone, label, icon }: { tone: string; label: string; size?: 'sm' | 'md' | 'lg'; icon?: ReactNode }) {
   const t = toneOf(tone).toLowerCase();
   return (
     <span
       className={`tone-badge tone-${t}`}
       data-tone={t}
-      style={{ minHeight: `var(--badge-${size}-height)`, padding: `2px var(--badge-${size}-px)`, fontSize: `var(--badge-${size}-font)`, whiteSpace: 'normal', maxWidth: '100%' }}
+      style={{ minHeight: 20, padding: '0 6px', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'normal', maxWidth: '100%', gap: 4 }}
     >
-      <span aria-hidden style={{ width: 'var(--badge-dot)', height: 'var(--badge-dot)', borderRadius: '50%', background: `var(--tone-${t}-dot)` }} />
+      {icon && (
+        <span aria-hidden style={{ display: 'inline-flex', flex: 'none' }}>
+          {icon}
+        </span>
+      )}
       {label}
     </span>
   );

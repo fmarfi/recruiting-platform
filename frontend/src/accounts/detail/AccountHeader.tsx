@@ -1,10 +1,15 @@
-import { Alert, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
-import { useRef } from 'react';
+// Client header (visual system v3, sections 5 and 6b): RecordHeader band content, same shape as the person header.
+import { Alert, Anchor, Button, Menu, Text } from '@mantine/core';
+import { IconDots } from '@tabler/icons-react';
+import { useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { api, type components } from '../../api';
+import { ClientIcon, ICON_SIZE, ICON_STROKE } from '../../shell/components/objectIcons';
+import { RecordHeader } from '../../shell/components/RecordHeader';
 import { StatusMenu } from '../../shell/components/StatusMenu';
 import { InlineEditField, useUndoToast } from '../../shell/edit';
-import { fmtDate } from '../../shell/lib/format';
+import { fmtRelative } from '../../shell/lib/format';
 import { useReference } from '../../shell/refdata/useReference';
 import { ReasonDialog } from '../components/ReasonDialog';
 import { StatusFailureAlert } from '../components/StatusFailureAlert';
@@ -15,13 +20,15 @@ type Account = components['schemas']['Account'];
 interface Props {
   account: Account;
   onLog: () => void;
+  onAddJob: () => void;
   onAddAction: () => void;
   onChanged: () => void;
   onEdit: () => void;
+  tabs?: ReactNode;
 }
 
-/** Name, editable status badge, owner line and the two quick actions (A-02, UX-06). */
-export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdit }: Props) {
+/** Name, editable status badge, subtitle, fact strip, actions and tabs in the RecordLayout band (A-02, UX-06). */
+export function AccountHeader({ account: a, onLog, onAddJob, onAddAction, onChanged, onEdit, tabs }: Props) {
   const { t, i18n } = useTranslation();
   const ref = useReference();
   const showUndo = useUndoToast();
@@ -47,6 +54,12 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
     onChanged,
     t('shell.saveError'),
   );
+  const facts: { label: string; value: ReactNode }[] = [
+    { label: t('accounts.owner'), value: a.owner.name },
+    { label: t('accounts.openSearches'), value: a.openJobCount },
+    { label: t('accounts.lastActivity'), value: fmtRelative(a.lastActivityAt, i18n.language) },
+  ];
+  const subline = [a.sector, a.city].filter(Boolean).join(', ');
   const renamed = useRef(a.version);
   const rename = async (name: string, expect: number) => {
     const r = await api.PATCH('/accounts/{id}', { ...statusPath, body: { name: name.trim(), version: expect } });
@@ -56,43 +69,55 @@ export function AccountHeader({ account: a, onLog, onAddAction, onChanged, onEdi
     onChanged();
   };
   return (
-    <Card withBorder>
-      <Stack gap="xs">
-        <Group justify="space-between" align="flex-start">
-          <Group>
-            <InlineEditField
-              label={t('accounts.edit.name')}
-              value={a.name}
-              validate={(v) => (v.trim() ? null : t('accounts.edit.nameRequired'))}
-              display={(v) => (
-                <Title order={1} data-testid="screen-title">
-                  {v}
-                </Title>
-              )}
-              onSave={(v) => rename(v, version.current)}
-              onUndo={(prev) => rename(prev, renamed.current)}
-            />
-            <StatusMenu kind="account" value={a.status} onMove={change.move} />
-          </Group>
-          <Button variant="subtle" onClick={onEdit}>
-            {t('accounts.edit.action')}
-          </Button>
-          <Group visibleFrom="sm">
-            <Button onClick={onLog}>
-              {t('accounts.logActivity')}
+    <>
+      <RecordHeader
+        breadcrumb={
+          <Anchor component={Link} to="/accounts" size="sm">
+            {t('nav.accounts')}
+          </Anchor>
+        }
+        avatar={<ClientIcon size={32} stroke={ICON_STROKE} color="var(--color-ink3)" aria-hidden />}
+        name={
+          <InlineEditField
+            label={t('accounts.edit.name')}
+            value={a.name}
+            validate={(v) => (v.trim() ? null : t('accounts.edit.nameRequired'))}
+            display={(v) => (
+              <Text span ff="var(--font-display)" fz="1.5rem" fw={600} c="var(--color-ink)">
+                {v}
+              </Text>
+            )}
+            onSave={(v) => rename(v, version.current)}
+            onUndo={(prev) => rename(prev, renamed.current)}
+          />
+        }
+        badge={<StatusMenu kind="account" value={a.status} onMove={change.move} />}
+        subtitle={subline || undefined}
+        actions={
+          <>
+            <Menu position="bottom-end" shadow="md" withinPortal>
+              <Menu.Target>
+                <Button variant="default" aria-label={t('accounts.record.moreActions')}>
+                  <IconDots size={ICON_SIZE} stroke={ICON_STROKE} />
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={onEdit}>{t('accounts.edit.action')}</Menu.Item>
+                <Menu.Item onClick={onAddAction}>{t('accounts.addAction')}</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            <Button variant="default" onClick={onAddJob}>
+              {t('accounts.newJob')}
             </Button>
-            <Button variant="default" onClick={onAddAction}>
-              {t('accounts.addAction')}
-            </Button>
-          </Group>
-        </Group>
-        <Text c="dimmed">
-          {[a.sector, a.city].filter(Boolean).join(' - ')} - {t('accounts.ownerIs', { name: a.owner.name })} - {t('accounts.clientSince', { date: fmtDate(a.openedOn, i18n.language) })}
-        </Text>
-        {change.failure && <StatusFailureAlert failure={change.failure} />}
-        {a.status === 'CLOSED' && <Alert color="gray">{t('accounts.closedBanner')}</Alert>}
-      </Stack>
+            <Button onClick={onLog}>{t('accounts.logActivity')}</Button>
+          </>
+        }
+        facts={facts}
+        tabs={tabs}
+      />
+      {change.failure && <StatusFailureAlert failure={change.failure} />}
+      {a.status === 'CLOSED' && <Alert color="gray">{t('accounts.closedBanner')}</Alert>}
       <ReasonDialog opened={!!change.pending} target={change.pending ? ref.label('account', change.pending.to) : ''} onConfirm={change.confirm} onCancel={change.cancel} />
-    </Card>
+    </>
   );
 }

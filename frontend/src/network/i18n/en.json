@@ -7,6 +7,7 @@
     "all": "All",
     "career": "Career",
     "clear": "Clear",
+    "clearFilters": "Clear filters",
     "consentFailed": "Could not send the consent request.",
     "consentNoEmail": "This person has no email address.",
     "consentTo": "A consent request will be sent to {{email}}.",
@@ -44,8 +45,9 @@
     "mine": "Mine",
     "never": "Never",
     "newPerson": "New candidate",
+    "addPerson": "Add person",
     "nextActions": "Next actions",
-    "noActivity": "No contact logged. Log your first call or meeting.",
+    "noActivity": "No activity logged yet.",
     "noConnections": "Who introduced you? Add the first connection.",
     "noOpenJobs": "No open searches available.",
     "noPipelines": "Not on any search yet.",
@@ -70,6 +72,7 @@
       "files": "CV files",
       "exposure": "Exposure"
     },
+    "tagChip": "Tag: {{tag}}",
     "types": {
       "EXECUTIVE": "Executive",
       "CLIENT_CONTACT": "Client contact",
@@ -334,7 +337,7 @@
       "action": "Edit",
       "history": "History",
       "sectionMain": "Person",
-      "sectionContact": "Contact and notes",
+      "sectionContact": "Contact",
       "phone": "Phone",
       "notes": "Notes",
       "noticeHint": "Days, 0 to 365",
@@ -357,7 +360,36 @@
       "addEducation": "Add education",
       "removeRow": "Remove row {{n}}",
       "tooManyTags": "At most 20 tags per person.",
-      "saved": "{{name}} updated"
-    }
+      "saved": "{{name}} updated",
+      "sectionWork": "Work",
+      "sectionMore": "More"
+    },
+    "dayGroup": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "personMore": "More actions",
+    "noCareer": "No career history recorded yet.",
+    "noNextActions": "No open next actions.",
+    "currentRole": "Present",
+    "moreDetails": "More details",
+    "ctrlSave": "Ctrl+Enter to save",
+    "createCandidate": "Create candidate",
+    "consentHint": "Needed for the consent request",
+    "ph": {
+      "name": "First and last name",
+      "title": "e.g. Finance Director",
+      "email": "name@company.com",
+      "phone": "+90 555 000 00 00"
+    },
+    "consentBanner": {
+      "REFUSED": "Consent refused. Do not contact for new roles or share with clients.",
+      "WITHDRAWN": "Consent withdrawn. Do not contact for new roles; data is scheduled for deletion.",
+      "NOT_SENT": "No consent request sent yet. Not shareable with clients until consent is given."
+    },
+    "details": "Details",
+    "viewAll": "View all",
+    "lastUpdated": "Last updated",
+    "notes": "Notes"
   }
 }

@@ -1,5 +1,5 @@
 // Edit drawer for a client: every writable field of AccountUpdateRequest (status has its own badge menu).
-import { Textarea, TextInput } from '@mantine/core';
+import { SimpleGrid, Textarea, TextInput } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../../api';
 import { EditDrawer } from '../../shell/edit';
@@ -18,7 +18,7 @@ export interface AccountForm extends Record<string, string> {
 
 export const accountForm = (a: Account): AccountForm => ({
   name: a.name,
-  sector: a.sector,
+  sector: a.sector ?? '',
   city: a.city ?? '',
   website: a.website ?? '',
   notes: a.notes ?? '',
@@ -64,6 +64,7 @@ export function AccountEditDrawer({ account: a, opened, onClose, onSaved }: Prop
       dirty={dirty}
       onSave={save.onSave}
       onResolveConflict={save.onResolveConflict}
+      size={640}
       sections={[
         {
           id: 'main',
@@ -71,8 +72,10 @@ export function AccountEditDrawer({ account: a, opened, onClose, onSaved }: Prop
           content: (
             <>
               {text('name', t('accounts.edit.name'), { required: true, maxLength: 200, 'data-autofocus': true })}
-              {text('sector', t('accounts.edit.sector'), { required: true, maxLength: 100 })}
-              <OwnerSelect label={t('accounts.edit.owner')} value={values.ownerId} current={a.owner} onChange={(v) => set('ownerId', v)} error={errors.ownerId} />
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                {text('sector', t('accounts.edit.sector'), { required: true, maxLength: 100 })}
+                <OwnerSelect label={t('accounts.edit.owner')} value={values.ownerId} current={a.owner} onChange={(v) => set('ownerId', v)} error={errors.ownerId} />
+              </SimpleGrid>
             </>
           ),
         },
@@ -81,8 +84,10 @@ export function AccountEditDrawer({ account: a, opened, onClose, onSaved }: Prop
           title: t('accounts.edit.sectionContact'),
           content: (
             <>
-              {text('city', t('accounts.edit.city'), { maxLength: 100 })}
-              {text('website', t('accounts.edit.website'), { type: 'url', maxLength: 300, placeholder: 'https://' })}
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                {text('city', t('accounts.edit.city'), { maxLength: 100 })}
+                {text('website', t('accounts.edit.website'), { type: 'url', maxLength: 300, placeholder: 'https://' })}
+              </SimpleGrid>
               <Textarea label={t('accounts.edit.notes')} value={values.notes} onChange={(e) => set('notes', e.currentTarget.value)} error={errors.notes || undefined} autosize minRows={3} maxLength={4000} />
             </>
           ),

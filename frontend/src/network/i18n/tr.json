@@ -7,6 +7,7 @@
     "all": "Tümü",
     "career": "Kariyer",
     "clear": "Temizle",
+    "clearFilters": "Filtreleri temizle",
     "consentFailed": "Onay isteği gönderilemedi.",
     "consentNoEmail": "Bu kişinin e-posta adresi yok.",
     "consentTo": "{{email}} adresine onay isteği gönderilecek.",
@@ -44,8 +45,9 @@
     "mine": "Benim",
     "never": "Hiç",
     "newPerson": "Yeni aday",
+    "addPerson": "Kişi ekle",
     "nextActions": "Sıradaki aksiyonlar",
-    "noActivity": "Henüz görüşme kaydı yok. İlk aramanızı veya toplantınızı kaydedin.",
+    "noActivity": "Henüz kayıtlı bir etkinlik yok.",
     "noConnections": "Sizi kim tanıştırdı? İlk bağlantıyı ekleyin.",
     "noOpenJobs": "Uygun açık arama yok.",
     "noPipelines": "Henüz bir aramada değil.",
@@ -70,6 +72,7 @@
       "files": "CV dosyaları",
       "exposure": "Sunum geçmişi"
     },
+    "tagChip": "Etiket: {{tag}}",
     "types": {
       "EXECUTIVE": "Yönetici",
       "CLIENT_CONTACT": "Müşteri kontağı",
@@ -334,7 +337,7 @@
       "action": "Düzenle",
       "history": "Geçmiş",
       "sectionMain": "Kişi",
-      "sectionContact": "İletişim ve notlar",
+      "sectionContact": "İletişim",
       "phone": "Telefon",
       "notes": "Notlar",
       "noticeHint": "Gün, 0 ile 365 arası",
@@ -357,7 +360,36 @@
       "addEducation": "Eğitim ekle",
       "removeRow": "{{n}}. satırı kaldır",
       "tooManyTags": "Bir kişide en fazla 20 etiket olabilir.",
-      "saved": "{{name}} güncellendi"
-    }
+      "saved": "{{name}} güncellendi",
+      "sectionWork": "İş",
+      "sectionMore": "Diğer"
+    },
+    "dayGroup": {
+      "today": "Bugün",
+      "yesterday": "Dün"
+    },
+    "personMore": "Diğer işlemler",
+    "noCareer": "Henüz kariyer geçmişi kaydedilmedi.",
+    "noNextActions": "Açık sonraki adım yok.",
+    "currentRole": "Devam ediyor",
+    "moreDetails": "Diğer ayrıntılar",
+    "ctrlSave": "Kaydetmek için Ctrl+Enter",
+    "createCandidate": "Aday oluştur",
+    "consentHint": "Onay isteği için gerekli",
+    "ph": {
+      "name": "Ad ve soyad",
+      "title": "ör. Finans Direktörü",
+      "email": "ad@sirket.com",
+      "phone": "+90 555 000 00 00"
+    },
+    "consentBanner": {
+      "REFUSED": "Onay reddedildi. Yeni roller için iletişime geçmeyin, müşterilerle paylaşmayın.",
+      "WITHDRAWN": "Onay geri çekildi. Yeni roller için iletişime geçmeyin; veriler silinmek üzere planlandı.",
+      "NOT_SENT": "Henüz onay isteği gönderilmedi. Onay verilmeden müşterilerle paylaşılamaz."
+    },
+    "details": "Details",
+    "viewAll": "View all",
+    "lastUpdated": "Last updated",
+    "notes": "Notes"
   }
 }

@@ -1,3 +1,4 @@
+import { IconChevronDown } from '@tabler/icons-react';
 import { Menu, Tooltip, UnstyledButton } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/useAuth';
@@ -22,7 +23,7 @@ export function StatusMenu({ kind, value, size = 'lg', onMove }: { kind: Lifecyc
       <Menu.Target>
         <UnstyledButton aria-label={t('shell.changeStatus')} aria-haspopup="menu" style={{ minHeight: 'var(--touch-target-min)', display: 'inline-flex', alignItems: 'center' }}>
           <StatusBadge kind={kind} value={value} size={size} />
-          <span aria-hidden style={{ marginLeft: 4 }}>▾</span>
+          <IconChevronDown size={14} stroke={1.75} aria-hidden style={{ marginLeft: 4 }} />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>

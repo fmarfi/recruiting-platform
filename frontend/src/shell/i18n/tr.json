@@ -145,7 +145,7 @@
       "today": "Bugün",
       "upcoming": "Yaklaşan"
     },
-    "overdueBy": "{{n}} gün gecikti",
+    "overdueBy": "Geciken {{n}} gün",
     "snooze": "Ertele",
     "snoozeTomorrow": "Yarın",
     "snoozeWeek": "Gelecek hafta",
@@ -154,7 +154,9 @@
       "activeAccounts": "Aktif müşteri",
       "openJobs": "Açık arama",
       "inProcess": "Süreçteki aday",
-      "placed": "Bu yıl yerleşen"
+      "placed": "Bu yıl yerleşen",
+      "avgDaysOpen": "Ortalama açık gün",
+      "avgDaysOpenMine": "Ortalama açık gün (benim)"
     },
     "jobs": "Açık aramalar",
     "noJobs": "Açık arama yok",
