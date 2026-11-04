@@ -1,4 +1,5 @@
-import { Button, Select, Stack, Text } from '@mantine/core';
+import { Button, Group, Select, Stack, Text } from '@mantine/core';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { components } from '../../api';
 import { ActivityIcon, CandidateIcon, ClientIcon, ContactIcon, FeeIcon, ICON_SIZE, ICON_STROKE, SearchIcon } from '../../shell/components/objectIcons';
@@ -18,6 +19,9 @@ const KIND_ICON: Record<string, typeof ClientIcon> = {
   CANDIDATE: CandidateIcon,
 };
 
+/** The panel shows the latest entries; the rest sit behind View all. */
+const LATEST = 10;
+
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
 interface Props {
@@ -31,6 +35,8 @@ interface Props {
 export function TimelinePanel({ entries, kind, onKind, onLog }: Props) {
   const { t, i18n } = useTranslation();
   const ref = useReference();
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? entries : entries.slice(0, LATEST);
   const text = (e: Entry) => {
     if (e.kind === 'ACCOUNT_STATUS' && e.toStatus)
       return t('accounts.tl.ACCOUNT_STATUS', { to: ref.label('account', e.toStatus) });
@@ -44,7 +50,7 @@ export function TimelinePanel({ entries, kind, onKind, onLog }: Props) {
   const today = dayKey(now);
   const yesterday = dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
   const groups = new Map<string, { key: string; label: string; items: Entry[] }>();
-  for (const e of entries) {
+  for (const e of shown) {
     const key = dayKey(new Date(e.occurredAt));
     let g = groups.get(key);
     if (!g) {
@@ -67,7 +73,7 @@ export function TimelinePanel({ entries, kind, onKind, onLog }: Props) {
       {entries.length === 0 ? (
         <SectionEmpty text={t('accounts.emptyTimeline')} action={onLog && <Button size="sm" variant="default" onClick={onLog}>{t('accounts.logActivity')}</Button>} />
       ) : (
-        <Stack gap="md" style={{ maxHeight: 640, overflowY: 'auto' }}>
+        <Stack gap="md">
           {[...groups.values()].map((g) => (
             <section key={g.key} aria-label={g.label}>
               <Text size="xs" c="var(--color-ink3)" fw={500} style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--color-surface)', paddingBlock: 'var(--space-1)' }}>
@@ -98,6 +104,13 @@ export function TimelinePanel({ entries, kind, onKind, onLog }: Props) {
               </Stack>
             </section>
           ))}
+          {!showAll && entries.length > LATEST && (
+            <Group>
+              <Button size="compact-sm" variant="subtle" onClick={() => setShowAll(true)}>
+                {t('accounts.timelineViewAll')}
+              </Button>
+            </Group>
+          )}
         </Stack>
       )}
     </Stack>

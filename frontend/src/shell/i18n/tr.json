@@ -146,6 +146,8 @@
       "upcoming": "Yaklaşan"
     },
     "overdueBy": "Geciken {{n}} gün",
+    "overdueBy_one": "Geciken {{count}} gün",
+    "overdueBy_other": "Geciken {{count}} gün",
     "snooze": "Ertele",
     "snoozeTomorrow": "Yarın",
     "snoozeWeek": "Gelecek hafta",
@@ -165,6 +167,8 @@
     "viewAllJobs": "Tüm aramaları gör",
     "viewAllClients": "Tüm müşterileri gör",
     "daysOpen": "{{n}} gündür açık",
+    "daysOpen_one": "{{count}} gündür açık",
+    "daysOpen_other": "{{count}} gündür açık",
     "candidates": "{{n}} aday",
     "subtitle": "Bugün sizi neyin beklediği ve müşterilerinizde nelerin açık olduğu.",
     "loadErrorHint": "Gününüz yüklenemedi. Bağlantınızı kontrol edip yeniden deneyin."

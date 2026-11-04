@@ -104,7 +104,7 @@ export function SearchPage() {
                   q={q}
                   title={t('search.group.jobs')}
                   total={d.totals.jobOrders}
-                  rows={d.jobOrders.map((j) => ({ id: j.id, to: `/searches/${j.id}`, title: j.title, sub: `${j.account.name} - ${t('myday.daysOpen', { n: j.daysOpen })}`, right: <StatusBadge kind="jobOrder" value={j.status} size="sm" /> }))}
+                  rows={d.jobOrders.map((j) => ({ id: j.id, to: `/searches/${j.id}`, title: j.title, sub: `${j.account.name} - ${t('myday.daysOpen', { count: j.daysOpen })}`, right: <StatusBadge kind="jobOrder" value={j.status} size="sm" /> }))}
                 />
               </Stack>
             )
