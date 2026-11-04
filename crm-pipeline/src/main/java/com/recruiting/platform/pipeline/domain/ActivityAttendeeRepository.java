@@ -9,5 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ActivityAttendeeRepository extends JpaRepository<ActivityAttendee, ActivityAttendee.Key> {
     List<ActivityAttendee> findByIdActivityId(UUID activityId);
 
+    List<ActivityAttendee> findByIdActivityIdIn(java.util.Collection<UUID> activityIds);
+
     List<ActivityAttendee> findByIdPersonId(UUID personId);
 }
