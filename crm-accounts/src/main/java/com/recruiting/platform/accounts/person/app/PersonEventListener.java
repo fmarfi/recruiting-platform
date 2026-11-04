@@ -23,9 +23,14 @@ public class PersonEventListener {
 
     @ApplicationModuleListener
     void on(ActivityLogged e) {
-        if (e.personId() != null && e.type().countsAsContact()) {
+        if (!e.type().countsAsContact()) {
+            return;
+        }
+        if (e.personId() != null) {
             people.bumpLastContact(e.personId(), e.activityAt());
         }
+        // since contract 1.3.0 every attendee counts as contacted too
+        e.attendeePersonIds().forEach(id -> people.bumpLastContact(id, e.activityAt()));
     }
 
     @ApplicationModuleListener

@@ -1,4 +1,5 @@
-import { Button, Menu } from '@mantine/core';
+import { Button, Kbd, Menu } from '@mantine/core';
+import { openQuickLog } from '../quicklog';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +7,7 @@ import { NewAccountDialog } from '../../accounts/components/NewAccountDialog';
 import { NewPersonDialog } from '../../network/list/NewPersonDialog';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 
-type Dialog = null | 'activity' | 'action' | 'account' | 'person';
+type Dialog = null | 'action' | 'account' | 'person';
 
 /** Global "+ New" menu (UX-06): log activity, add action (pipeline quick add), new client, new person. */
 export function NewMenu({ onChanged }: { onChanged: () => void }) {
@@ -21,15 +22,15 @@ export function NewMenu({ onChanged }: { onChanged: () => void }) {
           <Button size="sm">{t('shell.new')} ▾</Button>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item onClick={() => setDialog('activity')}>{t('accounts.logActivity')}</Menu.Item>
+          <Menu.Item onClick={() => openQuickLog()} rightSection={<Kbd size="xs">Alt L</Kbd>}>{t('accounts.logActivity')}</Menu.Item>
           <Menu.Item onClick={() => setDialog('action')}>{t('accounts.addAction')}</Menu.Item>
           <Menu.Item onClick={() => setDialog('account')}>{t('accounts.newAccount')}</Menu.Item>
           <Menu.Item onClick={() => setDialog('person')}>{t('network.newPerson')}</Menu.Item>
         </Menu.Dropdown>
       </Menu>
       <QuickAdd
-        opened={dialog === 'activity' || dialog === 'action'}
-        initialMode={dialog === 'action' ? 'action' : 'activity'}
+        opened={dialog === 'action'}
+        initialMode="action"
         onClose={close}
         onSaved={onChanged}
       />

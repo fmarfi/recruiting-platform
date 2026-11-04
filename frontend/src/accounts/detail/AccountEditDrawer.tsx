@@ -18,7 +18,7 @@ export interface AccountForm extends Record<string, string> {
 
 export const accountForm = (a: Account): AccountForm => ({
   name: a.name,
-  sector: a.sector,
+  sector: a.sector ?? '',
   city: a.city ?? '',
   website: a.website ?? '',
   notes: a.notes ?? '',

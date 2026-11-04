@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { NewAccountDialog } from '../../accounts/components/NewAccountDialog';
 import { NewPersonDialog } from '../../network/list/NewPersonDialog';
-import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
+import { openQuickLog } from '../quicklog';
 import { useAuth } from '../auth/useAuth';
 import { StatusBadge } from '../components/StatusBadge';
 import { useTypeahead } from '../search/useTypeahead';
@@ -13,7 +13,7 @@ import { pushRecentRef, type RecentKind } from './recentItems';
 import { useRecentLabels } from './useRecentLabels';
 
 type Section = 'filter' | 'actions' | 'accounts' | 'people' | 'jobs' | 'recent' | 'search';
-type Dialog = null | 'account' | 'person' | 'activity';
+type Dialog = null | 'account' | 'person';
 
 interface Item {
   id: string;
@@ -79,7 +79,7 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
       const actions: [string, string, () => void][] = [
         ['newClient', t('accounts.newAccount'), open('account')],
         ['newPerson', t('network.newPerson'), open('person')],
-        ['logActivity', t('accounts.logActivity'), open('activity')],
+        ['logActivity', `${t('accounts.logActivity')} (Alt+L)`, () => { onClose(); openQuickLog(); }],
         ['goMyDay', t('command.goTo', { page: t('nav.myDay') }), go('/')],
         ['goAccounts', t('command.goTo', { page: t('nav.accounts') }), go('/clients')],
         ['goNetwork', t('command.goTo', { page: t('nav.network') }), go('/candidates')],
@@ -237,7 +237,6 @@ export function CommandPalette({ opened, onClose, onChanged }: { opened: boolean
           </Group>
         </Stack>
       </Modal>
-      <QuickAdd opened={dialog === 'activity'} initialMode="activity" onClose={() => setDialog(null)} onSaved={onChanged} />
       <NewAccountDialog opened={dialog === 'account'} onClose={() => setDialog(null)} onCreated={(id) => nav(`/clients/${id}`)} />
       <NewPersonDialog opened={dialog === 'person'} onClose={() => setDialog(null)} onCreated={onChanged} />
     </>

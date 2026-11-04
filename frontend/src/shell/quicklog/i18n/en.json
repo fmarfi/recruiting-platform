@@ -1,0 +1,42 @@
+{
+  "quicklog": {
+    "title": "Log activity",
+    "shortcut": "Alt+L",
+    "person": "Person",
+    "account": "Client",
+    "search": "Search",
+    "type": "Type",
+    "outcome": "Outcome",
+    "direction": "Direction",
+    "OUTBOUND": "Outbound",
+    "INBOUND": "Inbound",
+    "duration": "Minutes",
+    "note": "Note",
+    "noteHint": "Optional. Enter saves, Shift+Enter adds a line.",
+    "needsTarget": "Pick a person or a client.",
+    "tooLong": "Duration is 0 to 1440 minutes.",
+    "saved": "Activity logged",
+    "undoFailed": "Could not undo.",
+    "autoNote": "{{type}}",
+    "autoNoteOutcome": "{{type}}: {{outcome}}",
+    "hint": "Enter saves, Esc closes",
+    "outcomes": {
+      "CONNECTED": "Connected",
+      "NO_ANSWER": "No answer",
+      "LEFT_MESSAGE": "Left message",
+      "CALLBACK_REQUESTED": "Callback requested",
+      "INTERESTED": "Interested",
+      "NOT_INTERESTED": "Not interested",
+      "MEETING_BOOKED": "Meeting booked",
+      "WRONG_CONTACT": "Wrong contact",
+      "COMPLETED": "Completed"
+    },
+    "types": {
+      "CALL": "Call",
+      "VISIT": "Visit",
+      "MEETING": "Meeting",
+      "EMAIL": "E-mail",
+      "NOTE": "Note"
+    }
+  }
+}

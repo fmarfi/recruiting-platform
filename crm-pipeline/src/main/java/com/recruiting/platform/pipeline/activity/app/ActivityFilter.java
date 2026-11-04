@@ -11,7 +11,9 @@ import org.springframework.data.jpa.domain.Specification;
 
 /** Filters of GET /activities. */
 public record ActivityFilter(UUID accountId, UUID personId, UUID jobOrderId, List<ActivityType> types, UUID userId,
-                             Instant from, Instant to) {
+                             Instant from, Instant to,
+                             List<com.recruiting.platform.contracts.ActivityOutcome> outcomes,
+                             List<com.recruiting.platform.contracts.ActivitySource> sources) {
 
     Specification<Activity> toSpec() {
         return (root, q, cb) -> {
@@ -20,13 +22,23 @@ public record ActivityFilter(UUID accountId, UUID personId, UUID jobOrderId, Lis
                 ps.add(cb.equal(root.get("accountId"), accountId));
             }
             if (personId != null) {
-                ps.add(cb.equal(root.get("personId"), personId));
+                var sub = q.subquery(UUID.class);
+                var att = sub.from(com.recruiting.platform.pipeline.domain.ActivityAttendee.class);
+                sub.select(att.get("id").<UUID>get("activityId")).where(
+                        cb.equal(att.get("id").get("personId"), personId));
+                ps.add(cb.or(cb.equal(root.get("personId"), personId), root.get("id").in(sub)));
             }
             if (jobOrderId != null) {
                 ps.add(cb.equal(root.get("jobOrderId"), jobOrderId));
             }
             if (types != null && !types.isEmpty()) {
                 ps.add(root.get("type").in(types));
+            }
+            if (outcomes != null && !outcomes.isEmpty()) {
+                ps.add(root.get("outcome").in(outcomes));
+            }
+            if (sources != null && !sources.isEmpty()) {
+                ps.add(root.get("source").in(sources));
             }
             if (userId != null) {
                 ps.add(cb.equal(root.get("userId"), userId));
