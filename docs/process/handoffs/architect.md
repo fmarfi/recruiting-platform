@@ -35,3 +35,32 @@
 - `npx @redocly/cli@1 lint contracts/openapi.yaml` → valid
 - `mvn -q -B -pl contracts -am verify` → green
 - Scripted check: every `contracts/enums` value list equals its OpenAPI enum → no mismatches
+
+---
+
+# Hand-off: architect · contract 1.4 Home v2 aggregate (R46, R17, R18) · 2026-11-04
+
+**Branch / commits:** `contract-1-4-home` (base `feature/network-customer-tools` e388a73) · 1 commit
+
+**Done**
+- `contracts/openapi.yaml` 1.4.0: `MyDay` + optional `generatedAt`, `needsYouCount`, `todayItems` (`MyDayTodayItem`), `needsYou` (`MyDayRiskItem`), `searches` (`MySearchHealth`, `SearchMilestone`); `/home` description; changelog.
+- `contracts/enums/`: `TodayItemKind`, `HomeRiskType` (threshold constants), `HomeAction`, `MilestoneSource`, `SearchHealthFlag`.
+- `contracts/schema.md`: three read indexes (activity by job order and by user, application by job order/stage); no new column.
+- ADR `docs/architecture/adr/0014-home-v2-aggregate.md`: extend instead of a new path, rules, thresholds, action→endpoint map, R17 filter per list, 300 ms plan.
+
+**Not done / left**
+- Timed calendar events: `activity.occurred_at` cannot be in the future, so EVENT rows are logged meetings/visits only. A planned interview needs `next_action.due_time` (preferred) or a planned flag on `activity` — product decision.
+- "Forwarded mails unmatched" risk and the "Res" column: no type or count in 1.4.
+
+**Others must know**
+- backend-pipeline: implement in `MyDayService`; thresholds from the `HomeRiskType` constants; R17 visible set per ADR 0014 §6; p95 ≤ 300 ms with set-based queries.
+- db-engineer: Flyway migration for the three indexes in schema.md (activity section).
+- frontend: `npm run gen:api`; the list is `todayItems` (`today` stays the date); ACTION rows carry the full `nextAction` for Done/Snooze; show unknown `HomeRiskType` values as a generic row.
+
+**Change requests**
+- orchestrator · TASKS.md · add 1.4 tasks: backend-pipeline Home aggregate, db-engineer indexes, frontend Home v2.
+
+**Verified with**
+- `mvn -q -B -o -pl contracts -am verify` → green
+- snakeyaml parse script (scratchpad) → YAML valid, 0 unresolved `$ref`, the 5 new enums equal their Java enums
+- `npm run -s gen:api` and redocly lint → not run: no node_modules in this worktree, and the remote `npx` download was blocked
