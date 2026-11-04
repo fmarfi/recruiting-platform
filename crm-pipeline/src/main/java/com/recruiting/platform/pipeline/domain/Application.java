@@ -148,20 +148,4 @@ public class Application extends AuditableEntity {
     public void setCloseReason(CloseReason closeReason) {
         this.closeReason = closeReason;
     }
-
-    /**
-     * Keeps the table CHECK {@code (stage = 'REJECTED') = (close_reason IS NOT NULL)} true until the pipeline service
-     * sets the reason itself (R65): REJECTED without a reason gets {@code OTHER}; any other stage has none.
-     */
-    @PrePersist
-    @PreUpdate
-    void alignCloseReasonWithStage() {
-        if (stage == PipelineStage.REJECTED) {
-            if (closeReason == null) {
-                closeReason = CloseReason.OTHER;
-            }
-        } else {
-            closeReason = null;
-        }
-    }
 }

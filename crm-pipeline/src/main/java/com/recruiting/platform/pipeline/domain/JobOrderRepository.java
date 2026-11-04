@@ -9,9 +9,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.Collection;
+import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface JobOrderRepository extends JpaRepository<JobOrder, UUID>, JpaSpecificationExecutor<JobOrder> {
+
+    /** Row lock for every rank change (schema.md, application.rank). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT j FROM JobOrder j WHERE j.id = :id")
+    Optional<JobOrder> lockById(@Param("id") UUID id);
 
     Page<JobOrder> findByAccountId(UUID accountId, Pageable pageable);
 
