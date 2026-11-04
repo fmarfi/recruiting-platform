@@ -108,6 +108,28 @@ public class Refs {
     }
 
     /**
+     * Answers 404 when a person does not exist and 400 when one is anonymised.
+     *
+     * @param ids person ids
+     * @param field request field named in the 400
+     */
+    public void requireLivePeople(java.util.Collection<UUID> ids, String field) {
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<UUID, PersonInfo> found = people.people(ids);
+        for (UUID id : ids) {
+            PersonInfo p = found.get(id);
+            if (p == null) {
+                throw Transitions.notFound("Person");
+            }
+            if (p.retentionStatus() == com.recruiting.platform.contracts.RetentionStatus.ANONYMISED) {
+                throw Transitions.invalid(field, "An anonymised person cannot be an attendee.");
+            }
+        }
+    }
+
+    /**
      * Answers 404 when the person does not exist.
      *
      * @param id person id

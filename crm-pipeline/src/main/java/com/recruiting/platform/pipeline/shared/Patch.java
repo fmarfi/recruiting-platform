@@ -120,6 +120,39 @@ public final class Patch {
     }
 
     /**
+     * Reads an array of ids.
+     *
+     * @param field name
+     * @return the ids, in order
+     */
+    public java.util.List<UUID> uuidList(String field) {
+        JsonNode v = node.get(field);
+        if (v == null || !v.isArray()) {
+            throw Transitions.invalid(field, field + " must be an array of ids.");
+        }
+        java.util.List<UUID> out = new java.util.ArrayList<>();
+        for (JsonNode n : v) {
+            try {
+                out.add(UUID.fromString(n.asString()));
+            } catch (IllegalArgumentException e) {
+                throw Transitions.invalid(field, field + " must hold UUIDs.");
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Tells whether the field is present and JSON null.
+     *
+     * @param field name
+     * @return {@code true} for an explicit null
+     */
+    public boolean isNull(String field) {
+        JsonNode v = node.get(field);
+        return v != null && v.isNull();
+    }
+
+    /**
      * Reads an id field.
      *
      * @param field name

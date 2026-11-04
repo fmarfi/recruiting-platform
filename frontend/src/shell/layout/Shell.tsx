@@ -11,6 +11,7 @@ import { ICON_SIZE_NAV, ICON_STROKE } from '../components/objectIcons';
 import { CommandButton, useCommandHotkey } from '../command/CommandButton';
 import { CommandPalette } from '../command/CommandPalette';
 import { GlobalSearch } from '../search/GlobalSearch';
+import { QuickLogHost } from '../quicklog';
 import { Logo } from './Logo';
 import { NavItems } from './NavItems';
 import { NewMenu } from './NewMenu';
@@ -93,6 +94,7 @@ export function Shell() {
         {/* One undo toast host; keyed by path so a pending undo is dropped when another record opens. */}
         <UndoToastProvider key={pathname}>
           <Outlet key={version} />
+          <QuickLogHost onDone={() => setVersion((v) => v + 1)} />
         </UndoToastProvider>
       </AppShell.Main>
       <CommandPalette opened={command} onClose={() => setCommand(false)} onChanged={() => setVersion((v) => v + 1)} />
