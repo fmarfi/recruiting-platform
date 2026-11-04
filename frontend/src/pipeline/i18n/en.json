@@ -142,7 +142,17 @@
     "factRejected": "Rejected",
     "moreActions": "More actions",
     "lastUpdated": "Last updated",
-    "noBrief": "No description or fee terms yet."
+    "noBrief": "No description or fee terms yet.",
+    "ll": {
+      "title": "Longlist", "viewBoard": "Board", "viewLonglist": "Longlist", "empty": "Nobody on the longlist yet. Use Bulk add to pull people from the pool.",
+      "bulkAdd": "Bulk add", "bulkTitle": "Add people from the pool", "city": "City", "function": "Function", "selectAll": "Select all ({{count}})",
+      "poolEmpty": "No people match these filters.", "poolFailed": "The pool could not be loaded. Change a filter or try again.", "addResult": "Added {{added}}, failed {{failed}}. Failed people stay selected so you can retry.", "conflict": "The list changed elsewhere. It was reloaded; try again.", "writeFailed": "The change was not saved.", "addSelected": "Add {{count}} selected", "cancel": "Cancel",
+      "rank": "Rank", "name": "Name", "roleCompany": "Current role and company", "status": "Call status", "rating": "Rating", "rationale": "Rationale",
+      "rationaleHint": "At least 20 characters to enter the shortlist.", "up": "Move {{name}} up", "down": "Move {{name}} down",
+      "toShortlist": "To shortlist", "moveToShortlist": "Move to shortlist", "shortlistTitle": "Move {{name}} to the shortlist",
+      "outreach": { "TO_CALL": "To call", "CALLED": "Called", "INTERESTED": "Interested", "NOT_INTERESTED": "Not interested", "NOT_NOW": "Not now", "SCREENED": "Screened" },
+      "fn": { "GENERAL_MANAGEMENT": "General management", "FINANCE": "Finance", "HR": "HR", "SALES": "Sales", "MARKETING": "Marketing", "OPERATIONS": "Operations", "SUPPLY_CHAIN": "Supply chain", "PROCUREMENT": "Procurement", "ENGINEERING": "Engineering", "IT": "IT", "RND": "R&D", "LEGAL": "Legal", "OTHER": "Other" }
+    }
   },
   "quickAdd": {
     "account": "Client",
