@@ -146,6 +146,8 @@
       "upcoming": "Upcoming"
     },
     "overdueBy": "Overdue {{n}} days",
+    "overdueBy_one": "Overdue {{count}} day",
+    "overdueBy_other": "Overdue {{count}} days",
     "snooze": "Snooze",
     "snoozeTomorrow": "Tomorrow",
     "snoozeWeek": "Next week",
@@ -165,6 +167,8 @@
     "viewAllJobs": "View all searches",
     "viewAllClients": "View all clients",
     "daysOpen": "{{n}} days open",
+    "daysOpen_one": "{{count}} day open",
+    "daysOpen_other": "{{count}} days open",
     "candidates": "{{n}} candidates",
     "subtitle": "What needs you today, and what is open across your clients.",
     "loadErrorHint": "Your day could not be loaded. Check your connection and retry."

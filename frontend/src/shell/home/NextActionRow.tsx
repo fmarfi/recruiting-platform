@@ -17,7 +17,7 @@ interface Props {
 /** One next action: tick to complete, client link, due text (overdue in the danger tone), snooze menu. */
 export function NextActionRow({ action: a, today, divided, onDone, onSnooze }: Props) {
   const { t, i18n } = useTranslation();
-  const due = a.overdue ? t('myday.overdueBy', { n: daysAgo(a.dueOn, today) }) : a.dueOn === today ? t('myday.group.today') : fmtDate(a.dueOn, i18n.language);
+  const due = a.overdue ? t('myday.overdueBy', { count: daysAgo(a.dueOn, today) }) : a.dueOn === today ? t('myday.group.today') : fmtDate(a.dueOn, i18n.language);
   return (
     <Group wrap="wrap" justify="space-between" align="center" gap="xs" py="var(--space-2)" style={{ borderTop: divided ? '1px solid var(--color-border)' : undefined }}>
       <Checkbox size="sm" label={a.title} checked={false} onChange={onDone} aria-label={a.title} style={{ flex: '1 1 220px', minWidth: 0 }} styles={{ label: { overflowWrap: 'anywhere' } }} />
