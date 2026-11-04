@@ -16,6 +16,10 @@ import com.recruiting.platform.contracts.PersonType;
 import com.recruiting.platform.contracts.SourceChannel;
 import jakarta.validation.Valid;
 import java.net.URI;
+import com.recruiting.platform.contracts.JobFunction;
+import com.recruiting.platform.contracts.Mobility;
+import com.recruiting.platform.contracts.Seniority;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -66,10 +70,20 @@ public class PersonController {
             @RequestParam(required = false) List<String> tag,
             @RequestParam(required = false) List<SourceChannel> sourceChannel,
             @RequestParam(required = false) String cv, @RequestParam(required = false) Boolean shareable,
+            @RequestParam(required = false) List<String> skill,
+            @RequestParam(required = false) List<JobFunction> functionArea,
+            @RequestParam(required = false) List<Seniority> seniority,
+            @RequestParam(required = false) List<String> language,
+            @RequestParam(required = false) Integer noticeMaxDays,
+            @RequestParam(required = false) List<Mobility> mobility,
+            @RequestParam(required = false) BigDecimal salaryMin, @RequestParam(required = false) BigDecimal salaryMax,
+            @RequestParam(required = false) String salaryCurrency, @RequestParam(required = false) Boolean hasCv,
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
             @RequestParam(required = false) List<String> sort) {
+        PersonQueryService.Pool pool = new PersonQueryService.Pool(skill, functionArea, seniority, language,
+                noticeMaxDays, mobility, salaryMin, salaryMax, salaryCurrency, hasCv);
         PersonQueryService.Filter filter = new PersonQueryService.Filter(q, type, ownerId, consentStatus,
-                lastContactBefore, lastContactAfter, city, company, tag, sourceChannel, cv, shareable);
+                lastContactBefore, lastContactAfter, city, company, tag, sourceChannel, cv, shareable, pool);
         return queries.list(filter, Paging.of(page, size, sort, SORTS, Sort.by("name")),
                 sort != null && !sort.isEmpty());
     }

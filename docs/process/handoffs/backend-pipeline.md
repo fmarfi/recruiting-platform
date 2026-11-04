@@ -53,3 +53,18 @@
 
 **Verified with**
 - `mvn -B verify -Pintegration` → BUILD SUCCESS, 123 tests, 0 failures (BulkActionApiIT 8, StageGuardApiIT 7, PipelineMergeErasureIT 3, BulkRequestParserTest 4).
+
+## 2026-11-04: S4 quick log (R70) and S5 longlist (R65)
+
+**Done**
+- S4, branch `s4-quick-log` (base a8734a0): merged `feature/network-customer-tools` (61268d0), resolved NewMenu.tsx and Shell.tsx keeping the v3 layout plus quick log entry (Alt L) and host (92eed5c). Backend already matched the `/activities` contract (outcome, direction, attendees, duration, source, externalMessageId, 409 DUPLICATE).
+- S5, branch `s5-longlist` (base cf78ca8): the WIP already had ranking (`PUT /job-orders/{id}/ranking`), `PATCH /applications/{id}` (rating, rationale, outreach), the shortlist entry guard and the `/people` pool filters. Added `LonglistApiIT` (c7773ec).
+
+**Tests**
+- `ActivityQuickLogApiIT` passed. Frontend: tsc clean, vitest 41 files / 266 tests passed.
+- `LonglistApiIT`: 1 test, 0 failures (bulk add of 10, reorder, stale reorder 409, outreach status, shortlist refused without rationale, pool filter). Data synthetic.
+
+**Open items**
+- The contract has no bulk-add endpoint; the test does 10 calls to `POST /job-orders/{id}/applications`. Change request for the architect if a single bulk endpoint is wanted.
+- `frontend/package-lock.json` is out of sync with package.json (`@tabler/icons-react` missing, `npm ci` fails); needs a lock refresh by the frontend owner.
+- S4 and S5 are separate branches; both touch the pipeline module and need code-reviewer before merge.

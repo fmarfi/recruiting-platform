@@ -1,6 +1,9 @@
 package com.recruiting.platform.pipeline.application.web;
 
+import com.recruiting.platform.contracts.CandidateList;
 import com.recruiting.platform.contracts.PipelineStage;
+import com.recruiting.platform.pipeline.application.web.dto.RankingRequest;
+import org.springframework.web.bind.annotation.PutMapping;
 import com.recruiting.platform.pipeline.application.app.ApplicationMapper;
 import com.recruiting.platform.pipeline.application.app.ApplicationService;
 import com.recruiting.platform.pipeline.exposure.app.ExposureService;
@@ -43,8 +46,14 @@ public class JobOrderApplicationController {
     }
 
     @GetMapping("/applications")
-    List<ApplicationResponse> list(@PathVariable UUID id, @RequestParam(required = false) List<PipelineStage> stage) {
-        return mapper.toResponses(service.listForJobOrder(id, stage));
+    List<ApplicationResponse> list(@PathVariable UUID id, @RequestParam(required = false) List<PipelineStage> stage,
+            @RequestParam(required = false) CandidateList list) {
+        return mapper.toResponses(service.listForJobOrder(id, stage, list));
+    }
+
+    @PutMapping("/ranking")
+    List<ApplicationResponse> rank(@PathVariable UUID id, @Valid @RequestBody RankingRequest r) {
+        return mapper.toResponses(service.rank(id, r.list(), r.applicationIds()));
     }
 
     @PostMapping("/applications")

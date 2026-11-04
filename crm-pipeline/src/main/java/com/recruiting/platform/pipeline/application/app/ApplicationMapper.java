@@ -44,7 +44,9 @@ public class ApplicationMapper {
             return new ApplicationResponse(a.getId(), new JobOrderRef(j.getId(), j.getTitle(), j.getStatus()),
                     l.account(j.getAccountId()), l.person(a.getPersonId()), a.getStage(), a.getRejectionReason(),
                     a.getStageChangedAt(), a.getCreatedAt(), l.user(a.getCreatedBy()), a.getVersion(),
-                    a.getOffLimitsOverrideReason(), null);
+                    a.getOffLimitsOverrideReason(), null, a.getCloseReason(),
+                    a.getStage().candidateList(), a.getRank(), a.getRating() == null ? null : a.getRating().intValue(),
+                    a.getRationale(), a.getOutreachStatus());
         }).toList();
     }
 }

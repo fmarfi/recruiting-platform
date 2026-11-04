@@ -67,6 +67,26 @@ JOIN j_seed j ON j.n = s.job
 CROSS JOIN LATERAL (SELECT now() - make_interval(days => j.opened_days - 3 - s.n % 10) AS created_at) c;
 UPDATE application SET updated_at = stage_changed_at;
 
+-- longlist / shortlist fields (R65): every application past the longlist (client-facing stages) has the rating and
+-- rationale the shortlist guard needs; screened ones have them too; outreach status follows the stage; ranks are
+-- 1..n per job order and list among the active applications (PLACED and REJECTED stay unranked).
+UPDATE application ap SET
+    outreach_status = CASE
+        WHEN ap.stage = 'SOURCED' THEN (ARRAY['TO_CALL', 'CALLED', 'INTERESTED'])[1 + s.n % 3]
+        WHEN ap.stage = 'REJECTED' AND s.reason LIKE 'Withdrew%' THEN 'NOT_INTERESTED'
+        ELSE 'SCREENED' END,
+    rating = CASE WHEN ap.stage IN ('SOURCED', 'REJECTED') THEN NULL ELSE (3 + s.n % 3)::smallint END,
+    rationale = CASE WHEN ap.stage IN ('SOURCED', 'REJECTED') THEN NULL
+        ELSE 'Strong fit on scope, sector and leadership level; screening call confirmed motivation and availability.' END
+FROM app_seed s WHERE ap.id = pg_temp.uid(6, s.n);
+
+UPDATE application ap SET rank = r.rk
+FROM (SELECT id, row_number() OVER (
+              PARTITION BY job_order_id, (stage IN ('PRESENTED', 'CLIENT_INTERVIEW', 'OFFER'))
+              ORDER BY stage_changed_at, id) AS rk
+      FROM application WHERE stage NOT IN ('PLACED', 'REJECTED')) r
+WHERE ap.id = r.id;
+
 -- account_open_job mirrors the job orders; open = any status except FILLED and CANCELLED
 INSERT INTO account_open_job (job_order_id, account_id, title, open, updated_at)
 SELECT id, account_id, title, status NOT IN ('FILLED', 'CANCELLED'), status_changed_at FROM job_order;

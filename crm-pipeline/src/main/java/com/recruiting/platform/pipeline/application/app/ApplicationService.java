@@ -1,6 +1,9 @@
 package com.recruiting.platform.pipeline.application.app;
 
 import com.recruiting.platform.contracts.AccountStatus;
+import com.recruiting.platform.contracts.CandidateList;
+import com.recruiting.platform.contracts.OutreachStatus;
+import java.util.Comparator;
 import com.recruiting.platform.contracts.ApiException;
 import com.recruiting.platform.contracts.ApplicationCreated;
 import com.recruiting.platform.contracts.ErrorCode;
@@ -38,9 +41,12 @@ public class ApplicationService {
     private final PersonDirectory people;
     private final ApplicationEventPublisher events;
     private final ApplicationGuards guards;
+    private final ApplicationRanking ranking;
 
     ApplicationService(ApplicationRepository repo, JobOrderRepository jobOrders, Refs refs, PersonDirectory people,
-            ApplicationEventPublisher events, CurrentUser currentUser, ApplicationGuards guards) {
+            ApplicationEventPublisher events, CurrentUser currentUser, ApplicationGuards guards,
+            ApplicationRanking ranking) {
+        this.ranking = ranking;
         this.guards = guards;
         this.currentUser = currentUser;
         this.repo = repo;
@@ -51,13 +57,99 @@ public class ApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<Application> listForJobOrder(UUID jobOrderId, List<PipelineStage> stages) {
+    public List<Application> listForJobOrder(UUID jobOrderId, List<PipelineStage> stages, CandidateList list) {
         requireJob(jobOrderId);
         List<Application> all = repo.findByJobOrderId(jobOrderId);
-        if (stages == null || stages.isEmpty()) {
+        if (stages != null && !stages.isEmpty()) {
+            all = all.stream().filter(a -> stages.contains(a.getStage())).toList();
+        }
+        if (list == null) {
             return all;
         }
-        return all.stream().filter(a -> stages.contains(a.getStage())).toList();
+        // ranked first by rank, then the unranked ones (PLACED on the shortlist) by stage change
+        return all.stream().filter(a -> a.getStage().candidateList() == list)
+                .sorted(Comparator.<Application, Integer>comparing(Application::getRank,
+                        Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Application::getStageChangedAt))
+                .toList();
+    }
+
+    /** Number of active people on the shortlist (for the SHORTLIST_LONG warning). */
+    @Transactional(readOnly = true)
+    public long shortlistSize(UUID jobOrderId) {
+        return repo.findByJobOrderId(jobOrderId).stream()
+                .filter(a -> a.getStage().isActive() && a.getStage().candidateList() == CandidateList.SHORTLIST)
+                .count();
+    }
+
+    /** Sets the order of one list (keyboard reordering); 409 STATE_CONFLICT when the ids are stale. */
+    @Transactional
+    public List<Application> rank(UUID jobOrderId, CandidateList list, List<UUID> orderedIds) {
+        requireJob(jobOrderId);
+        if (new java.util.HashSet<>(orderedIds).size() != orderedIds.size()) {
+            throw Transitions.invalid("applicationIds", "Ids must be unique.");
+        }
+        return ranking.reorder(jobOrderId, list, orderedIds);
+    }
+
+    /**
+     * Changes rating, rationale or outreach status (contract 1.3.0). Keys absent from the body stay unchanged; on the
+     * shortlist the rating and rationale may not be cleared or shortened below the entry rule (409 with errors).
+     */
+    @Transactional
+    public Application update(UUID id, Map<String, Object> body) {
+        Application a = get(id);
+        boolean any = false;
+        Short rating = a.getRating();
+        String rationale = a.getRationale();
+        if (body.containsKey("rating")) {
+            any = true;
+            Object v = body.get("rating");
+            if (v == null) {
+                rating = null;
+            } else if (v instanceof Number n && n.doubleValue() == n.intValue() && n.intValue() >= 1 && n.intValue() <= 5) {
+                rating = n.shortValue();
+            } else {
+                throw Transitions.invalid("rating", "rating must be an integer from 1 to 5.");
+            }
+        }
+        if (body.containsKey("rationale")) {
+            any = true;
+            Object v = body.get("rationale");
+            if (v == null) {
+                rationale = null;
+            } else if (v instanceof String str && str.length() <= 2000) {
+                rationale = str.trim().isEmpty() ? null : str.trim();
+            } else {
+                throw Transitions.invalid("rationale", "rationale must be text of at most 2000 characters.");
+            }
+        }
+        OutreachStatus outreach = a.getOutreachStatus();
+        if (body.containsKey("outreachStatus")) {
+            any = true;
+            try {
+                outreach = OutreachStatus.valueOf(String.valueOf(body.get("outreachStatus")));
+            } catch (IllegalArgumentException e) {
+                throw Transitions.invalid("outreachStatus", "Unknown outreach status.");
+            }
+        }
+        if (!any) {
+            throw Transitions.invalid("body", "At least one of rating, rationale or outreachStatus is required.");
+        }
+        Object version = body.get("version");
+        if (version instanceof Number n) {
+            Transitions.checkVersion(n.longValue(), a.getVersion());
+        }
+        if (a.getStage().candidateList() == CandidateList.SHORTLIST) {
+            var issues = ApplicationGuards.shortlistIssues(rating, rationale);
+            if (!issues.isEmpty()) {
+                throw ApplicationGuards.shortlistFailed(a.getStage(), a.getStage(), issues);
+            }
+        }
+        a.setRating(rating);
+        a.setRationale(rationale);
+        a.setOutreachStatus(outreach);
+        return repo.saveAndFlush(a);
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +171,9 @@ public class ApplicationService {
             throw new ApiException(ErrorCode.TRANSITION_GUARD_FAILED,
                     "The job order is " + job.getStatus().labelEn() + " and accepts no new candidates.");
         }
+        if (job.getArchivedAt() != null) {
+            throw new ApiException(ErrorCode.ARCHIVED, "The job order is archived and accepts no new candidates.");
+        }
         if (refs.requireAccount(job.getAccountId()).status() == AccountStatus.CLOSED) {
             throw new ApiException(ErrorCode.TRANSITION_GUARD_FAILED, "The account is closed.");
         }
@@ -95,7 +190,9 @@ public class ApplicationService {
         a.setPersonId(personId);
         a.setStage(PipelineStage.INITIAL);
         a.setStageChangedAt(Instant.now());
+        ranking.lock(jobOrderId);
         repo.saveAndFlush(a);
+        ranking.normalise(jobOrderId, CandidateList.LONGLIST);
         events.publishEvent(new ApplicationCreated(Uuids.v7(), Instant.now(), currentUser.id(), a.getId(), jobOrderId,
                 job.getAccountId(), personId, a.getStage()));
         return a;
@@ -108,7 +205,10 @@ public class ApplicationService {
             throw new ApiException(ErrorCode.STATE_CONFLICT,
                     "Only a candidate in stage Sourced can be removed; reject the candidate instead.");
         }
+        ranking.lock(a.getJobOrderId());
         repo.delete(a);
+        repo.flush();
+        ranking.normalise(a.getJobOrderId(), CandidateList.LONGLIST);
     }
 
     @Transactional(readOnly = true)

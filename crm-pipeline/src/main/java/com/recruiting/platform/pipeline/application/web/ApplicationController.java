@@ -7,7 +7,11 @@ import com.recruiting.platform.pipeline.application.app.ApplicationStageService;
 import com.recruiting.platform.pipeline.application.web.dto.ApplicationResponse;
 import com.recruiting.platform.pipeline.application.web.dto.StageChangeRequest;
 import jakarta.validation.Valid;
+import com.recruiting.platform.contracts.PipelineWarningCode;
+import com.recruiting.platform.pipeline.application.web.dto.PipelineWarning;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 @PreAuthorize("hasRole('CONSULTANT')")
 public class ApplicationController {
+
+    private static final int SHORTLIST_LONG = 7;
 
     private final ApplicationService service;
     private final ApplicationStageService stages;
@@ -52,9 +58,26 @@ public class ApplicationController {
 
     @PatchMapping("/applications/{id}/stage")
     ApplicationResponse changeStage(@PathVariable UUID id, @Valid @RequestBody StageChangeRequest r) {
-        var a = stages.change(id, r.stage(), r.reason(), r.version(), r.offLimitsOverrideReason());
+        var a = stages.change(id, r);
         var resp = mapper.toResponse(a);
-        return a.getStage().sharedWithClient() ? resp.withWarnings(exposure.warnings(a)) : resp;
+        if (!a.getStage().sharedWithClient()) {
+            return resp;
+        }
+        List<PipelineWarning> warnings = new ArrayList<>();
+        List<PipelineWarning> exposed = exposure.warnings(a);
+        if (exposed != null) {
+            warnings.addAll(exposed);
+        }
+        if (a.getStage().isActive() && service.shortlistSize(a.getJobOrderId()) > SHORTLIST_LONG) {
+            warnings.add(new PipelineWarning(PipelineWarningCode.SHORTLIST_LONG,
+                    "The shortlist has more than 7 people.", null, null));
+        }
+        return warnings.isEmpty() ? resp : resp.withWarnings(warnings);
+    }
+
+    @PatchMapping("/applications/{id}")
+    ApplicationResponse update(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
+        return mapper.toResponse(service.update(id, body));
     }
 
     @GetMapping("/people/{id}/applications")
