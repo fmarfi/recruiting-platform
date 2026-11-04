@@ -103,4 +103,38 @@ public class ApplicationGuards {
                     Map.of("blockingItems", items));
         }
     }
+
+    /** One field problem of the shortlist guard. */
+    public record FieldIssue(String field, String code, String message) {
+    }
+
+    /**
+     * The shortlist guard of ADR 0013: a rating (1-5) and a rationale of at least 20 characters.
+     *
+     * @param rating    the rating the application would have
+     * @param rationale the rationale it would have
+     * @return the problems, empty when the application may be on the shortlist
+     */
+    public static List<FieldIssue> shortlistIssues(Short rating, String rationale) {
+        List<FieldIssue> out = new java.util.ArrayList<>();
+        if (rating == null) {
+            out.add(new FieldIssue("rating", "REQUIRED", "A rating from 1 to 5 is required on the shortlist."));
+        }
+        String r = rationale == null ? "" : rationale.trim();
+        if (r.isEmpty()) {
+            out.add(new FieldIssue("rationale", "REQUIRED", "A rationale is required on the shortlist."));
+        } else if (r.length() < 20) {
+            out.add(new FieldIssue("rationale", "SIZE", "The rationale needs at least 20 characters."));
+        }
+        return out;
+    }
+
+    /** The 409 of the shortlist guard, with the field errors in {@code errors}. */
+    public static ApiException shortlistFailed(Enum<?> from, Enum<?> to, List<FieldIssue> issues) {
+        List<Map<String, String>> errors = issues.stream()
+                .map(i -> Map.of("field", i.field(), "code", i.code(), "message", i.message())).toList();
+        return new ApiException(ErrorCode.TRANSITION_GUARD_FAILED,
+                "A rating and a rationale of at least 20 characters are needed on the shortlist.",
+                Map.of("currentStatus", from.name(), "requestedStatus", to.name(), "errors", errors));
+    }
 }
