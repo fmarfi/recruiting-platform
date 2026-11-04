@@ -1,10 +1,6 @@
-<<<<<<< HEAD
 import { Button, Kbd, Menu } from '@mantine/core';
-import { openQuickLog } from '../quicklog';
-=======
-import { Button, Menu } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
->>>>>>> feature/network-customer-tools
+import { openQuickLog } from '../quicklog';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

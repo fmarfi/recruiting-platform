@@ -11,11 +11,7 @@ import { ICON_SIZE_NAV, ICON_STROKE } from '../components/objectIcons';
 import { CommandButton, useCommandHotkey } from '../command/CommandButton';
 import { CommandPalette } from '../command/CommandPalette';
 import { GlobalSearch } from '../search/GlobalSearch';
-<<<<<<< HEAD
 import { QuickLogHost } from '../quicklog';
-import { LanguageSwitch } from './LanguageSwitch';
-=======
->>>>>>> feature/network-customer-tools
 import { Logo } from './Logo';
 import { NavItems } from './NavItems';
 import { NewMenu } from './NewMenu';
