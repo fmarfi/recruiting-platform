@@ -1,0 +1,42 @@
+{
+  "quicklog": {
+    "title": "Aktivite kaydet",
+    "shortcut": "Alt+L",
+    "person": "Kisi",
+    "account": "Musteri",
+    "search": "Arama",
+    "type": "Tur",
+    "outcome": "Sonuc",
+    "direction": "Yon",
+    "OUTBOUND": "Giden",
+    "INBOUND": "Gelen",
+    "duration": "Dakika",
+    "note": "Not",
+    "noteHint": "Istege bagli. Enter kaydeder, Shift+Enter yeni satir ekler.",
+    "needsTarget": "Bir kisi veya musteri secin.",
+    "tooLong": "Sure 0 ile 1440 dakika arasinda olmali.",
+    "saved": "Aktivite kaydedildi",
+    "undoFailed": "Geri alinamadi.",
+    "autoNote": "{{type}}",
+    "autoNoteOutcome": "{{type}}: {{outcome}}",
+    "hint": "Enter kaydeder, Esc kapatir",
+    "outcomes": {
+      "CONNECTED": "Ulasildi",
+      "NO_ANSWER": "Yanit yok",
+      "LEFT_MESSAGE": "Mesaj birakildi",
+      "CALLBACK_REQUESTED": "Geri arama istendi",
+      "INTERESTED": "Ilgili",
+      "NOT_INTERESTED": "Ilgisiz",
+      "MEETING_BOOKED": "Toplanti ayarlandi",
+      "WRONG_CONTACT": "Yanlis kisi",
+      "COMPLETED": "Tamamlandi"
+    },
+    "types": {
+      "CALL": "Arama",
+      "VISIT": "Ziyaret",
+      "MEETING": "Toplanti",
+      "EMAIL": "E-posta",
+      "NOTE": "Not"
+    }
+  }
+}

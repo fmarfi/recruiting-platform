@@ -44,10 +44,12 @@ public class ActivityController {
     PageResponse<ActivityResponse> list(@RequestParam(required = false) UUID accountId,
             @RequestParam(required = false) UUID personId, @RequestParam(required = false) UUID jobOrderId,
             @RequestParam(required = false) List<ActivityType> type, @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) List<com.recruiting.platform.contracts.ActivityOutcome> outcome,
+            @RequestParam(required = false) List<com.recruiting.platform.contracts.ActivitySource> source,
             @RequestParam(required = false) Instant from, @RequestParam(required = false) Instant to,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) List<String> sort) {
-        ActivityFilter f = new ActivityFilter(accountId, personId, jobOrderId, type, userId, from, to);
+        ActivityFilter f = new ActivityFilter(accountId, personId, jobOrderId, type, userId, from, to, outcome, source);
         return PageResponse.of(service.list(f, Math.max(0, page), Math.min(100, Math.max(1, size)), sort),
                 mapper::toResponses);
     }

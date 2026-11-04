@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api';
 import { HistoryPanel } from '../../shell/edit';
+import { QuickLog } from '../../shell/quicklog';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
 import { problemText, type Schemas } from '../../pipeline/shared';
 import { Panel } from '../../shell/components/Panel';
@@ -168,13 +169,8 @@ export function PersonPage() {
       />
 
       <PersonEditDrawer person={p} opened={dialog === 'edit'} onClose={close} onSaved={d.reloadAll} />
-      <QuickAdd
-        opened={dialog === 'log' || dialog === 'action'}
-        initialMode={dialog === 'action' ? 'action' : 'activity'}
-        onClose={close}
-        context={{ person: p }}
-        onSaved={d.reloadAll}
-      />
+      <QuickLog opened={dialog === 'log'} onClose={close} personId={id} onDone={d.reloadAll} />
+      <QuickAdd opened={dialog === 'action'} initialMode="action" onClose={close} context={{ person: p }} onSaved={d.reloadAll} />
       <AddConnectionDialog personId={id} opened={dialog === 'connection'} onClose={close} onSaved={d.links.reload} />
       <AddToJobDialog personId={id} exclude={apps.map((a) => a.jobOrder.id)} opened={dialog === 'job'} onClose={close} onSaved={d.applications.reload} />
       <SendConsentDialog person={p} opened={dialog === 'consent'} onClose={close} onSent={d.reloadAll} />
