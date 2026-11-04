@@ -81,7 +81,7 @@ export function tokenCss(): string {
     `.mantine-Table-th button{font:inherit;font-size:inherit;font-weight:inherit;text-transform:inherit;letter-spacing:inherit;color:inherit;}`,
     `.mantine-Table-tr:hover{background:var(--color-surface2);}`,
     `@media (max-width:${tokens.breakpoints.phone}px){body{font-size:16px;}}`,
-    `.tone-badge{display:inline-flex;align-items:center;gap:6px;line-height:1.3;border-radius:var(--radius-pill);font-weight:${tokens.badge.fontWeight};}`,
+    `.tone-badge{display:inline-flex;align-items:center;gap:6px;line-height:1.3;border-radius:4px;font-weight:${tokens.badge.fontWeight};}`,
     ...Object.keys(tokens.tone.light).map(
       (t) => `.tone-${t.toLowerCase()}{background:var(--tone-${t.toLowerCase()}-bg);color:var(--tone-${t.toLowerCase()}-fg);}`,
     ),

@@ -30,7 +30,7 @@ describe('QuickAdd', () => {
 
   it('keeps Save disabled until a note is typed, then logs the activity with the account context', async () => {
     const { onSaved, onClose } = setup();
-    const save = screen.getByRole('button', { name: 'Save' });
+    const save = screen.getByRole('button', { name: 'Log call' });
     expect(save).toBeDisabled();
     fireEvent.change(screen.getByRole('textbox', { name: 'Note' }), { target: { value: 'Called the CFO' } });
     expect(save).toBeEnabled();
@@ -45,7 +45,7 @@ describe('QuickAdd', () => {
   it('creates a next action in action mode and needs a due date', async () => {
     const { onSaved } = setup({ initialMode: 'action' });
     fireEvent.change(screen.getByRole('textbox', { name: 'Action' }), { target: { value: 'Send proposal' } });
-    const save = screen.getByRole('button', { name: 'Save' });
+    const save = screen.getByRole('button', { name: 'Add action' });
     expect(save).toBeDisabled();
     fireEvent.change(screen.getByLabelText(/Due date/), { target: { value: '2026-11-01' } });
     fireEvent.click(save);
@@ -58,7 +58,7 @@ describe('QuickAdd', () => {
     post.mockResolvedValue({ error: { title: 'Boom' } });
     const { onClose, onSaved } = setup();
     fireEvent.change(screen.getByRole('textbox', { name: 'Note' }), { target: { value: 'x' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log call' }));
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(onSaved).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
@@ -66,6 +66,6 @@ describe('QuickAdd', () => {
 
   it('asks for an account or person when there is no context', () => {
     setup({ context: undefined });
-    expect(screen.getByText('Pick a client or a candidate.')).toBeInTheDocument();
+    expect(screen.getByText('Pick a client or candidate.')).toBeInTheDocument();
   });
 });

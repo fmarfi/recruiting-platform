@@ -36,7 +36,7 @@ describe('AccountEditDrawer', () => {
     const { onSaved, onClose } = setup();
     for (const l of [/Client name/, /Sector/, /City/, /Website/, /Notes/, /Owner/]) expect(screen.getByLabelText(l)).toBeInTheDocument();
     type(/Client name/, 'Acme Foods');
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(PATCH).toHaveBeenCalledWith('/accounts/{id}', { params: { path: { id: 'a1' } }, body: { name: 'Acme Foods', version: 3 } });
     expect(onSaved).toHaveBeenCalled();
@@ -51,7 +51,7 @@ describe('AccountEditDrawer', () => {
     PATCH.mockResolvedValueOnce({ error: { code: 'VERSION_CONFLICT' }, response: { status: 409 } }).mockResolvedValueOnce({ data: { version: 10 } });
     const { onSaved } = setup();
     type(/Client name/, 'Acme Mine');
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(screen.getByRole('dialog', { name: 'Compare and save' })).toBeInTheDocument();
     expect(screen.getByText('Acme Theirs')).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('AccountEditDrawer', () => {
     PATCH.mockResolvedValueOnce({ error: { code: 'VALIDATION_FAILED', errors: [{ field: 'website', code: 'URL', message: 'must be a valid URL' }] }, response: { status: 400 } });
     const { onClose } = setup();
     type(/Website/, 'nope');
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await act(async () => {});
     expect(screen.getByText('must be a valid URL')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toBeInTheDocument();

@@ -1,4 +1,5 @@
 import { Button, Container, Grid, Skeleton, Stack } from '@mantine/core';
+import { IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -9,13 +10,14 @@ import { EmptyState } from '../components/EmptyState';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { PageHeader } from '../components/PageHeader';
 import { SkeletonRows } from '../components/SkeletonRows';
+import { ICON_SIZE, ICON_STROKE } from '../components/objectIcons';
 import { fmtDate } from '../lib/format';
-import { NextActionsCard } from './NextActionsCard';
-import { OpenJobsCard, RecentAccountsCard } from './SideCards';
+import { NextActionsSection } from './NextActionsSection';
+import { OpenSearchesSection, RecentClientsSection, useFirmJobs } from './SideSections';
 import { StatsStrip } from './StatsStrip';
 import { useMyDay } from './useMyDay';
 
-/** Home screen (UX-01): what should I do next? */
+/** Home screen (UX-01): what should I do next? KPI tiles, then panels per column (shared Panel). */
 export function MyDay() {
   const { t, i18n } = useTranslation();
   const { isManager } = useAuth();
@@ -24,6 +26,10 @@ export function MyDay() {
   const [adding, setAdding] = useState(false);
   const [newAccount, setNewAccount] = useState(false);
   const d = home.data;
+  // Average days open uses the searches loaded on the page: mine, or the firm's oldest when I have none.
+  const own = d?.openJobOrders ?? [];
+  const firm = useFirmJobs(own.length === 0 && (d?.stats.openJobOrders ?? 0) > 0);
+  const openPool = own.length > 0 ? own : firm;
 
   if (home.loading && !d)
     return (
@@ -36,17 +42,16 @@ export function MyDay() {
 
   const noAccounts = d.stats.activeAccounts === 0 && d.recentAccounts.length === 0 && d.openJobOrders.length === 0;
   const actions = d.nextActions.filter((a) => !home.hidden.has(a.id));
-  const todayCount = actions.filter((a) => !a.overdue && a.dueOn === d.today).length;
 
   return (
     <Container maw="var(--content-max-width)" p={0}>
       <PageHeader
         title={t('myday.greeting', { name: d.user.name })}
-        subtitle={`${fmtDate(d.today, i18n.language)} - ${t('myday.summary', { overdue: d.overdueCount, today: todayCount })}`}
+        subtitle={fmtDate(d.today, i18n.language)}
         actions={
           !noAccounts && (
-            <Button onClick={() => setAdding(true)}>
-              + {t('accounts.addAction')}
+            <Button onClick={() => setAdding(true)} leftSection={<IconPlus size={ICON_SIZE} stroke={ICON_STROKE} aria-hidden />}>
+              {t('accounts.addAction')}
             </Button>
           )
         }
@@ -68,18 +73,16 @@ export function MyDay() {
           }
         />
       ) : (
-        <Stack>
-          <StatsStrip stats={d.stats} />
+        <Stack gap="var(--space-6)">
+          <StatsStrip stats={d.stats} openJobs={openPool} mineOnly={own.length > 0} />
           <Grid>
             <Grid.Col span={{ base: 12, md: 7 }}>
-              <Stack>
-              <NextActionsCard actions={actions} today={d.today} undo={home.undo} onDone={(a, v) => void home.setDone(a, v)} onSnooze={(a, due) => void home.snooze(a, due)} onAdd={() => setAdding(true)} />
-              <OpenJobsCard jobs={d.openJobOrders} openTotal={d.stats.openJobOrders} />
-              </Stack>
+              <NextActionsSection actions={actions} today={d.today} undo={home.undo} onDone={(a, v) => void home.setDone(a, v)} onSnooze={(a, due) => void home.snooze(a, due)} onAdd={() => setAdding(true)} />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 5 }}>
-              <Stack>
-                <RecentAccountsCard accounts={d.recentAccounts} today={d.today} />
+              <Stack gap="var(--space-6)">
+                <OpenSearchesSection jobs={openPool} openTotal={d.stats.openJobOrders} />
+                <RecentClientsSection accounts={d.recentAccounts} today={d.today} />
               </Stack>
             </Grid.Col>
           </Grid>

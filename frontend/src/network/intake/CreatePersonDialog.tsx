@@ -1,8 +1,9 @@
 // Create a person from an intake item: the detected e-mail, phone and LinkedIn URL are suggestions only; the name is typed.
-import { Alert, Button, Group, Modal, Select, Stack, TextInput } from '@mantine/core';
+import { Alert, Button, Group, Modal, Select, SimpleGrid, Stack, TextInput } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Schemas } from '../../pipeline/shared';
+import { MoreDetails } from '../list/NewPersonDialog';
 import { SOURCE_CHANNELS } from '../list/networkFilters';
 import { prefillFromDetected } from './intakeLogic';
 
@@ -21,7 +22,7 @@ export function CreatePersonDialog({
 }) {
   const { t } = useTranslation();
   return (
-    <Modal opened={!!item} onClose={onClose} title={t('network.intake.createTitle')} centered>
+    <Modal opened={!!item} onClose={onClose} title={t('network.intake.createTitle')} size="lg" centered>
       {item && <Form key={item.id} item={item} error={error} busy={busy} onClose={onClose} onCreate={onCreate} />}
     </Modal>
   );
@@ -34,27 +35,29 @@ function Form({ item, error, busy, onClose, onCreate }: { item: Schemas['CvIntak
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.currentTarget.value });
   const orNull = (v: string) => (v.trim() ? v.trim() : null);
   return (
-    <Stack>
+    <Stack gap="sm">
       <Alert color="blue" variant="light">
         {t('network.intake.prefillHint')}
       </Alert>
-      <TextInput label={t('network.fields.name')} required value={f.name} onChange={set('name')} data-autofocus />
-      <Group grow>
-        <TextInput label={t('network.fields.title')} value={f.title} onChange={set('title')} />
+      <TextInput label={t('network.fields.name')} placeholder={t('network.ph.name')} required value={f.name} onChange={set('name')} data-autofocus />
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        <TextInput label={t('network.fields.title')} placeholder={t('network.ph.title')} value={f.title} onChange={set('title')} />
         <TextInput label={t('network.fields.company')} value={f.company} onChange={set('company')} />
-      </Group>
-      <Group grow>
-        <TextInput label={t('network.fields.email')} type="email" value={f.email} onChange={set('email')} />
-        <TextInput label={t('network.dup.phone')} value={f.phone} onChange={set('phone')} />
-      </Group>
-      <TextInput label="LinkedIn" type="url" value={f.linkedinUrl} onChange={set('linkedinUrl')} />
-      <Select
-        label={t('network.pool.channels')}
-        allowDeselect={false}
-        value={f.sourceChannel}
-        onChange={(v) => v && setF({ ...f, sourceChannel: v as Schemas['SourceChannel'] })}
-        data={SOURCE_CHANNELS.map((c) => ({ value: c, label: t(`network.pool.channel.${c}`) }))}
-      />
+        <TextInput label={t('network.fields.email')} placeholder={t('network.ph.email')} type="email" value={f.email} onChange={set('email')} />
+        <TextInput label={t('network.dup.phone')} placeholder={t('network.ph.phone')} value={f.phone} onChange={set('phone')} />
+      </SimpleGrid>
+      <MoreDetails defaultOpened={!!pre.linkedinUrl}>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <TextInput label="LinkedIn" type="url" placeholder="https://" value={f.linkedinUrl} onChange={set('linkedinUrl')} />
+          <Select
+            label={t('network.pool.channels')}
+            allowDeselect={false}
+            value={f.sourceChannel}
+            onChange={(v) => v && setF({ ...f, sourceChannel: v as Schemas['SourceChannel'] })}
+            data={SOURCE_CHANNELS.map((c) => ({ value: c, label: t(`network.pool.channel.${c}`) }))}
+          />
+        </SimpleGrid>
+      </MoreDetails>
       {error && (
         <Alert color="red" role="alert">
           {error}

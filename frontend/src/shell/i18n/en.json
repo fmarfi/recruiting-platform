@@ -145,7 +145,7 @@
       "today": "Today",
       "upcoming": "Upcoming"
     },
-    "overdueBy": "{{n}} days overdue",
+    "overdueBy": "Overdue {{n}} days",
     "snooze": "Snooze",
     "snoozeTomorrow": "Tomorrow",
     "snoozeWeek": "Next week",
@@ -154,7 +154,9 @@
       "activeAccounts": "Active clients",
       "openJobs": "Open searches",
       "inProcess": "Candidates in process",
-      "placed": "Placed this year"
+      "placed": "Placed this year",
+      "avgDaysOpen": "Average days open",
+      "avgDaysOpenMine": "Average days open (mine)"
     },
     "jobs": "Open searches",
     "noJobs": "No open searches",
