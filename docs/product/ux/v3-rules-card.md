@@ -14,6 +14,7 @@ Look
 - Radius 4 chips/badges, 6 inputs/buttons, 8 panels. Nothing oval except avatars.
 - Icons: `@tabler/icons-react`, stroke 1.75, object icons from shell/components/objectIcons.ts. No "+", ">" glyphs.
 - One primary button per page; extras in a More (IconDots) menu.
+- Numbers on screens are days, money or people, never record counts.
 - Tokens only: Mantine props, var(--space-N), var(--color-...), var(--tone-...). No hex, no raw px.
 
 Cheap working (token budget)

@@ -58,6 +58,8 @@
       "lastContact": "Son görüşme",
       "never": "Hiç",
       "daysAgo": "{{count}} gün önce",
+      "daysAgo_one": "{{count}} gün önce",
+      "daysAgo_other": "{{count}} gün önce",
       "knownBy": "Tanıyan",
       "warmPaths": "Sıcak yollar",
       "warmHint": "Ağımızda bu müşterideki kişileri tanıyanlar: onlardan tanıştırma isteyin.",
@@ -201,6 +203,7 @@
       "status": "Durum",
       "notes": "Notlar",
       "lastUpdated": "Son güncelleme"
-    }
+    },
+    "timelineViewAll": "Tümünü gör"
   }
 }

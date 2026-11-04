@@ -20,7 +20,7 @@ export function JobsTab({ jobs, onAdd }: { jobs: JobOrder[]; onAdd: () => void }
               {j.title}
             </Anchor>
             <Text size="sm" c="var(--color-ink3)">
-              {t('myday.daysOpen', { n: j.daysOpen })} - {t('myday.candidates', { n: j.activeCandidates })}
+              {t('myday.daysOpen', { count: j.daysOpen })} - {t('myday.candidates', { n: j.activeCandidates })}
             </Text>
           </div>
           <StatusBadge kind="jobOrder" value={j.status} size="sm" />
