@@ -1,8 +1,10 @@
 // Search (job order) page with the pipeline board (A-06, A-07, UX-03, UX-04). Record band with facts, full-width pipeline,
 // brief and details side by side, history last (visual system v3, section 5; reference: network/person).
-import { Alert, Anchor, Box, Button, Container, Group, Menu, Skeleton, SimpleGrid, Stack, Text } from '@mantine/core';
+import { Alert, Anchor, Box, Button, Container, Group, Menu, SegmentedControl, Skeleton, SimpleGrid, Stack, Text } from '@mantine/core';
+import { BulkAddDialog } from '../../longlist/BulkAddDialog';
+import { LonglistPanel } from '../../longlist/LonglistPanel';
 import { IconDots, IconPlus } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../../api';
@@ -36,6 +38,9 @@ export function JobOrderPage() {
   const { job, apps: appsRes } = useJobOrder(id);
   const moves = useBoardMoves(appsRes.data, job.reload, appsRes.reload);
   const [addOpen, setAddOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const existingIds = useMemo(() => new Set(moves.apps.map((a) => a.person.id)), [moves.apps]);
+  const [view, setView] = useState('board');
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [logCtx, setLogCtx] = useState<QuickAddContext>();
@@ -184,10 +189,33 @@ export function JobOrderPage() {
           ) : moves.apps.length === 0 ? (
             <Panel title={t('pipeline.panelPipeline')} count={0}>
               <div data-testid="empty-pipeline">
-                <EmptyState title={t('pipeline.emptyTitle')} hint={t('pipeline.emptyBody')} actions={!readOnly ? addBtn : undefined} />
+                <EmptyState title={t('pipeline.emptyTitle')} hint={t('pipeline.emptyBody')} actions={!readOnly ? <Group gap="sm">{addBtn}<Button variant="default" onClick={() => setBulkOpen(true)}>{t('pipeline.ll.bulkAdd')}</Button></Group> : undefined} />
               </div>
             </Panel>
           ) : (
+            <>
+              <SegmentedControl
+                size="xs"
+                w="fit-content"
+                value={view}
+                onChange={setView}
+                data={[
+                  { value: 'board', label: t('pipeline.ll.viewBoard') },
+                  { value: 'longlist', label: t('pipeline.ll.viewLonglist') },
+                ]}
+              />
+              {view === 'longlist' ? (
+                <LonglistPanel
+                  jobId={id}
+                  apps={moves.apps}
+                  readOnly={readOnly}
+                  reload={() => {
+                    appsRes.reload();
+                    job.reload();
+                  }}
+                  onBulkAdd={() => setBulkOpen(true)}
+                />
+              ) : (
             // Board renders the "Pipeline" panel and the "Rejected" panel (one drag context for both).
             <Board
               apps={moves.apps}
@@ -197,6 +225,8 @@ export function JobOrderPage() {
               onRemove={(a) => void moves.remove(a)}
               onLogActivity={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })}
             />
+              )}
+            </>
           )}
 
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
@@ -254,6 +284,16 @@ export function JobOrderPage() {
         jobId={id}
         opened={addOpen}
         onClose={() => setAddOpen(false)}
+        onAdded={() => {
+          appsRes.reload();
+          job.reload();
+        }}
+      />
+      <BulkAddDialog
+        jobId={id}
+        existing={existingIds}
+        opened={bulkOpen}
+        onClose={() => setBulkOpen(false)}
         onAdded={() => {
           appsRes.reload();
           job.reload();
