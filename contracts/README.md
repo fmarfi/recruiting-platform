@@ -82,16 +82,21 @@ server: {
 | C15-DB2 | `application.moved_from_application_id` (unique partial), `moved_from_stage`, `moved_at`, `moved_by`, CHECKs | db-engineer |
 | C15-DB3 | `activity.cv_push` + CHECK; `candidate_exposure.activity_id` (cascade, unique), `job_order_id` null-able for CV_PUSH, CHECKs | db-engineer |
 | C15-DB4 | Re-created enum CHECKs (CloseReason, ExposureChannel, TimelineKind, ListEntity columns, BulkResultCode) and `moved_from_stage` in MigrationIT; job_order rows in `PersonalDataClassificationIT` | db-engineer |
+| C15-DB6 | `agreement.signed_file_size` CHECK up to 52428800 (50 MB) | db-engineer |
 | C15-DB5 | Indexes: `interview_note (interviewer_id, held_on)`, `candidate_evaluation (evaluator_id, evaluated_on)`, partial `timeline_entry (actor_id, occurred_at)` for SCREENED, `candidate_exposure (presented_by, presented_at)` | db-engineer |
-| C15-P1 | `POST /applications/{id}/move` + `CandidateMoved` + timeline `CANDIDATE_MOVED`; `Application.movedFrom`/`movedTo` | backend-pipeline |
-| C15-P2 | `POST /application-moves` (batch, per-record results) | backend-pipeline |
-| C15-P3 | `CHANGE_STATUS` on `APPLICATIONS` in `/bulk-actions` (+ `closeReason`, new bulk codes) | backend-pipeline |
+| C15-P1 | `POST /applications/{id}/move` + `CandidateMoved` + timeline `CANDIDATE_MOVED` (source-account row keyed by UUID v5 of `eventId:source`); `Application.movedFrom`/`movedTo`; 409 `STATE_CONFLICT` on reinstating or deleting a moved source and on deleting a moved target | backend-pipeline |
+| C15-P2 | `POST /application-moves` (batch, per-record results; target checked once: 404 / 409 for the whole request) | backend-pipeline |
+| C15-P3 | `CHANGE_STATUS` on `APPLICATIONS` in `/bulk-actions` (+ `closeReason`, new bulk codes). In `BulkRequestParser`: add `closeReason` to the CHANGE_STATUS keys (line 47), exclude APPLICATIONS from REASSIGN_OWNER, ADD_TAG, REMOVE_TAG (line 71, 400) and accept `PipelineStage` except PLACED in `status()` | backend-pipeline |
 | C15-P4 | `contactId` on job order create/update, `JobOrder.contact`, `contactPersonId` filter | backend-pipeline (needs C15-A1) |
-| C15-P5 | `filledOpenings`, `remainingOpenings`, `openings` floor, warnings ALL_OPENINGS_FILLED / OPENINGS_EXCEEDED on PLACED and placement | backend-pipeline |
-| C15-P6 | `cvPush` on activities (guards, CV_PUSH exposure), `ExposureEntry.jobOrder` null, `activityId` | backend-pipeline |
+| C15-P5 | `filledOpenings`, `remainingOpenings`, `openings` floor only when lowered (400 `BELOW_FILLED_OPENINGS`), warnings ALL_OPENINGS_FILLED / OPENINGS_EXCEEDED on PLACED and placement | backend-pipeline |
+| C15-P6 | `cvPush` on activities (guards, CV_PUSH exposure with `presented_at` = `occurredAt`, kept in step on edits; PATCH to NOTE 400 `CV_PUSH_NOT_NOTE`), `ExposureEntry.jobOrder` null, `activityId` | backend-pipeline |
 | C15-P7 | `GET /home?period=`, `MyDay.myNumbers` (4 counts, ADR 0015 §8), unblocks UI-B2 | backend-pipeline |
+| C15-P8 | `PUT /agreements/{id}/signed-file` limit 50 MB, 413 above (already implemented per backend) | backend-pipeline, devops (multipart limit) |
+| C15-S1 | `GET /audit/revisions?includeChildren=true` for AGREEMENT (with fee schedule item revisions), `Revision.entityType`/`entityId` | security-privacy |
+| C15-A2 | `ReferenceData.lifecycles.agreement` from `AgreementStatus` (now a `Lifecycle`: labels, tones, any-to-any `next`) | backend-accounts |
 | C15-A1 | Accounts API method to resolve a contact (account, person, name, role, active) for pipeline; `/views` and `/exports` reject `APPLICATIONS` (400) | backend-accounts (exports: security-privacy) |
 | C15-F1 | Move dialog (single, from longlist row and person page) and bulk move; bulk stage change on the longlist | frontend-pipeline |
 | C15-F2 | Contact picker on job order form and header; openings and remaining in header; FILLED prompt on ALL_OPENINGS_FILLED | frontend-pipeline |
+| C15-F4 | Agreements UI: badge tones from `lifecycles.agreement` (drop the local map), History with `includeChildren=true`, 50 MB hint | frontend-pipeline |
 | C15-F3 | Home period selector and four number tiles (UI-B3); CV push toggle in quick log | frontend (owner of UI-B3) |
 

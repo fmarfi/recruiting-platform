@@ -445,11 +445,11 @@ The band is the client's budget, but it reveals what the client pays (and, after
 | rating | smallint | null (1.3.0); `CHECK (rating BETWEEN 1 AND 5)` |
 | rationale | text | null (1.3.0); at most 2000 characters (service); personal data, scrubbed like `rejection_reason` |
 | outreach_status | varchar(40) | `OutreachStatus`, not null default `TO_CALL` (1.3.0); set to `SCREENED` by the service on a move to stage SCREENED |
-| close_reason | varchar(40) | null (1.3.0, R65); `CloseReason`; `CHECK ((stage = 'REJECTED') = (close_reason IS NOT NULL))`; index `(job_order_id, close_reason)` (funnel report). Set with every move to REJECTED (`OTHER` when the request has none; `CLIENT_DECLINED` from client feedback; since 1.5.0 `MOVED_TO_OTHER_SEARCH` from a move), cleared with `rejection_reason` on reinstatement. Backfill: `OTHER` for every REJECTED row, before the CHECK is added. Not personal data (a code) |
+| close_reason | varchar(40) | null (1.3.0, R65); `CloseReason`; `CHECK ((stage = 'REJECTED') = (close_reason IS NOT NULL))`; index `(job_order_id, close_reason)` (funnel report). Set with every move to REJECTED (`OTHER` when the request has none; `CLIENT_DECLINED` from client feedback; since 1.5.0 `MOVED_TO_OTHER_SEARCH` from a move, which funnel and rejection counts exclude: a move is not a rejection), cleared with `rejection_reason` on reinstatement. Backfill: `OTHER` for every REJECTED row, before the CHECK is added. Not personal data (a code) |
 | moved_from_application_id | uuid FK application | null (1.5.0, ADR 0015); set on the **target** of a move; `on delete set null`; **partial unique index `where moved_from_application_id is not null`** (a source is moved at most once; `movedTo` of the source is this reverse lookup); `CHECK (moved_from_application_id <> id)` |
 | moved_from_stage | varchar(40) | null (1.5.0); `PipelineStage`; the source's stage just before the move (`ApplicationMoveLink.sourceStageBefore`) |
 | moved_at | timestamptz | null (1.5.0) |
-| moved_by | uuid FK app_user | null (1.5.0). `CHECK ((moved_from_application_id IS NULL) = (moved_at IS NULL) AND (moved_at IS NULL) = (moved_from_stage IS NULL))` (`moved_by` stays null-able: set null never happens, users are not deleted, but the move itself always sets it) |
+| moved_by | uuid FK app_user | null (1.5.0). `CHECK ((moved_at IS NULL) = (moved_from_stage IS NULL) AND (moved_from_application_id IS NULL OR moved_at IS NOT NULL))`: the move sets all four; `on delete set null` may later clear `moved_from_application_id` alone (the target keeps `moved_at`, `moved_from_stage`, `moved_by` as history). A moved source (some row points at it) cannot be reinstated or deleted, and a moved target cannot be deleted (service, 409 `STATE_CONFLICT`) |
 | audit columns | | unique `(job_order_id, person_id)`; index `(job_order_id, stage)` |
 
 Rank backfill (1.3.0 migration): for each job order and list, number the active applications by `stage_changed_at, created_at` (1..n); REJECTED and PLACED stay null.
@@ -579,7 +579,7 @@ The PDF holds personal data of every included person: anonymisation and deletion
 | guarantee_start_basis | varchar(40) | `GuaranteeStartBasis`, not null default `START_DATE` (R67) |
 | signed_file_id | uuid | null (R67); id of the signed PDF in the `FileStore`, key `agreement/<agreement_id>/<signed_file_id>` (no FK: there is no file table for agreements) |
 | signed_file_name | varchar(255) | null; `CHECK ((signed_file_id IS NULL) = (signed_file_name IS NULL))` |
-| signed_file_size | bigint | null; `CHECK (signed_file_size IS NULL OR signed_file_size BETWEEN 1 AND 20971520)` |
+| signed_file_size | bigint | null; `CHECK (signed_file_size IS NULL OR signed_file_size BETWEEN 1 AND 52428800)` (50 MB since 1.5.0, was 20971520; db-engineer re-creates the CHECK) |
 | signed_file_uploaded_at, signed_file_uploaded_by | timestamptz, uuid FK app_user | null; set with `signed_file_id` |
 | guarantee_terms, confidentiality_terms | varchar(2000) | null |
 | expense_policy | varchar(1000) | null |
@@ -690,7 +690,7 @@ Indexes added in 1.4.0 for the Home aggregate (ADR 0014; no new columns): `activ
 | direction | varchar(40) | null (1.3.0); `ActivityDirection`; `CHECK (type <> 'NOTE' OR direction IS NULL)` |
 | duration_min | smallint | null (1.3.0); `CHECK (duration_min BETWEEN 0 AND 1440)` |
 | source | varchar(40) | `ActivitySource`, not null default `MANUAL` (1.3.0) |
-| cv_push | boolean | not null default false (1.5.0, ADR 0015); `CHECK (NOT cv_push OR (person_id IS NOT NULL AND account_id IS NOT NULL AND job_order_id IS NULL AND type <> 'NOTE'))`; immutable after insert (service). Writes a `candidate_exposure` row (channel CV_PUSH) in the same transaction |
+| cv_push | boolean | not null default false (1.5.0, ADR 0015); `CHECK (NOT cv_push OR (person_id IS NOT NULL AND account_id IS NOT NULL AND job_order_id IS NULL AND type <> 'NOTE'))`; immutable after insert; an update that would break the CHECK is refused first by the service (400). Writes a `candidate_exposure` row (channel CV_PUSH, `presented_at` = `occurred_at`) in the same transaction; an `occurred_at` change updates that `presented_at` in the same transaction |
 | external_message_id | varchar(300) | null (1.3.0); RFC 5322 `Message-ID` of a captured e-mail; **unique partial index `where external_message_id is not null`** (capture is idempotent); `CHECK (external_message_id IS NULL OR source = 'EMAIL')`. Not personal data on its own (an opaque id), but it is nulled with `note` on anonymisation because some providers embed the address |
 | audit columns | | `CHECK (account_id IS NOT NULL OR person_id IS NOT NULL)` |
 
@@ -726,14 +726,14 @@ Indexes added in 1.4.0 for the Home aggregate (ADR 0014; no new columns): `activ
 | person_id | uuid | null (candidate moves, contacts) |
 | job_order_id | uuid | null |
 | actor_id | uuid FK app_user | null for system |
-| source_event_id | uuid | unique (listener idempotency) |
+| source_event_id | uuid | unique (listener idempotency). One event writing two rows uses the event id for the first and a UUID v5 of `eventId + ':<role>'` for the others (1.5.0: `CandidateMoved` source-account row = v5 of `eventId + ':source'`) |
 
 **Home personal numbers (1.5.0, ADR 0015).** `MyDay.myNumbers` for user `u` and the period's days `[from, to]` in Europe/Istanbul (instants `[from 00:00, to + 1 day 00:00)`), four counts in the Home read transaction:
 
 | Number | Query | Index (new in 1.5.0) |
 | --- | --- | --- |
 | interviews | `count(distinct (person_id, day))` over `interview_note` (`interviewer_id = u`, `held_on` in range, day = `held_on`) union all `candidate_evaluation` (`evaluator_id = u`, `evaluated_on` in range) | `interview_note (interviewer_id, held_on)`, `candidate_evaluation (evaluator_id, evaluated_on)` |
-| cvsScreened | `count(distinct entity_id)` from `timeline_entry` where `kind = 'CANDIDATE'`, `to_status = 'SCREENED'`, `actor_id = u`, `occurred_at` in range | partial `timeline_entry (actor_id, occurred_at) where kind = 'CANDIDATE' and to_status = 'SCREENED'` |
+| cvsScreened | `count(distinct entity_id)` from `timeline_entry` where `kind = 'CANDIDATE'`, `to_status = 'SCREENED'`, `actor_id = u`, `occurred_at` in range. CANDIDATE_MOVED rows are excluded on purpose (a move into SCREENED carries an earlier screening) | partial `timeline_entry (actor_id, occurred_at) where kind = 'CANDIDATE' and to_status = 'SCREENED'` |
 | cvsSent | `count(*)` from `candidate_exposure` where `channel = 'PIPELINE'`, `presented_by = u`, `presented_at` in range | `candidate_exposure (presented_by, presented_at)` |
 | cvsPushed | same with `channel = 'CV_PUSH'` | same index |
 

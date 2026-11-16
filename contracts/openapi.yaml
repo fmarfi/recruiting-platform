@@ -1326,8 +1326,10 @@ paths:
         Since 1.5.0 (ADR 0015): `contactId` sets the client contact (same rule as on create: an active
         contact of the job order's account, else 400 `NOT_ACTIVE_CONTACT`); `null` clears it. An ended
         contact stays on the job order until changed (`contact.active` = false) and is not re-checked when
-        other fields change. `openings` may not go below `filledOpenings` (400 `VALIDATION_FAILED`, field
-        `openings`, code `MIN`).
+        other fields change. **Openings floor:** a request that *lowers* `openings` to a value below
+        `filledOpenings` gives 400 `VALIDATION_FAILED` with `errors[0]` field `openings`, code
+        `BELOW_FILLED_OPENINGS`; sending the current value again (or any value not lower than the current
+        one) is always accepted, also after OPENINGS_EXCEEDED.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1505,7 +1507,7 @@ paths:
       tags: [Pipeline]
       operationId: removeApplication
       summary: Remove a candidate added by mistake
-      description: Only while the stage is SOURCED (else 409 `STATE_CONFLICT`; use REJECTED instead).
+      description: Only while the stage is SOURCED (else 409 `STATE_CONFLICT`; use REJECTED instead). Since 1.5.0 also 409 `STATE_CONFLICT` for an application created by a move (`movedFrom` set) and for a moved source (`movedTo` set), so the move link and the closed source never lose their counterpart (ADR 0015).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       responses:
@@ -1557,7 +1559,10 @@ paths:
         Since 1.3.0 (R65) a move to REJECTED stores `closeReason` (default OTHER); a move to SCREENED sets `outreachStatus` SCREENED. Archived job order or person: 409 `ARCHIVED`. Prefer `POST /applications/{id}/placement` for OFFER → PLACED (this endpoint creates no placement).
 
         Since 1.5.0 (ADR 0015): `closeReason` MOVED_TO_OTHER_SEARCH is set only by the move endpoints
-        (400 `VALIDATION_FAILED` here). A move to PLACED may carry the warning ALL_OPENINGS_FILLED
+        (400 `VALIDATION_FAILED` here). **Moved sources stay closed:** an application whose person was
+        moved on (`movedTo` set) cannot be reinstated (REJECTED to SOURCED or SCREENED) or moved at all:
+        409 `STATE_CONFLICT` (bulk: FAILED `STATE_CONFLICT`). To work the person on the old search again,
+        move them back. A move to PLACED may carry the warning ALL_OPENINGS_FILLED
         (`remainingOpenings` became 0) or OPENINGS_EXCEEDED; the job order status never changes by itself.
         Bulk stage moves: `CHANGE_STATUS` with entity APPLICATIONS on `POST /bulk-actions` runs this
         operation per record.
@@ -1625,7 +1630,9 @@ paths:
           The sharing guard runs later, on the move into a client-facing stage.
         Source rules: PLACED cannot be moved (`STATE_CONFLICT`); a source that was already moved
         (`movedTo` set) cannot be moved again (`STATE_CONFLICT`); archived person `ARCHIVED`. The source
-        job order may be closed (moving people out of a FILLED or CANCELLED search is the main use).
+        job order may be closed (moving people out of a FILLED or CANCELLED search is the main use) or
+        archived: the move closes the source as its own bookkeeping, the one change an archived job order
+        accepts (ADR 0015).
 
         What moves with the person: nothing is copied. The target starts with `outreachStatus` TO_CALL
         (SCREENED when `stage` is SCREENED), no rating, no rationale, rank at the end of the longlist.
@@ -1666,9 +1673,14 @@ paths:
         synchronous, at most 500 ids, each id in its own transaction, partial success is normal (200 with
         one result per id in request order; 400 only for an invalid request as a whole). Each record runs
         exactly the single move. No override: a record blocked by off-limits is FAILED `OFF_LIMITS` (use the
-        single move to override). Codes: `NOT_FOUND`, `DUPLICATE` (person already on the target),
-        `OFF_LIMITS`, `ARCHIVED`, `STATE_CONFLICT` (PLACED or already moved), `TRANSITION_GUARD_FAILED`
-        (target closed or its account CLOSED), `VERSION_CONFLICT`, `INTERNAL_ERROR`. Records are appended
+        single move to override).
+
+        **Target checked once, for the whole request, before any record:** unknown target 404 `NOT_FOUND`;
+        target not open or its account CLOSED 409 `TRANSITION_GUARD_FAILED`; target archived 409 `ARCHIVED`.
+        Then nothing is moved. Per-record codes: `NOT_FOUND` (unknown application), `DUPLICATE` (person
+        already on the target), `OFF_LIMITS`, `ARCHIVED` (person archived), `STATE_CONFLICT` (PLACED or
+        already moved), `TRANSITION_GUARD_FAILED` (only if the target closes during the batch),
+        `VERSION_CONFLICT`, `INTERNAL_ERROR`. Records are appended
         to the target longlist in request order. A separate path, not a `BulkActionType`, so that
         the 1.4 bulk dispatcher stays valid (ADR 0015). Audit: each moved record has its Envers revisions,
         a `CandidateMoved` event with the actor and timeline entries; no `bulk_action` row in 1.5.
@@ -1687,6 +1699,8 @@ paths:
               schema: { $ref: '#/components/schemas/ApplicationMoveBatchResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /proposals:
     get:
       tags: [Proposals]
@@ -1865,8 +1879,8 @@ paths:
         At least one of `accountId` and `personId`. Updates the account's last activity and, except for NOTE, the last contact date of the person and (since 1.3.0) of every attendee. Since 1.3.0 a duplicate `externalMessageId` gives 409 `DUPLICATE` with `existingId`; `personId` filters on `GET /activities` also match attendees.
 
         Since 1.5.0 (ADR 0015) **CV push**: `cvPush: true` records that the person's CV was sent to the
-        client account without a job order (a speculative CV; ASSUMPTION on the meaning of "CV pushed",
-        meeting 02). Needs `personId` and `accountId`, no `jobOrderId`, `type` not NOTE (400
+        client account without a job order: a candidate CV shown to a client to win a search before a
+        position exists (meaning confirmed by the client on 2026-11-16, ADR 0015). Needs `personId` and `accountId`, no `jobOrderId`, `type` not NOTE (400
         `VALIDATION_FAILED`, field `cvPush`). Runs the sharing guard (409 `CONSENT_REQUIRED`, no override)
         and the off-limits check against the person's current company, ignoring the rules of `accountId`
         itself (409 `OFF_LIMITS`, no override in 1.5). Writes one `candidate_exposure` row (channel CV_PUSH,
@@ -2098,7 +2112,7 @@ paths:
       parameters:
         - name: period
           in: query
-          description: Since 1.5.0. Period of `myNumbers`; default LAST_30_DAYS. Does not change the other blocks.
+          description: Since 1.5.0. Period of `myNumbers`; default LAST_30_DAYS. Does not change the other blocks. An unknown value gives 400 `VALIDATION_FAILED` (field `period`).
           schema: { $ref: '#/components/schemas/HomePeriod' }
       responses:
         '200':
@@ -2106,6 +2120,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MyDay' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /people/{id}/consent:
     parameters:
@@ -2632,6 +2647,14 @@ paths:
           in: query
           required: true
           schema: { $ref: '#/components/schemas/Id' }
+        - name: includeChildren
+          in: query
+          description: |
+            Since 1.5.0 (ADR 0015). With `entityType` AGREEMENT, also the revisions of the agreement's fee
+            schedule items (FEE_SCHEDULE_ITEM, matched on `fee_schedule_item_aud.agreement_id`, so deleted
+            instalments too), merged newest first; each row then carries `entityType` and `entityId`. Any
+            other `entityType` with `true` gives 400 `VALIDATION_FAILED`. Default false (1.4 result).
+          schema: { type: boolean, default: false }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -4393,7 +4416,7 @@ paths:
       operationId: uploadAgreementSignedFile
       summary: Upload or replace the signed copy of an agreement (R67)
       description: |
-        PDF only, max 20 MB (detected from the bytes; else 415 `UNSUPPORTED_MEDIA_TYPE`). Stored in the
+        PDF only, max 50 MB (since 1.5.0, was 20 MB; larger gives 413 `PAYLOAD_TOO_LARGE`; type detected from the bytes; else 415 `UNSUPPORTED_MEDIA_TYPE`). Stored in the
         `FileStore` under `agreement/<agreementId>/<signedFileId>`; a replaced file's bytes are deleted
         after the commit (Envers keeps the old id and name). Does not change `status` (set SIGNED with
         `signedOn` as before). The PDF holds the signatory's name and signature (business contact data,
@@ -5443,6 +5466,12 @@ components:
             pipelineStage: { $ref: '#/components/schemas/LifecycleDefinition' }
             consent: { $ref: '#/components/schemas/LifecycleDefinition' }
             dataSubjectRequest: { $ref: '#/components/schemas/LifecycleDefinition' }
+            agreement:
+              $ref: '#/components/schemas/LifecycleDefinition'
+              description: |
+                Since 1.5.0 (ADR 0015). `AgreementStatus` labels and tones for the badges. Agreement status stays a
+                plain field: `next` lists every other status (no reason, not manager-only), exactly what
+                `PATCH /agreements/{id}` accepts; the data rules there (SIGNED needs `signedOn`) still apply.
         stageOrder:
           type: array
           description: Board columns, left to right (REJECTED last).
@@ -6060,7 +6089,7 @@ components:
         seniority: { type: [string, 'null'], maxLength: 100 }
         description: { type: [string, 'null'], maxLength: 10000 }
         feeTerms: { type: [string, 'null'], maxLength: 2000 }
-        openings: { type: integer, minimum: 1, description: Since 1.5.0 not below `filledOpenings` (400). }
+        openings: { type: integer, minimum: 1, description: 'Since 1.5.0 lowering it below `filledOpenings` gives 400 `BELOW_FILLED_OPENINGS`; the same or a higher value is always accepted.' }
         openedOn: { type: string, format: date }
         ownerId: { $ref: '#/components/schemas/Id' }
         version: { $ref: '#/components/schemas/Version' }
@@ -6362,7 +6391,11 @@ components:
           description: Since 1.5.0. CV push (see `POST /activities`); needs `personId` and `accountId`, no `jobOrderId`, not NOTE; consent and off-limits guarded.
     ActivityUpdateRequest:
       type: object
-      description: Since 1.3.0 `attendeePersonIds` replaces the whole attendee list; `source` and `externalMessageId` cannot change.
+      description: |
+        Since 1.3.0 `attendeePersonIds` replaces the whole attendee list; `source` and `externalMessageId` cannot change.
+        Since 1.5.0 (ADR 0015), for a CV-push activity (`cvPush` true, which cannot change): `type` NOTE gives 400
+        `VALIDATION_FAILED` (field `type`, code `CV_PUSH_NOT_NOTE`); a new `occurredAt` also moves its exposure's
+        `presentedAt` in the same transaction (the exposure's `presentedAt` is always the activity's `occurredAt`).
       properties:
         type: { $ref: '#/components/schemas/ActivityType' }
         note: { type: string, minLength: 1, maxLength: 4000 }
@@ -6541,7 +6574,7 @@ components:
         cvsScreened:
           type: integer
           minimum: 0
-          description: 'Distinct applications the user moved into stage SCREENED in the period (stage moves, single or bulk; a re-screen of the same application counts once).'
+          description: 'Distinct applications the user moved into stage SCREENED in the period (stage moves, single or bulk; a re-screen of the same application counts once). A move between searches that lands in SCREENED is not counted: the screening happened, and was counted, on the source search (ADR 0015).'
           examples: [14]
         cvsSent:
           type: integer
@@ -6551,7 +6584,7 @@ components:
         cvsPushed:
           type: integer
           minimum: 0
-          description: 'CVs pushed: CV_PUSH exposures the user recorded in the period (activities with `cvPush`, a CV sent to a client without a search). ASSUMPTION on the meaning (meeting 02).'
+          description: 'CVs pushed: CV_PUSH exposures the user recorded in the period (activities with `cvPush`, a CV sent to a client without a search). Meaning confirmed by the client 2026-11-16 (ADR 0015).'
           examples: [2]
     MyDayTodayItem:
       type: object
@@ -6986,6 +7019,12 @@ components:
         changes:
           type: array
           items: { $ref: '#/components/schemas/FieldChange' }
+        entityType:
+          $ref: '#/components/schemas/EntityType'
+          description: Since 1.5.0. The record this revision belongs to (set on every row; with `includeChildren` it tells the agreement from its instalments).
+        entityId:
+          $ref: '#/components/schemas/Id'
+          description: Since 1.5.0. See `entityType`.
     RevisionPage:
       type: object
       required: [content, page]

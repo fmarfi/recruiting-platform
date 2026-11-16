@@ -4,7 +4,8 @@ package com.recruiting.platform.contracts;
  * Coded reason why an application left the process (R65, since contract 1.3.0, ADR 0013). Stored
  * in {@code application.close_reason}, set on every move to {@link PipelineStage#REJECTED} (the free
  * text {@code rejection_reason} stays required) and cleared on reinstatement. Used for funnel
- * reports; never shown to the client.
+ * reports; never shown to the client. Since 1.5.0 funnel and rejection counts exclude
+ * {@link #MOVED_TO_OTHER_SEARCH} (a move is not a rejection).
  */
 public enum CloseReason {
     /** The client declined the candidate (also set by client feedback DECLINE). */

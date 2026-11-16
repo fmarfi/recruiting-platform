@@ -134,7 +134,7 @@ Rules:
 1. Forward to any later active stage (skipping is allowed, because consultants often present a known candidate directly). No reason. Exception: `PLACED` is reachable only from `OFFER`.
 2. Back one stage. No reason.
 3. To `REJECTED` from any active stage except `PLACED`. Reason required.
-4. From `REJECTED` back to `SOURCED` or `SCREENED`. No reason; the earlier rejection reason stays in the history.
+4. From `REJECTED` back to `SOURCED` or `SCREENED`. No reason; the earlier rejection reason stays in the history. Guard (since contract 1.5.0, ADR 0015): not for an application whose person was moved to another search (`movedTo` set): 409 `STATE_CONFLICT`; move the person back instead.
 5. `PLACED` is final.
 
 Resulting move table (active stage rows):
@@ -151,7 +151,7 @@ Resulting move table (active stage rows):
 | `CLIENT_INTERVIEW` | `REJECTED` | yes |
 | `OFFER` | `CLIENT_INTERVIEW` (back) ; `PLACED` | no |
 | `OFFER` | `REJECTED` | yes |
-| `REJECTED` | `SOURCED`, `SCREENED` | no |
+| `REJECTED` | `SOURCED`, `SCREENED` (not when moved on, 1.5.0) | no |
 | `PLACED` | none | – |
 
 Who: any consultant, manager, admin for every move above, including reinstating from `REJECTED`. ASSUMPTION; depends on "who may change them".
