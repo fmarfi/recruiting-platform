@@ -19,12 +19,22 @@ export const byRank = (a: App, b: App) => (a.rank ?? Number.MAX_SAFE_INTEGER) - 
 const isConflict = (r: { error?: unknown; response?: { status?: number } }) => r.response?.status === 409 || (r.error as { status?: number } | undefined)?.status === 409;
 
 /** Longlist to shortlist rule: PRESENTED with rating and rationale. Resolves with the contract's messages when refused. */
-export async function shortlistApp(app: App, rating: number | null, rationale: string): Promise<string[] | undefined> {
-  const r = await api.PATCH('/applications/{id}/stage', {
-    params: { path: { id: app.id } },
-    body: { stage: 'PRESENTED', ...(rating ? { rating } : {}), rationale, version: app.version },
-  });
-  return r.error ? guardMessages(r.error, 'shortlist') : undefined;
+export async function shortlistApp(
+  app: App,
+  rating: number | null,
+  rationale: string,
+  stage: Schemas['PipelineStage'] = 'PRESENTED',
+  fallback = 'The change was not saved.',
+): Promise<{ errors?: string[]; saved?: App }> {
+  try {
+    const r = await api.PATCH('/applications/{id}/stage', {
+      params: { path: { id: app.id } },
+      body: { stage, ...(rating ? { rating } : {}), rationale, version: app.version },
+    });
+    return r.error ? { errors: guardMessages(r.error, fallback) } : { saved: r.data };
+  } catch {
+    return { errors: [fallback] };
+  }
 }
 
 export function useLonglist(jobId: string, apps: App[], reload: () => void) {
@@ -84,9 +94,9 @@ export function useLonglist(jobId: string, apps: App[], reload: () => void) {
 
   /** Longlist to shortlist (first client-facing stage). Resolves with inline messages when the contract refuses. */
   const toShortlist = async (app: App, rating: number | null, rationale: string): Promise<string[] | undefined> => {
-    const e = await shortlistApp(app, rating, rationale);
-    if (!e) reload();
-    return e;
+    const r = await shortlistApp(app, rating, rationale);
+    if (!r.errors) reload();
+    return r.errors;
   };
 
   return { rows, error, pending, move, patch, toShortlist };

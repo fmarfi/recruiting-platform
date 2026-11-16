@@ -207,7 +207,7 @@ export function JobOrderPage() {
                 )
               }
             >
-              <CandidateTable apps={moves.apps} readOnly={readOnly} onStage={moves.change} onRate={(a, r) => void rate(a, r)} onLog={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })} />
+              <CandidateTable apps={moves.apps} readOnly={readOnly} onStage={moves.change} onRate={(a, r) => void rate(a, r)} onRemove={(a) => void moves.remove(a)} busyIds={moves.busy} onLog={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })} />
             </Panel>
           )}
 

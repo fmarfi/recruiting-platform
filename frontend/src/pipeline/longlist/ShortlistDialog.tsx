@@ -9,15 +9,24 @@ export function ShortlistDialog({ app, onClose, onConfirm }: { app?: App; onClos
   const [rating, setRating] = useState<string | null>(null);
   const [rationale, setRationale] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     setRating(app?.rating ? String(app.rating) : null);
     setRationale(app?.rationale ?? '');
     setErrors([]);
   }, [app]);
   const submit = async () => {
-    const e = await onConfirm(rating ? Number(rating) : null, rationale);
-    if (e) setErrors(e);
-    else onClose();
+    if (busy) return;
+    setBusy(true);
+    try {
+      const e = await onConfirm(rating ? Number(rating) : null, rationale);
+      if (e) setErrors(e);
+      else onClose();
+    } catch {
+      setErrors([t('pipeline.ll.writeFailed')]);
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <Modal opened={!!app} onClose={onClose} title={t('pipeline.ll.shortlistTitle', { name: app?.person.name })} centered>
@@ -35,7 +44,7 @@ export function ShortlistDialog({ app, onClose, onConfirm }: { app?: App; onClos
           <Button variant="default" onClick={onClose}>
             {t('pipeline.ll.cancel')}
           </Button>
-          <Button onClick={() => void submit()}>{t('pipeline.ll.moveToShortlist')}</Button>
+          <Button loading={busy} disabled={busy} onClick={() => void submit()}>{t('pipeline.ll.moveToShortlist')}</Button>
         </Group>
       </Stack>
     </Modal>
