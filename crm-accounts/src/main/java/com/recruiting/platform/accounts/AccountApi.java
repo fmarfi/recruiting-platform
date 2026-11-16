@@ -25,6 +25,20 @@ public interface AccountApi {
     /** Number of accounts in the given status (My day statistics in pipeline). */
     long countByStatus(AccountStatus status);
 
+    /** Archive and VAT facts of an account (agreements); empty when the account does not exist. */
+    Optional<BillingFacts> billingFacts(UUID id);
+
+    /** Contacts by id (missing ids are left out): which account, which person, role, and whether still active. */
+    Map<UUID, ContactRef> findContacts(Collection<UUID> contactIds);
+
+    /** Archive and VAT flags. */
+    record BillingFacts(boolean archived, boolean vatExempt) {
+    }
+
+    /** A contact: a person in a role at an account; {@code active} = not ended. */
+    record ContactRef(UUID id, UUID accountId, UUID personId, String role, boolean active) {
+    }
+
     /** Fields beyond ownerId were added for pipeline's My day, which shows full account cards. */
     record AccountSummary(UUID id, String name, String sector, AccountStatus status, UUID ownerId, String city,
             String website, String notes, Instant statusChangedAt, LocalDate openedOn, int openJobCount,

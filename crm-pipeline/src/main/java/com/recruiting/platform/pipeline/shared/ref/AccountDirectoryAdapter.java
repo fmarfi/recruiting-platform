@@ -27,6 +27,17 @@ class AccountDirectoryAdapter implements AccountDirectory {
     }
 
     @Override
+    public AccountFlags flags(UUID id) {
+        return api.billingFacts(id).map(f -> new AccountFlags(f.archived(), f.vatExempt())).orElse(null);
+    }
+
+    @Override
+    public Map<UUID, ContactInfo> contacts(Collection<UUID> contactIds) {
+        return api.findContacts(contactIds).values().stream().map(c -> new ContactInfo(c.id(), c.accountId(),
+                c.personId(), c.role(), c.active())).collect(Collectors.toMap(ContactInfo::id, c -> c));
+    }
+
+    @Override
     public long countActiveAccounts() {
         return api.countByStatus(AccountStatus.ACTIVE);
     }

@@ -12,5 +12,6 @@ BEGIN;
 \i 06_activities_actions.sql
 \i 07_timeline.sql
 \i 08_privacy.sql
-\i 09_envers.sql
+\i 09_agreements.sql
+\i 10_envers.sql
 COMMIT;

@@ -33,7 +33,7 @@ function Tile({ label, value }: { label: string; value: string }) {
 export function StatsStrip({ stats, openJobs, mineOnly }: { stats: Stats; openJobs: JobOrder[]; mineOnly: boolean }) {
   const { t, i18n } = useTranslation();
   const avg = averageDaysOpen(openJobs);
-  const fmt = (n: number | null) => (n === null ? '–' : n.toLocaleString(i18n.language));
+  const fmt = (n: number | null) => (n === null ? 'â€“' : n.toLocaleString(i18n.language));
   return (
     <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
       <Tile label={t('myday.stat.openJobs')} value={fmt(stats.openJobOrders)} />
