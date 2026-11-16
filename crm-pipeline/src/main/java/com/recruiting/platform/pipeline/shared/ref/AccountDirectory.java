@@ -24,4 +24,18 @@ public interface AccountDirectory {
      * @return the number of active accounts
      */
     long countActiveAccounts();
+
+    /** Archive and VAT flags of an account, or null when it does not exist. */
+    AccountFlags flags(UUID id);
+
+    /** Contacts by id (a person in a role at an account); unknown ids are left out. */
+    Map<UUID, ContactInfo> contacts(Collection<UUID> contactIds);
+
+    /** Archive and VAT flags. */
+    record AccountFlags(boolean archived, boolean vatExempt) {
+    }
+
+    /** A contact and whether it is still active. */
+    record ContactInfo(UUID id, UUID accountId, UUID personId, String role, boolean active) {
+    }
 }

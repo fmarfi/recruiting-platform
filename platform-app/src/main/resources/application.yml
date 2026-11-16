@@ -22,8 +22,8 @@ spring:
       enabled: true
   servlet:
     multipart:
-      # the service enforces 10 MB per file (413 PAYLOAD_TOO_LARGE); the container limits stay above it
-      max-file-size: 12MB
+      # services enforce their own limits (413 PAYLOAD_TOO_LARGE): 10 MB for CVs and imports, 50 MB for signed agreements; the container limit stays above the largest
+      max-file-size: 52MB
       max-request-size: 620MB
 
 management:
