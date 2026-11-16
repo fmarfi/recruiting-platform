@@ -153,10 +153,13 @@ Source: `docs/product/meetings/2026-11-15-meeting-02.md` (first real user input;
 | M2-R | Desk research, 9 topics, into `docs/product/research/meeting-02-research.md` | research agent (Sonnet) | done (file kept local, not in git) | – |
 | M2-UI1 | Search page longlist only: board hidden, table with stage column and stage change; candidate-driven actions on the person page (add to a search, change stage) | frontend-pipeline (Sonnet) | done (reviewed, blockers fixed, merged; bulk move and move between searches need M2-C15) | – |
 | M2-SHOTS | Screenshot pack of candidate, client and position screens with field lists for the client | orchestrator | todo | app running |
-| M2-C15 | Contract 1.5: move candidate between searches; contact on job order; openings and remaining openings; home personal numbers with period | architect (Opus) | todo | M2-R |
-| M2-ST | Rewrite stories from the meeting report; mark the 28 old ones keep / change / drop | product-analyst | todo | M2-R |
-| M2-UI2 | Agreements UI separate from proposals, each with history | frontend-pipeline | todo | M2-UI1 |
+| M2-C15 | Contract 1.5: move candidate between searches; contact on job order; openings and remaining openings; home personal numbers with period | architect (Opus) | review fixes in progress (branch `contract-1-5`, 85b0e48 reviewed: 2 blockers, 7 should-fix; follow-on tasks C15-* in `contracts/README.md`) | M2-R |
+| M2-ST | Rewrite stories from the meeting report; mark the 28 old ones keep / change / drop | product-analyst | done (merged 94b55c2; `docs/product/stories/meeting-02-stories.md`: keep 19, change 8, drop 1; old story files and `must-stories.md` test plan not yet updated; 9th story, sales campaign history, is an open question) | M2-R |
+| M2-AG | `/agreements` backend per contract 1.4 (list, create, get, update, signed file), revisions for agreement and proposal history, IT, seed rows | backend-pipeline (Sonnet) | done (reviewed, 3 blockers fixed, merged 1c169b5; signed PDF limit 50 MB by user decision; adds `AccountApi.billingFacts`/`findContacts` and migration V202611160001, db-engineer to adopt) | – |
+| M2-UI2 | Agreements UI separate from proposals, each with history | frontend-pipeline (Sonnet) | done (reviewed, blocker fixed, merged 9e5e81a; instalment history and reference-data status tones wait for contract 1.5; browser check against the real backend open) | M2-UI1 |
 | M2-UI3 | Network map on the client page | frontend-shell | todo | M2-C15 |
+
+Confirmed by the user (2026-11-16): "CV pushed" = a candidate CV shown to a client to win the search (no position yet); "CV sent" = a CV presented on an existing search. Matches ADR 0015 Q4, which is no longer an assumption.
 
 Decisions (2026-11-16, from the client): no kanban board, longlist only (board code kept, hidden); 3 to 5 users; real roles are researcher, consultant, sales (recorded, gating still deferred until after the pilot); work is table-first because the team works in Excel today.
 
