@@ -148,6 +148,9 @@ final class Body {
         JsonNode v = value(f);
         List<Body> out = new ArrayList<>();
         if (v == null) {
+            if (node.has(f)) {
+                throw Transitions.invalid(f, f + " must not be null.");
+            }
             return out;
         }
         if (!v.isArray() || v.size() > max) {

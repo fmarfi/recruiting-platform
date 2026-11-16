@@ -293,4 +293,88 @@ class AgreementApiIT extends AbstractApiIT {
         call(consultant, patch("/api/v1/proposals/" + pid), "{\"title\":\"Sample proposal 2\"}", 200);
         assertThat(revisions("PROPOSAL", pid).get("content")).hasSize(2);
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @org.springframework.beans.factory.annotation.Autowired
+    com.recruiting.platform.contracts.FileStore store;
+
+    private static byte[] pdfOfSize(int bytes) {
+        byte[] b = new byte[bytes];
+        System.arraycopy(PDF, 0, b, 0, PDF.length);
+        return b;
+    }
+
+    @Test
+    void fileSizeLimits() throws Exception {
+        String id = call(consultant, post("/api/v1/agreements"), terms(account(), ""), 201).get("id").asText();
+        upload(consultant, id, "big.pdf", pdfOfSize(30 * 1024 * 1024), "application/pdf", 200);
+        JsonNode tooBig = upload(consultant, id, "huge.pdf", pdfOfSize(51 * 1024 * 1024), "application/pdf", 413);
+        assertThat(tooBig.get("code").asText()).isEqualTo("PAYLOAD_TOO_LARGE");
+    }
+
+    @Test
+    void archivedAccountAndJobOrderAreRefused() throws Exception {
+        String acc = account();
+        String jo = job(acc);
+        jdbc.update("update job_order set archived_at = now(), archived_by = ?, archive_reason = 'OTHER' where id = ?::uuid",
+                consultant.userId(), jo);
+        String body = "{\"accountId\":\"" + acc + "\",\"jobOrderId\":\"" + jo + "\",\"kind\":\"ENGAGEMENT_LETTER\","
+                + "\"feeModel\":\"FLAT_FEE\",\"flatFeeAmount\":\"1000\",\"currency\":\"TRY\"}";
+        assertThat(call(consultant, post("/api/v1/agreements"), body, 409).get("code").asText()).isEqualTo("ARCHIVED");
+        jdbc.update("update account set archived_at = now(), archived_by = ?, archive_reason = 'OTHER' where id = ?::uuid",
+                consultant.userId(), acc);
+        assertThat(call(consultant, post("/api/v1/agreements"), terms(acc, ""), 409).get("code").asText())
+                .isEqualTo("ARCHIVED");
+    }
+
+    @Test
+    void downloadIsLoggedAndReplacedBytesAreDeleted() throws Exception {
+        String id = call(consultant, post("/api/v1/agreements"), terms(account(), ""), 201).get("id").asText();
+        String first = upload(consultant, id, "a.pdf", PDF, "application/pdf", 200).get("signedFile").get("id").asText();
+        String second = upload(consultant, id, "b.pdf", PDF, "application/pdf", 200).get("signedFile").get("id")
+                .asText();
+        assertThat(store.get("agreement/" + id + "/" + first)).isEmpty();
+        assertThat(store.get("agreement/" + id + "/" + second)).isPresent();
+        mvc.perform(consultant.with(get("/api/v1/agreements/" + id + "/signed-file"))).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("select count(*) from access_log where entity_id = ?::uuid and action = "
+                + "'DOWNLOAD' and entity_type = 'AGREEMENT'", Integer.class, id)).isEqualTo(1);
+    }
+
+    @Test
+    void scheduleOnlyChangeBumpsVersionAndNullScheduleIsRejected() throws Exception {
+        String acc = account();
+        String jo = job(acc);
+        String body = "{\"accountId\":\"" + acc + "\",\"jobOrderId\":\"" + jo + "\",\"kind\":\"ENGAGEMENT_LETTER\","
+                + "\"feeModel\":\"RETAINED_CUSTOM\",\"feePercent\":\"25\",\"feeBasis\":[\"BASE\"],\"currency\":\"TRY\","
+                + "\"scheduleItems\":[{\"label\":\"A\",\"trigger\":\"SIGNING\",\"amount\":\"1000\"}]}";
+        JsonNode a = call(consultant, post("/api/v1/agreements"), body, 201);
+        String id = a.get("id").asText();
+        long v = a.get("version").asLong();
+        JsonNode b = call(consultant, patch("/api/v1/agreements/" + id), "{\"scheduleItems\":["
+                + "{\"label\":\"A\",\"trigger\":\"SIGNING\",\"amount\":\"1500\"}]}", 200);
+        assertThat(b.get("version").asLong()).isGreaterThan(v);
+        assertThat(call(consultant, get("/api/v1/agreements/" + id), null, 200).get("version").asLong())
+                .isEqualTo(b.get("version").asLong());
+        call(consultant, patch("/api/v1/agreements/" + id), "{\"scheduleItems\":null}", 400);
+        assertThat(call(consultant, get("/api/v1/agreements/" + id), null, 200).get("scheduleItems")).hasSize(1);
+
+        // signed with a due item: no way back to draft (and so no delete)
+        call(consultant, patch("/api/v1/agreements/" + id), "{\"status\":\"SIGNED\",\"signedOn\":\"2026-03-01\"}", 200);
+        assertThat(call(consultant, patch("/api/v1/agreements/" + id), "{\"status\":\"DRAFT\"}", 409).get("code")
+                .asText()).isEqualTo("STATE_CONFLICT");
+        call(consultant, delete("/api/v1/agreements/" + id), null, 409);
+    }
+
+    @Test
+    void personDeletionClearsTheSignatory() throws Exception {
+        String acc = account();
+        String c = contact(acc);
+        String a = call(consultant, post("/api/v1/agreements"), terms(acc, ",\"signatoryContactId\":\"" + c + "\""),
+                201).get("id").asText();
+        String personId = jdbc.queryForObject("select person_id::text from contact where id = ?::uuid", String.class, c);
+        jdbc.update("delete from person where id = ?::uuid", personId);
+        JsonNode after = call(consultant, get("/api/v1/agreements/" + a), null, 200);
+        assertThat(after.get("signatory").isNull()).isTrue();
+    }
 }

@@ -6,9 +6,18 @@
 - All `/agreements` operations: list (accountId, jobOrderId, status[], paging, sort), create, get, PATCH, delete (DRAFT only), `PUT/GET /agreements/{id}/signed-file`.
 - Rules: fee model checks, minimum <= cap, per-item exactly one of percent/amount, DATE_OFFSET needs offsetDays, retained thirds sum to 100; kind vs job order (ENGAGEMENT_LETTER needs one, TERMS_OF_BUSINESS none, job order must belong to the account); billing account defaults to the account; signatory must be an active contact of the account (400); SIGNED needs signedOn; archived account or job order gives 409 ARCHIVED; stale `version` gives 409 VERSION_CONFLICT.
 - Signed commercial terms or schedule: only MANAGER/ADMIN (403). Schedule replace only while every item is NOT_DUE (409). SIGNED makes SIGNING items DUE (engagement letters only; due_on = today + dueDays).
-- Signed file: PDF detected from the bytes (`%PDF-`), 20 MB, else 415/413; key `agreement/<id>/<fileId>`; old bytes deleted after commit; download writes the DOWNLOAD access-log row, attachment + nosniff.
+- Signed file: PDF detected from the bytes (`%PDF-`), 50 MB, else 415/413; key `agreement/<id>/<fileId>`; old bytes deleted after commit; download writes the DOWNLOAD access-log row, attachment + nosniff.
 - History: `/audit/revisions` already works for AGREEMENT and PROPOSAL (generic, both entities are `@Audited`, both in the enum). Only a test was needed. No contract change.
 - Seed: `seed/09_agreements.sql` (15 agreements: 8 terms of business, 7 engagement letters, all statuses, thirds schedules). `09_envers.sql` renamed `10_envers.sql` so the Envers baseline still runs last; `run.sql`, `00_clear.sql`, README updated.
+
+**Review fixes (round 2)**
+- No SQL on accounts tables: `AccountFacts` goes through `AccountDirectory` -> `AccountApi`. For backend-accounts, additions to `accounts/AccountApi.java` and `AccountApiImpl` (methods only): `billingFacts(id)` (archived, vatExempt) and `findContacts(ids)` returning `ContactRef(id, accountId, personId, role, active)`; reusable for a contact on the job order.
+- `application.yml` multipart file limit 52MB (CV, import keep their own 10MB code checks). ITs: 30 MB PDF 200, 51 MB 413.
+- `00_clear.sql` also clears placement, agreement_aud, fee_schedule_item_aud, placement_aud; seed loaded twice into a scratch DB.
+- Schedule-only PATCH bumps version; SIGNED to DRAFT blocked (409) while an item is not NOT_DUE; `scheduleItems: null` is 400; new file bytes deleted on rollback.
+- New ITs: archived account/job order 409, DOWNLOAD access log, replaced bytes deleted, person deletion nulls signatory.
+
+- Approved deviation (user decision): signed-PDF limit is 50 MB, not the 20 MB in the contract text (openapi `uploadAgreementSignedFile`, schema.md `signed_file_size` CHECK). New migration `V202611160001__agreement_signed_file_50mb.sql` widens the CHECK (db-engineer: please adopt). The architect updates the contract in 1.5.
 
 **Not done / left**
 - No StatusChanged event for agreements (the events contract has none for them); no timeline entry.

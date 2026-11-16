@@ -57,7 +57,7 @@ import tools.jackson.databind.JsonNode;
 @Service
 public class AgreementService {
 
-    static final long MAX_FILE_BYTES = 20L * 1024 * 1024;
+    static final long MAX_FILE_BYTES = 50L * 1024 * 1024;
     private static final Logger LOG = LoggerFactory.getLogger(AgreementService.class);
     private static final Map<String, String> SORTABLE = Map.of("title", "title", "status", "status", "createdAt",
             "createdAt", "updatedAt", "updatedAt", "signedOn", "signedOn", "validUntil", "validUntil");
@@ -69,6 +69,8 @@ public class AgreementService {
     private final FileStore store;
     private final AccessRecorder access;
     private final CurrentUser currentUser;
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager em;
 
     AgreementService(AgreementRepository repo, FeeScheduleItemRepository items, JobOrderRefs jobs, AccountFacts facts,
             FileStore store, AccessRecorder access, CurrentUser currentUser) {
@@ -185,6 +187,11 @@ public class AgreementService {
             throw new ApiException(ErrorCode.STATE_CONFLICT,
                     "The fee schedule can be replaced only while every item is not yet due.");
         }
+        if (before != AgreementStatus.DRAFT && a.getStatus() == AgreementStatus.DRAFT
+                && current.stream().anyMatch(i -> i.getInvoiceState() != InvoiceState.NOT_DUE)) {
+            throw new ApiException(ErrorCode.STATE_CONFLICT,
+                    "The agreement cannot go back to draft while a fee item is due, invoiced or paid.");
+        }
         boolean elevated = currentUser.hasAtLeast(Role.MANAGER);
         if (before == AgreementStatus.SIGNED && !elevated
                 && (scheduleChanged || !commercial.equals(commercialSnapshot(a)))) {
@@ -195,6 +202,9 @@ public class AgreementService {
             current = replaceItems(a, current, b.objects("scheduleItems", 20), billingFlags(a).vatExempt());
         }
         validateItems(a, current);
+        if (scheduleChanged) {
+            em.lock(a, jakarta.persistence.LockModeType.OPTIMISTIC_FORCE_INCREMENT); // a schedule-only change still bumps version
+        }
         a = repo.saveAndFlush(a);
         if (before != AgreementStatus.SIGNED && a.getStatus() == AgreementStatus.SIGNED) {
             fireSigning(a, current);
@@ -227,7 +237,7 @@ public class AgreementService {
             throw Transitions.invalid("file", "A non-empty file is required.");
         }
         if (upload.getSize() > MAX_FILE_BYTES) {
-            throw new ApiException(ErrorCode.PAYLOAD_TOO_LARGE, "The signed copy may be at most 20 MB.");
+            throw new ApiException(ErrorCode.PAYLOAD_TOO_LARGE, "The signed copy may be at most 50 MB.");
         }
         byte[] bytes;
         try {
@@ -240,11 +250,13 @@ public class AgreementService {
         }
         UUID oldId = a.getSignedFileId();
         UUID fileId = UUID.randomUUID();
+        String newKey = fileKey(a, fileId);
         try (InputStream in = new ByteArrayInputStream(bytes)) {
-            store.put(fileKey(a, fileId), in, bytes.length, "application/pdf");
+            store.put(newKey, in, bytes.length, "application/pdf");
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+        afterRollback(() -> deleteBytes(newKey)); // the bytes are written before the commit
         a.setSignedFileId(fileId);
         a.setSignedFileName(cleanName(upload.getOriginalFilename()));
         a.setSignedFileSize((long) bytes.length);
@@ -550,7 +562,20 @@ public class AgreementService {
         try {
             store.delete(key);
         } catch (IOException e) {
-            LOG.warn("Could not delete stored bytes {}; the sweep removes them", key);
+            LOG.warn("Could not delete stored bytes {}; remove them by hand", key);
+        }
+    }
+
+    private static void afterRollback(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == STATUS_ROLLED_BACK) {
+                        action.run();
+                    }
+                }
+            });
         }
     }
 

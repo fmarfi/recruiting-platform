@@ -18,9 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountApiImpl implements AccountApi {
 
     private final AccountRepository accounts;
+    private final com.recruiting.platform.accounts.domain.ContactRepository contacts;
 
-    public AccountApiImpl(AccountRepository accounts) {
+    public AccountApiImpl(AccountRepository accounts, com.recruiting.platform.accounts.domain.ContactRepository contacts) {
         this.accounts = accounts;
+        this.contacts = contacts;
     }
 
     @Override
@@ -51,6 +53,17 @@ public class AccountApiImpl implements AccountApi {
     @Override
     public long countByStatus(com.recruiting.platform.contracts.AccountStatus status) {
         return accounts.count((root, q, cb) -> cb.equal(root.get("status"), status));
+    }
+
+    @Override
+    public Optional<BillingFacts> billingFacts(UUID id) {
+        return accounts.findById(id).map(a -> new BillingFacts(a.getArchivedAt() != null, a.isVatExempt()));
+    }
+
+    @Override
+    public Map<UUID, ContactRef> findContacts(Collection<UUID> contactIds) {
+        return contacts.findAllById(contactIds).stream().collect(Collectors.toMap(com.recruiting.platform.accounts.domain.Contact::getId,
+                c -> new ContactRef(c.getId(), c.getAccountId(), c.getPersonId(), c.getRole(), c.getEndedOn() == null)));
     }
 
     private static AccountSummary toSummary(Account a) {
