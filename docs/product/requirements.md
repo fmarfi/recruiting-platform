@@ -9,7 +9,7 @@ We are building a recruitment platform for a Turkish recruitment consultancy so 
 - **Phase 1 — Module A: CRM app for clients and network.** A Salesforce-style app to view and track client accounts and the firm's network of people; inside each account the firm tracks the status of the account, its proposals, its job orders and every candidate put forward.
 - **Phase 2 — Module B: AI recruitment tool.** Built on top of the CRM: a central candidate pool with AI CV screening, candidate–job matching, blind screening, candidate reports and, later, assessments and interview simulation.
 - **Across both:** a simple, easy-to-follow UI; KVKK consent and retention; users, roles and audit log.
-- **Pilot:** an executive search firm, the pilot client (not public yet).
+- **Pilot:** an executive search firm (name withheld).
 - **Out of scope for now:** billing/invoicing (open question), payroll, onboarding after placement.
 
 Source: client meeting notes, 15 Oct 2026. Items marked **\[Note\]** come straight from the notes; items marked **\[Derived\]** are our own inference to be confirmed.
@@ -217,7 +217,7 @@ The biggest risk is the existing pool: if current CVs lack a KVKK basis, the fir
 
 **Assumptions (to confirm)**
 
-- The pilot runs with one executive search team at the pilot client (not public yet; keep the name out of external material).
+- The pilot runs with one executive search team at the pilot client (name withheld).
 - We first build a demo on synthetic CVs, then a client version.
 - The firm is the data controller; we act as data processor under a processing agreement.
 - Module A is modelled on Salesforce's account concepts; there is no Salesforce integration.
