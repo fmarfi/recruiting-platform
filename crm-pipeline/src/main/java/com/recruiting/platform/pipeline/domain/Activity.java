@@ -160,4 +160,15 @@ public class Activity extends AuditableEntity {
     public void setExternalMessageId(String externalMessageId) {
         this.externalMessageId = externalMessageId;
     }
+
+    /** CV push (1.5.0, ADR 0015): CV sent to the account without a job order; immutable after insert. */
+    @Column(name = "cv_push", updatable = false)
+    private boolean cvPush;
+
+    public boolean isCvPush() {
+        return cvPush;
+    }
+    public void setCvPush(boolean cvPush) {
+        this.cvPush = cvPush;
+    }
 }

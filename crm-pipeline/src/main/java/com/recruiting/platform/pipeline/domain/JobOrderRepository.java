@@ -21,6 +21,9 @@ public interface JobOrderRepository extends JpaRepository<JobOrder, UUID>, JpaSp
     @Query("SELECT j FROM JobOrder j WHERE j.id = :id")
     Optional<JobOrder> lockById(@Param("id") UUID id);
 
+    /** Job orders of a client contact (1.5.0). */
+    List<JobOrder> findByContactId(UUID contactId);
+
     Page<JobOrder> findByAccountId(UUID accountId, Pageable pageable);
 
     Page<JobOrder> findByStatus(JobOrderStatus status, Pageable pageable);

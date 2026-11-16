@@ -120,6 +120,18 @@ class PersonalDataClassificationIT extends AbstractPersistenceIT {
         return unclassified;
     }
 
+    /** 1.5.0: job_order.contact_id is an FK to contact, so job_order enters the scope and every column needs a row. */
+    @Test
+    void jobOrderIsInScopeSinceContactIdAndFullyClassified() throws IOException {
+        Integer fk = jdbc.queryForObject("""
+                SELECT count(*) FROM pg_constraint
+                WHERE contype = 'f' AND conrelid = 'job_order'::regclass AND confrelid = 'contact'::regclass""",
+                Integer.class);
+        assertThat(fk).isOne();
+        assertThat(findUnclassified(parse())).noneMatch(c -> c.startsWith("job_order."));
+        assertThat(parse()).anyMatch(r -> r.table().equals("job_order") && r.columns().contains("contact_id"));
+    }
+
     @Test
     void aColumnMissingFromTheDocumentIsReported() throws IOException {
         List<Row> rows = parse();

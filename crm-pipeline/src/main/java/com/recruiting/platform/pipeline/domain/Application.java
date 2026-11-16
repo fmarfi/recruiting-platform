@@ -148,4 +148,46 @@ public class Application extends AuditableEntity {
     public void setCloseReason(CloseReason closeReason) {
         this.closeReason = closeReason;
     }
+
+    /** Move link (1.5.0, ADR 0015), set on the target of a move; the other three are history and stay on set-null. */
+    @Column(name = "moved_from_application_id")
+    private UUID movedFromApplicationId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "moved_from_stage")
+    private PipelineStage movedFromStage;
+
+    @Column(name = "moved_at")
+    private Instant movedAt;
+
+    @Column(name = "moved_by")
+    private UUID movedBy;
+
+    public UUID getMovedFromApplicationId() {
+        return movedFromApplicationId;
+    }
+    public void setMovedFromApplicationId(UUID movedFromApplicationId) {
+        this.movedFromApplicationId = movedFromApplicationId;
+    }
+
+    public PipelineStage getMovedFromStage() {
+        return movedFromStage;
+    }
+    public void setMovedFromStage(PipelineStage movedFromStage) {
+        this.movedFromStage = movedFromStage;
+    }
+
+    public Instant getMovedAt() {
+        return movedAt;
+    }
+    public void setMovedAt(Instant movedAt) {
+        this.movedAt = movedAt;
+    }
+
+    public UUID getMovedBy() {
+        return movedBy;
+    }
+    public void setMovedBy(UUID movedBy) {
+        this.movedBy = movedBy;
+    }
 }

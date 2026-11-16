@@ -82,6 +82,18 @@ public class CandidateExposure {
         this.applicationId = applicationId;
     }
 
+    /** CV_PUSH only (1.5.0): the activity that logged the push; the row cascades with it. */
+    @Column(name = "activity_id", updatable = false)
+    private UUID activityId;
+
+    public UUID getActivityId() {
+        return activityId;
+    }
+
+    public void setActivityId(UUID activityId) {
+        this.activityId = activityId;
+    }
+
     public ExposureChannel getChannel() {
         return channel;
     }

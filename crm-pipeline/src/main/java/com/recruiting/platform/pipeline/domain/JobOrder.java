@@ -232,4 +232,15 @@ public class JobOrder extends AuditableEntity {
     public void setConfidentialityLevel(ConfidentialityLevel confidentialityLevel) {
         this.confidentialityLevel = confidentialityLevel;
     }
+
+    /** The client contact the search is for (1.5.0, ADR 0015); null = none. */
+    @Column(name = "contact_id")
+    private UUID contactId;
+
+    public UUID getContactId() {
+        return contactId;
+    }
+    public void setContactId(UUID contactId) {
+        this.contactId = contactId;
+    }
 }

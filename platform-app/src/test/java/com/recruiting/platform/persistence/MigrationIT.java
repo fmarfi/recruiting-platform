@@ -144,7 +144,12 @@ class MigrationIT extends AbstractPersistenceIT {
             new EnumColumn("export_job", "status", ExportStatus.class),
             new EnumColumn("client_report", "kind", ReportKind.class),
             new EnumColumn("client_report", "language", Language.class),
-            new EnumColumn("import_job_record", "entity_type", EntityType.class));
+            new EnumColumn("import_job_record", "entity_type", EntityType.class),
+            // 1.5.0 (ADR 0015)
+            new EnumColumn("application", "moved_from_stage", PipelineStage.class),
+            new EnumColumn("saved_view", "entity", ListEntity.class),
+            new EnumColumn("bulk_action", "entity", ListEntity.class),
+            new EnumColumn("bulk_action_item", "code", BulkResultCode.class));
 
     @Test
     void extensionsAndSearchHelperExist() {

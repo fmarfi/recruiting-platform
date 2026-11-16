@@ -28,6 +28,14 @@ SELECT pg_temp.uid(5, n), pg_temp.uid(2, acct), title, location, seniority,
        now() - make_interval(days => status_days), pg_temp.uid(1, owner)
 FROM j_seed;
 
+-- 1.5.0 (ADR 0015): the client contact a search is for. An active contact of the same account (the primary one first)
+-- on the open and in-progress searches; the others stay without a contact.
+UPDATE job_order j
+SET contact_id = (SELECT c.id FROM contact c
+                  WHERE c.account_id = j.account_id AND c.ended_on IS NULL
+                  ORDER BY c.is_primary DESC, c.id LIMIT 1)
+WHERE j.id IN (SELECT pg_temp.uid(5, n) FROM generate_series(1, 8) n);
+
 CREATE TEMP TABLE app_seed (n int, job int, person int, stage text, reason text);
 INSERT INTO app_seed VALUES
  (1, 2, 40, 'SOURCED', NULL),

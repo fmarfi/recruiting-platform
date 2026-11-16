@@ -66,6 +66,21 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
             + "WHERE a.personId = :personId AND a.offLimitsOverrideReason IS NOT NULL")
     int scrubOffLimitsReason(@Param("personId") UUID personId);
 
+    /** Target of the move out of this source (1.5.0): the reverse lookup behind {@code movedTo}. */
+    Optional<Application> findByMovedFromApplicationId(UUID sourceId);
+
+    boolean existsByMovedFromApplicationId(UUID sourceId);
+
+    /**
+     * Filled openings of a job order (1.5.0): PLACED applications with no placement or a placement whose status is in
+     * {@code placementStatuses} (ACTIVE, GUARANTEE_ENDED).
+     */
+    @Query("SELECT COUNT(a) FROM Application a LEFT JOIN Placement p ON p.applicationId = a.id "
+            + "WHERE a.jobOrderId = :jobOrderId AND a.stage = com.recruiting.platform.contracts.PipelineStage.PLACED "
+            + "AND (p.id IS NULL OR p.status IN :placementStatuses)")
+    long countFilledOpenings(@Param("jobOrderId") UUID jobOrderId,
+            @Param("placementStatuses") Collection<com.recruiting.platform.contracts.PlacementStatus> placementStatuses);
+
     /** Removes the Envers history rows of the applications of a person (schema.md, Anonymisation). */
     @Modifying
     @Query(value = "DELETE FROM application_aud WHERE person_id = :personId", nativeQuery = true)
