@@ -33,3 +33,6 @@ skeletree.md
 client-private/
 
 .docs/
+# meeting notes and reports (kept local)
+docs/product/meetings/
+docs/product/research/meeting-*-research.md
