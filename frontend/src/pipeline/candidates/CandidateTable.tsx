@@ -2,7 +2,7 @@
 // Replaces the kanban board on the page (the board files stay in the code base, unused).
 import { ActionIcon, Anchor, Chip, Group, Select, Text, TextInput } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconNotes, IconSearch, IconShieldCheck } from '@tabler/icons-react';
+import { IconNotes, IconSearch, IconTrash, IconShieldCheck } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -25,12 +25,16 @@ export function CandidateTable({
   onStage,
   onRate,
   onLog,
+  onRemove,
+  busyIds,
 }: {
   apps: App[];
   readOnly: boolean;
   onStage: (app: App, to: Stage) => void;
   onRate: (app: App, rating: number | null) => void;
   onLog: (app: App) => void;
+  onRemove: (app: App) => void;
+  busyIds?: ReadonlySet<string>;
 }) {
   const { t } = useTranslation();
   const { label, def } = useLabel();
@@ -78,7 +82,7 @@ export function CandidateTable({
       sortable: true,
       minWidth: 170,
       accessor: (a) => label('pipelineStage', a.stage),
-      cell: (a) => <StageSelect app={a} readOnly={readOnly} onChange={onStage} />,
+      cell: (a) => <StageSelect app={a} readOnly={readOnly || !!busyIds?.has(a.id)} onChange={onStage} />,
     },
     {
       id: 'list',
@@ -128,11 +132,18 @@ export function CandidateTable({
     {
       id: 'log',
       header: t('pipeline.cand.log'),
-      minWidth: 60,
+      minWidth: 90,
       cell: (a) => (
-        <ActionIcon variant="subtle" size="md" aria-label={t('pipeline.logWithPerson') + ': ' + a.person.name} onClick={() => onLog(a)}>
-          <IconNotes size={16} stroke={1.75} aria-hidden />
-        </ActionIcon>
+        <Group gap={2} wrap="nowrap">
+          <ActionIcon variant="subtle" size="md" aria-label={t('pipeline.logWithPerson') + ': ' + a.person.name} onClick={() => onLog(a)}>
+            <IconNotes size={16} stroke={1.75} aria-hidden />
+          </ActionIcon>
+          {!readOnly && a.stage === 'SOURCED' && (
+            <ActionIcon variant="subtle" color="red" size="md" aria-label={t('pipeline.removeFromJob') + ': ' + a.person.name} onClick={() => onRemove(a)}>
+              <IconTrash size={16} stroke={1.75} aria-hidden />
+            </ActionIcon>
+          )}
+        </Group>
       ),
     },
   ];
@@ -157,7 +168,7 @@ export function CandidateTable({
               {[a.person.title, a.person.company].filter(Boolean).join(', ')}
             </Text>
           </div>
-          <StageSelect app={a} readOnly={readOnly} onChange={onStage} />
+          <StageSelect app={a} readOnly={readOnly || !!busyIds?.has(a.id)} onChange={onStage} />
         </Group>
       )}
       toolbar={

@@ -11,6 +11,8 @@
 **Files:** `frontend/src/pipeline/candidates/*` (new, incl. `candidates.test.tsx`), `pipeline/joborders/detail/JobOrderPage.tsx`, `pipeline/longlist/useLonglist.ts`, `network/person/{JobsTab,PersonPage}.tsx`, `pipeline/i18n/{en,tr}.json`.
 Board components, `LonglistPanel` and `SectionToggle` are untouched, unused by the page, and compile.
 
+- Review fixes: shortlist dialog for any client-facing target from a longlist row (stage passed through); remove-from-search row action (Sourced only, undo toast); dialog confirm has a busy state, shows network errors and exposure warnings; stage select disabled while its move is in flight; person-page stage control read-only on FILLED/CANCELLED searches. 280 vitest tests.
+
 **Left out**
 - Bulk stage move: the contract says `PATCH /applications/{id}/stage` is the only stage mutation and bulk `CHANGE_STATUS` excludes applications. Needs a new endpoint.
 - Move a candidate between searches: no endpoint. Today: add to the other search, remove from this one.
@@ -18,7 +20,7 @@ Board components, `LonglistPanel` and `SectionToggle` are untouched, unused by t
 - "Last activity" is the person's last contact, not per search (no such field on Application).
 
 **Check by hand:** open a search: one table, no board. Change a stage in a row (reject asks a reason; Sourced to Presented asks rating and rationale). Open the person, tab "Clients and searches": change the stage there; both show in the account timeline.
-**Verified:** `npx tsc --noEmit` clean; `npx vitest run` 43 files, 275 tests passed.
+**Verified:** `npx tsc --noEmit` clean; `npx vitest run` 43 files, 280 tests passed.
 
 # Hand-off: frontend-pipeline · Wave 2b (candidate pool, CV files, duplicates, guards) · 2026-10-26
 

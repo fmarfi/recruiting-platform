@@ -14,12 +14,14 @@ export function JobsTab({
   canAdd,
   onAdd,
   onStage,
+  busyIds,
 }: {
   applications: Schemas['Application'][];
   roles: Schemas['Contact'][];
   canAdd: boolean;
   onAdd: () => void;
   onStage: (app: Schemas['Application'], to: Stage) => void;
+  busyIds?: ReadonlySet<string>;
 }) {
   const { t } = useTranslation();
   const fmt = useFormat();
@@ -60,7 +62,7 @@ export function JobsTab({
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <StageSelect app={a} onChange={onStage} />
+                    <StageSelect app={a} readOnly={a.jobOrder.status === 'FILLED' || a.jobOrder.status === 'CANCELLED' || !!busyIds?.has(a.id)} onChange={onStage} />
                   </Table.Td>
                   <Table.Td>
                     <Text size="xs" c="dimmed">

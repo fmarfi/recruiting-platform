@@ -155,7 +155,7 @@ export function PersonPage() {
             </Tabs.Panel>
             <Tabs.Panel value="map">{panel(t('network.tabs.map'), <RelationshipMap center={p} links={links} />)}</Tabs.Panel>
             <Tabs.Panel value="connections">{panel(t('network.tabs.connections'), <ConnectionsTab links={links} onAdd={() => setDialog('connection')} />)}</Tabs.Panel>
-            <Tabs.Panel value="jobs">{panel(t('network.tabs.jobs'), <JobsTab applications={stageCtl.apps} roles={d.roles.data ?? []} canAdd={!blocked} onAdd={() => setDialog('job')} onStage={stageCtl.change} />)}</Tabs.Panel>
+            <Tabs.Panel value="jobs">{panel(t('network.tabs.jobs'), <JobsTab applications={stageCtl.apps} roles={d.roles.data ?? []} canAdd={!blocked} onAdd={() => setDialog('job')} onStage={stageCtl.change} busyIds={stageCtl.busy} />)}</Tabs.Panel>
             <Tabs.Panel value="activity">{panel(t('network.tabs.activity'), <ActivityTab activities={activities} onLog={() => setDialog('log')} />)}</Tabs.Panel>
             <Tabs.Panel value="files">{panel(t('network.tabs.files'), <FilesTab personId={id} anonymised={p.anonymised} onUploaded={d.reloadAll} />)}</Tabs.Panel>
             <Tabs.Panel value="exposure">{panel(t('network.tabs.exposure'), <ExposureTab personId={id} />)}</Tabs.Panel>

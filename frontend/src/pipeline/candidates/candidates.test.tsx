@@ -1,12 +1,18 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { renderShell } from '../../shell/edit/testUtils';
 
-vi.mock('../shared/useRefData', () => ({ useRefData: () => undefined }));
-vi.mock('../../api', () => ({ api: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn() } }));
+const REF = { lifecycles: { consent: { statuses: [] }, pipelineStage: { statuses: [{ value: 'SOURCED', labelEn: 'Sourced', labelTr: 'Sourced', next: [{ to: 'SCREENED', reasonRequired: false }, { to: 'CLIENT_INTERVIEW', reasonRequired: false }, { to: 'REJECTED', reasonRequired: true }] }] } } };
+const refState = { data: undefined as unknown };
+vi.mock('../shared/useRefData', () => ({ useRefData: () => refState.data }));
+vi.mock('../shared/useCurrentUser', () => ({ useCurrentUser: () => ({ role: 'CONSULTANT' }) }));
+const PATCH = vi.fn();
+const DELETE = vi.fn();
+vi.mock('../../api', () => ({ api: { GET: vi.fn(), POST: vi.fn(), PATCH: (...a: unknown[]) => PATCH(...a), PUT: vi.fn(), DELETE: (...a: unknown[]) => DELETE(...a) } }));
 
 import { CandidateTable } from './CandidateTable';
+import { useStageControl } from './useStageControl';
 import { countByStage, filterByStage, sortApps } from './candidateRows';
 import type { App } from '../longlist/useLonglist';
 
@@ -16,6 +22,10 @@ const app = (id: string, name: string, stage: string, list: string | null, rank:
 const apps = [app('a1', 'Ayse', 'SOURCED', 'LONGLIST', 2), app('a2', 'Burak', 'PRESENTED', 'SHORTLIST', 1), app('a3', 'Cem', 'SOURCED', 'LONGLIST', 1), app('a4', 'Deniz', 'REJECTED', null)];
 
 beforeEach(() => {
+  refState.data = undefined;
+  Element.prototype.scrollIntoView = vi.fn();
+  PATCH.mockReset();
+  DELETE.mockReset();
   Object.defineProperty(document, 'fonts', { value: { addEventListener() {}, removeEventListener() {} }, configurable: true });
 });
 
@@ -32,7 +42,7 @@ describe('CandidateTable', () => {
   const setup = (onStage = vi.fn()) => {
     renderShell(
       <MemoryRouter>
-        <CandidateTable apps={apps} readOnly={false} onStage={onStage} onRate={vi.fn()} onLog={vi.fn()} />
+        <CandidateTable apps={apps} readOnly={false} onStage={onStage} onRate={vi.fn()} onLog={vi.fn()} onRemove={vi.fn()} />
       </MemoryRouter>,
     );
     return onStage;
@@ -60,5 +70,73 @@ describe('CandidateTable', () => {
     fireEvent.click(screen.getByRole('combobox', { name: 'Stage of Cem' }));
     fireEvent.click(screen.getByRole('option', { name: 'PRESENTED' }));
     expect(onStage).toHaveBeenCalledWith(expect.objectContaining({ id: 'a3' }), 'PRESENTED');
+  });
+});
+
+function Harness() {
+  const c = useStageControl(apps, vi.fn(), vi.fn());
+  return (
+    <MemoryRouter>
+      {c.toast}
+      <CandidateTable apps={c.apps} readOnly={false} onStage={c.change} onRate={vi.fn()} onLog={vi.fn()} onRemove={(a) => void c.remove(a)} busyIds={c.busy} />
+      {c.dialogs}
+    </MemoryRouter>
+  );
+}
+const pick = (name: string, option: string) => {
+  fireEvent.click(screen.getByRole('combobox', { name }));
+  fireEvent.click(screen.getByRole('option', { name: option }));
+};
+
+describe('stage control', () => {
+  beforeEach(() => {
+    refState.data = REF;
+  });
+
+  it('asks for a reason before rejecting', async () => {
+    PATCH.mockResolvedValue({ data: { ...apps[2], stage: 'REJECTED' } });
+    renderShell(<Harness />);
+    pick('Stage of Cem', 'REJECTED');
+    expect(PATCH).not.toHaveBeenCalled();
+    fireEvent.change(within(await screen.findByRole('dialog')).getByRole('textbox'), { target: { value: 'Not a fit' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await act(async () => {});
+    expect(PATCH).toHaveBeenCalledWith('/applications/{id}/stage', expect.objectContaining({ body: expect.objectContaining({ stage: 'REJECTED', reason: 'Not a fit' }) }));
+  });
+
+  it('opens the shortlist dialog for any client-facing target from the longlist and sends that stage', async () => {
+    PATCH.mockResolvedValue({ error: { code: 'TRANSITION_GUARD_FAILED', errors: [{ message: 'rationale must have at least 20 characters' }] } });
+    renderShell(<Harness />);
+    pick('Stage of Cem', 'CLIENT_INTERVIEW');
+    expect(PATCH).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('button', { name: 'Move to shortlist' }));
+    await act(async () => {});
+    expect(PATCH).toHaveBeenCalledWith('/applications/{id}/stage', expect.objectContaining({ body: expect.objectContaining({ stage: 'CLIENT_INTERVIEW' }) }));
+    expect(screen.getByTestId('shortlist-error')).toHaveTextContent('rationale must have at least 20 characters');
+  });
+
+  it('shows a network error in the shortlist dialog instead of swallowing it', async () => {
+    PATCH.mockRejectedValue(new Error('network'));
+    renderShell(<Harness />);
+    pick('Stage of Cem', 'PRESENTED');
+    fireEvent.click(await screen.findByRole('button', { name: 'Move to shortlist' }));
+    await act(async () => {});
+    expect(screen.getByTestId('shortlist-error')).toHaveTextContent('The change was not saved.');
+  });
+
+  it('shows a 409 from a plain move to the user', async () => {
+    PATCH.mockResolvedValue({ error: { code: 'VERSION_CONFLICT', detail: 'Changed by someone else' }, response: { status: 409 } });
+    renderShell(<Harness />);
+    pick('Stage of Cem', 'SCREENED');
+    await act(async () => {});
+    expect(screen.getByRole('alert')).toHaveTextContent('Changed by someone else');
+  });
+
+  it('removes a sourced candidate from the search', async () => {
+    DELETE.mockResolvedValue({});
+    renderShell(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: /Remove from search: Cem/ }));
+    await act(async () => {});
+    expect(DELETE).toHaveBeenCalledWith('/applications/{id}', { params: { path: { id: 'a3' } } });
   });
 });
