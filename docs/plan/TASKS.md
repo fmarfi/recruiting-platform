@@ -150,8 +150,8 @@ Source: `docs/product/meetings/2026-11-15-meeting-02.md` (first real user input;
 
 | ID | Slice | Owner | Status | Blocked by |
 | --- | --- | --- | --- | --- |
-| M2-R | Desk research, 9 topics, into `docs/product/research/meeting-02-research.md` | research agent (Sonnet) | in progress | – |
-| M2-UI1 | Search page longlist only: board hidden, table with stage column and stage change; candidate-driven actions on the person page (add to a search, change stage) | frontend-pipeline (Sonnet) | in progress (.worktrees/m2-longlist, branch m2-longlist) | – |
+| M2-R | Desk research, 9 topics, into `docs/product/research/meeting-02-research.md` | research agent (Sonnet) | done (file kept local, not in git) | – |
+| M2-UI1 | Search page longlist only: board hidden, table with stage column and stage change; candidate-driven actions on the person page (add to a search, change stage) | frontend-pipeline (Sonnet) | done (reviewed, blockers fixed, merged; bulk move and move between searches need M2-C15) | – |
 | M2-SHOTS | Screenshot pack of candidate, client and position screens with field lists for the client | orchestrator | todo | app running |
 | M2-C15 | Contract 1.5: move candidate between searches; contact on job order; openings and remaining openings; home personal numbers with period | architect (Opus) | todo | M2-R |
 | M2-ST | Rewrite stories from the meeting report; mark the 28 old ones keep / change / drop | product-analyst | todo | M2-R |
