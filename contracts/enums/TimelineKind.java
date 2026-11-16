@@ -21,5 +21,7 @@ public enum TimelineKind {
     /** Another account was merged into this one (since 1.3.0). */
     MERGE,
     /** A candidate was placed; placement created or changed (since 1.3.0). */
-    PLACEMENT
+    PLACEMENT,
+    /** A candidate was moved from one job order to another (since 1.5.0, ADR 0015, event {@code CandidateMoved}). */
+    CANDIDATE_MOVED
 }

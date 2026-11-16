@@ -25,6 +25,12 @@ public enum CloseReason {
     HIRED_ELSEWHERE,
     /** The search was filled, cancelled or put on hold. */
     SEARCH_CLOSED,
+    /**
+     * Since 1.5.0 (ADR 0015): the candidate was moved to another job order
+     * ({@code POST /applications/{id}/move}); the target application links back to this one.
+     * Set only by the move; a client sending it in a stage change gets 400.
+     */
+    MOVED_TO_OTHER_SEARCH,
     /** Anything else; the free-text reason explains (default when none is sent). */
     OTHER
 }

@@ -41,6 +41,14 @@ public enum BulkResultCode {
     NO_CONSENT_BASIS("There is no valid consent to contact this person."),
     /** FAILED: the record already has 20 tags. */
     TOO_MANY_TAGS("The record already has 20 tags."),
+    /** FAILED (1.5.0): the person is already on the target job order; nothing changed. */
+    DUPLICATE("The person is already on the target job order."),
+    /** FAILED (1.5.0): an off-limits rule blocks the person; use the single endpoint to override. */
+    OFF_LIMITS("An off-limits rule blocks this person."),
+    /** FAILED (1.5.0): a client-facing stage needs the person's consent (sharing guard). */
+    CONSENT_REQUIRED("This stage needs the person's consent."),
+    /** FAILED (1.5.0): the record, its job order or its person is archived. */
+    ARCHIVED("The record, its job order or its person is archived."),
     /** FAILED: unexpected error for this record; the others are not affected. */
     INTERNAL_ERROR("Unexpected error for this record; the others are not affected.");
 

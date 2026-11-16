@@ -1,0 +1,33 @@
+# ADR 0015: Contract 1.5 — move between searches, contact and openings, personal numbers
+
+Status: ACCEPTED (2026-11-16, architect) · Extends ADR 0010 (bulk), 0011 (guards, exposure), 0013 (lists), 0014 (Home). Source: client meeting 02 (2026-11-15), the first real user input, and stories M2-02, M2-05, M2-06. Contract: `contracts/openapi.yaml` 1.5.0, enums `HomePeriod` (new), `CloseReason`, `ListEntity`, `BulkActionType` (doc only), `BulkResultCode`, `PipelineWarningCode`, `ExposureChannel`, `TimelineKind`; event `CandidateMoved`; `schema.md`, `events.md`, `personal-data.md`.
+
+## Context
+Users (3 to 5: researcher, consultant, sales) work from a longlist table, not a board. They asked to move a candidate from one search to another, to create a search for a named client contact, to track openings and remaining openings, and for their own numbers over a period on Home (interviews, CVs screened, CVs sent, CVs pushed). Agreements and proposals are being built now and are untouched. No role gating changes before the pilot.
+
+## Decision
+1. **Move = close the old link, create a new one.** The person stays one record (ADR 0008); `application` is the person-search link. `POST /applications/{id}/move` makes a new application on the target and keeps the source as history: an active source goes to REJECTED with `CloseReason.MOVED_TO_OTHER_SEARCH` (no user reason needed; fixed text `Moved to another search` as `rejection_reason`); a REJECTED source keeps its own reasons. The target row stores `moved_from_application_id`, `moved_from_stage` (the source's last stage, story M2-02 #5), `moved_at`, `moved_by`; `movedTo` on the source is the reverse lookup (unique, so a source moves once). REJECTED is used, not a new stage, so the lifecycle table, counts, ranks and the Home rules stay as they are.
+2. **Guards are the add guards.** Target open, not archived, account not CLOSED; person not on the target in any stage (409 `DUPLICATE`, nothing changes); off-limits against the target with the existing manager override; PLACED or already-moved sources 409 `STATE_CONFLICT`. Consent is not checked: the target starts on the longlist (SOURCED default, SCREENED allowed); the sharing guard runs on the later client-facing move. The source search may be closed (the main use case).
+3. **Nothing is copied.** Rating, rationale and outreach are role-specific and start fresh; evaluations, interview notes, files and activities belong to the person and stay visible on the person page.
+4. **One event, one timeline entry per account.** A move publishes `CandidateMoved` instead of `ApplicationStageChanged` + `ApplicationCreated`; the timeline listener writes `CANDIDATE_MOVED` on the target account and on the source account if different.
+5. **Bulk.** Bulk stage move = existing `CHANGE_STATUS` on the new `ListEntity.APPLICATIONS` (status is a `PipelineStage`, PLACED excluded, optional `closeReason`), each record running the single stage operation with all guards and no override. Bulk move is a separate path `POST /application-moves` with the bulk result shape, because a new `BulkActionType` value would break the exhaustive switches of the 1.4 dispatcher (`BulkRequestParser`); it can fold into `/bulk-actions` later. Its audit is per record (Envers, event, timeline); no `bulk_action` row in 1.5.
+6. **Contact on the job order.** `job_order.contact_id` FK `contact` (the person-in-role-at-account row), null-able, `on delete set null`. Set only to an active contact of the job order's account (400 `NOT_ACTIVE_CONTACT`). When the contact is later ended, the job order keeps it and shows `active: false`; when the person is deleted the reference becomes null; anonymisation shows the placeholder name. Ending a contact is not blocked (1.4 behaviour kept).
+7. **Openings.** `openings` exists since 1.0. New derived `filledOpenings` = PLACED applications whose placement is missing or ACTIVE/GUARANTEE_ENDED (CANCELLED, LEFT_IN_GUARANTEE and REPLACED free the opening); `remainingOpenings = max(openings - filled, 0)`. Reaching 0 never changes the status (humans move job orders, ADR 0002): the placement or PLACED response carries warning `ALL_OPENINGS_FILLED` and the UI offers FILLED; more placements than openings give `OPENINGS_EXCEEDED`. `openings` cannot be set below `filledOpenings`.
+8. **Personal numbers.** `GET /home?period=` (`HomePeriod`, default LAST_30_DAYS, Europe/Istanbul days, both ends inclusive, ISO weeks). `MyDay.myNumbers` counts only what the user did; confidentiality (R17) does not hide one's own work:
+   - **interviews**: distinct (person, day) over `interview_note` (interviewer = user, `held_on`) and `candidate_evaluation` (evaluator = user, `evaluated_on`). Logged meetings are not interviews.
+   - **cvsScreened**: distinct applications the user moved into SCREENED (`timeline_entry` CANDIDATE rows, `to_status` SCREENED, `actor_id`).
+   - **cvsSent**: PIPELINE exposures by the user, i.e. first entries of an application into a client-facing stage.
+   - **cvsPushed**: CV_PUSH exposures by the user. A CV push is a new flag `cvPush` on an activity (person + account, no job order, not NOTE), guarded by consent and off-limits, writing an exposure row with `job_order_id` null.
+   One submission log (`candidate_exposure`) gives both CV numbers and the re-presenting warning. Four index range scans (schema.md) keep the 300 ms budget without a projection table.
+
+## ASSUMPTIONS (to confirm with the client)
+- Q3: a moved candidate does not stay active on the old search (shown as moved); "copy" = the existing add. Start stage SOURCED.
+- Q4: "CV sent" = presented for a search; "CV pushed" = CV sent to a client without a search. Alternative reading (internal researcher-to-consultant hand-over) would map to SCREENED or a new step.
+- Q6: an opening counts as filled at PLACED, freed by a cancelled or left placement; openings stay editable.
+- Q8: "last week" = previous Monday to Sunday (LAST_7_DAYS also offered). No custom range and no drill-down list in 1.5.
+- The contact is optional in the API; the create form asks for it. Ending a contact used by a search is allowed (story M2-05 #7 asked to refuse it).
+
+## Consequences
+- 1.4 requests keep their results. Response additions are optional fields; `ExposureEntry.jobOrder` widens to null-able for CV_PUSH rows only (frontend must handle it).
+- New enum values need re-created CHECKs (schema.md 1.5.0 note) and listener or UI handling of unknown values (`CloseReason`, `TimelineKind`, `ExposureChannel`, warnings, bulk codes).
+- `cvsScreened` lags by the after-commit listener delay; interview counts can drop after an anonymisation.

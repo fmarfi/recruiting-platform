@@ -48,7 +48,7 @@ Erasure is written `anonymise / delete`. A row may list several columns with the
 | account | notes, archive_note | BIZ | KEEP / KEEP; UI hint "no personal data" | HIST | — |
 | account | tax_id | PD | KEEP / KEEP; a sole trader's TCKN is personal data: **DSR** of that person nulls it in `account` and every `account_aud` row (`ThirdPartyErasure`, matched by value) | PURGE (by value) | NEVER |
 | account | billing_emails | TP | KEEP / KEEP; **DSR**: the address is removed from the array (`array_remove`, lower case) in `account` and every `account_aud` row | PURGE (by value) | — |
-| activity | type, occurred_at, account_id, job_order_id, user_id, outcome, direction, duration_min, source | BIZ | KEEP / CASC | HIST | — |
+| activity | type, occurred_at, account_id, job_order_id, user_id, outcome, direction, duration_min, source, cv_push | BIZ | KEEP / CASC | HIST | — |
 | activity | person_id | ID | KEEP / CASC | HIST | — |
 | activity | note | PD | PH / CASC | PURGE | — |
 | activity | external_message_id | PD | NULL / CASC | PURGE | — |
@@ -56,14 +56,15 @@ Erasure is written `anonymise / delete`. A row may list several columns with the
 | agreement | account_id, job_order_id, kind, status, title, signed_on, valid_from, valid_until, language, governing_law, exclusivity, fee_model, fee_percent, fee_basis, flat_fee_amount, estimated_fee, fee_minimum, fee_cap, currency, payment_terms_days, guarantee_months, guarantee_start_basis, guarantee_terms, confidentiality_terms, expense_policy, off_limits_months, billing_account_id, notes, signed_file_id, signed_file_size, signed_file_uploaded_at, signed_file_uploaded_by | BIZ | KEEP / KEEP | HIST | — |
 | agreement | signatory_contact_id | ID | KEEP / SETNULL | HIST | — |
 | agreement | signed_file_name | BIZ | KEEP / KEEP; UI hint: no person name in file names. The PDF holds the signatory's name and signature (business contact, kept as contract evidence) | HIST | — |
-| application | job_order_id, stage, stage_changed_at, rank, outreach_status, close_reason | BIZ | KEEP / CASC | HIST | — |
+| application | job_order_id, stage, stage_changed_at, rank, outreach_status, close_reason, moved_from_stage, moved_at, moved_by | BIZ | KEEP / CASC | HIST | — |
+| application | moved_from_application_id | ID | KEEP / SETNULL (the source cascades with the same person anyway) | HIST | — |
 | application | person_id | ID | KEEP / CASC | HIST | REDACT |
 | application | rejection_reason, off_limits_override_reason, rationale | SPD | PH / CASC | PURGE | NEVER |
 | application | rating | SPD | NULL / CASC | PURGE | NEVER |
 | candidate_evaluation | person_id, job_order_id, application_id, evaluator_id, evaluated_on, interview_type, internal_only, report_blocks | ID | DEL / CASC | PURGE | — |
 | candidate_evaluation | overall_rating, recommendation, recommendation_reason, summary, key_achievements, motivation, motivation_tags, concerns, other_processes, scores | SPD | DEL / CASC | PURGE | SHOW only the `report_blocks`, with employer and school names GEN |
 | candidate_evaluation | private_notes | SPD | DEL / CASC | PURGE | NEVER |
-| candidate_exposure | person_id, account_id, job_order_id, application_id, channel, presented_at, presented_by | ID | KEEP / CASC (`application_id` SETNULL) | NA | — |
+| candidate_exposure | person_id, account_id, job_order_id, application_id, channel, presented_at, presented_by, activity_id | ID | KEEP / CASC (`application_id` SETNULL; `activity_id` CASC since 1.5.0) | NA | — |
 | candidate_reference | person_id, job_order_id, status, checked_on, checked_by, include_in_report | ID | DEL / CASC | PURGE | — |
 | candidate_reference | summary | SPD | DEL / CASC | PURGE | SHOW when `include_in_report` (no referee identity) |
 | candidate_reference | referee_name, referee_relationship, referee_company, referee_email, referee_phone | TP | DEL / CASC; **DSR**: a request whose e-mail equals `lower(referee_email)` sets these to `[removed]`/null and purges the `_aud` rows of those references | PURGE | NEVER |
@@ -89,6 +90,8 @@ Erasure is written `anonymise / delete`. A row may list several columns with the
 | interview_note | body | SPD | DEL / CASC | PURGE | SHOW when `include_in_report`, with names of third parties REDACT (consultant's duty, UI hint) |
 | network_link | from_person_id, to_person_id, type | ID | DEL / CASC | PURGE | — |
 | network_link | note | PD | DEL / CASC | PURGE | — |
+| job_order | account_id, title, location, seniority, description, fee_terms, openings, status, status_changed_at, owner_id, opened_on, closed_on, tags, archived_at, archived_by, archive_reason, archive_note, confidentiality_level | BIZ | KEEP / KEEP | HIST | — |
+| job_order | contact_id | ID | KEEP / SETNULL (1.5.0; FK to `contact`, which puts the table in scope; the contact's name is read live, so anonymisation needs no step here) | HIST | — |
 | next_action | due_on, owner_id, account_id, job_order_id, done, done_at, source_event_id | BIZ | KEEP / CASC | HIST | — |
 | next_action | person_id | ID | KEEP / CASC | HIST | — |
 | next_action | title | PD | PH / CASC | PURGE | — |

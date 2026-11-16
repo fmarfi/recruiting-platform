@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Recruiting Platform API
-  version: 1.4.0
+  version: 1.5.0
   summary: Phase 1 (non-AI) REST contract — CRM, candidate pool, CV files, KVKK consent engine and audit.
   description: |
     Contract owned by the architect (Wave 0). Backends implement it, frontends build against the
@@ -80,6 +80,18 @@ info:
       `searches` (live-search health with list counts, next milestone and `SearchHealthFlag`). The
       thresholds are named constants on `HomeRiskType`. R17 confidentiality filters every Home list and
       count. No new endpoint, no new column; 1.3 clients ignore the new fields.
+    - 1.5.0 (additive; ADR 0015; client meeting 02): move a candidate between searches
+      (`POST /applications/{id}/move`, batch `POST /application-moves`; `Application.movedFrom`/`movedTo`,
+      `CloseReason.MOVED_TO_OTHER_SEARCH`, event `CandidateMoved`, timeline `CANDIDATE_MOVED`); bulk stage
+      move on the longlist (`CHANGE_STATUS` for the new `ListEntity.APPLICATIONS`, with `closeReason`;
+      bulk codes DUPLICATE, OFF_LIMITS, CONSENT_REQUIRED, ARCHIVED); a named client contact on the job
+      order (`contactId`, `JobOrder.contact`, `contactPersonId` filter); filled and remaining openings
+      (`JobOrder.filledOpenings`, `remainingOpenings`, warnings ALL_OPENINGS_FILLED and OPENINGS_EXCEEDED;
+      no automatic status change); CV push as an activity flag (`cvPush`, exposure channel CV_PUSH,
+      `ExposureEntry.jobOrder` may be null for it); Home personal numbers (`GET /home?period=`,
+      `HomePeriod`, `MyDay.myNumbers`: interviews, CVs screened, CVs sent, CVs pushed). Every new field is
+      optional, every 1.4 request stays valid with the same result. One widened response field:
+      `ExposureEntry.jobOrder` (null only for CV_PUSH rows).
   contact:
     name: architect agent
   license:
@@ -1236,6 +1248,10 @@ paths:
           in: query
           description: '`true` = not FILLED or CANCELLED; `false` = FILLED or CANCELLED.'
           schema: { type: boolean }
+        - name: contactPersonId
+          in: query
+          description: Since 1.5.0. Job orders whose client contact (`contact.personId`) is this person, active or ended (the person page lists "searches for this contact").
+          schema: { $ref: '#/components/schemas/Id' }
         - $ref: '#/components/parameters/OwnerId'
         - $ref: '#/components/parameters/Archived'
         - $ref: '#/components/parameters/Page'
@@ -1258,7 +1274,14 @@ paths:
       tags: [Job orders]
       operationId: createJobOrder
       summary: Open a job order inside an account (status OPEN)
-      description: A CLOSED account accepts no new job orders (409 `TRANSITION_GUARD_FAILED`).
+      description: |
+        A CLOSED account accepts no new job orders (409 `TRANSITION_GUARD_FAILED`).
+
+        Since 1.5.0 (ADR 0015): optional `contactId`, the client contact the search is for. It must be an
+        **active** contact (`Contact.active`, not ended) of `accountId`; otherwise 400 `VALIDATION_FAILED`
+        with `errors[0].field` = `contactId`, `code` = `NOT_ACTIVE_CONTACT`. Without it the job order has no
+        contact (1.4 behaviour). ASSUMPTION: the API keeps it optional (imports, 1.4 clients); the create form
+        asks for it (story M2-05).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1299,6 +1322,12 @@ paths:
       tags: [Job orders]
       operationId: updateJobOrder
       summary: Change job order details (not the status)
+      description: |
+        Since 1.5.0 (ADR 0015): `contactId` sets the client contact (same rule as on create: an active
+        contact of the job order's account, else 400 `NOT_ACTIVE_CONTACT`); `null` clears it. An ended
+        contact stays on the job order until changed (`contact.active` = false) and is not re-checked when
+        other fields change. `openings` may not go below `filledOpenings` (400 `VALIDATION_FAILED`, field
+        `openings`, code `MIN`).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1526,6 +1555,12 @@ paths:
           history only). Warning `SHORTLIST_LONG` when the shortlist then has more than 7 people.
         - Archived job orders and archived people reject stage moves with 409 `ARCHIVED`.
         Since 1.3.0 (R65) a move to REJECTED stores `closeReason` (default OTHER); a move to SCREENED sets `outreachStatus` SCREENED. Archived job order or person: 409 `ARCHIVED`. Prefer `POST /applications/{id}/placement` for OFFER → PLACED (this endpoint creates no placement).
+
+        Since 1.5.0 (ADR 0015): `closeReason` MOVED_TO_OTHER_SEARCH is set only by the move endpoints
+        (400 `VALIDATION_FAILED` here). A move to PLACED may carry the warning ALL_OPENINGS_FILLED
+        (`remainingOpenings` became 0) or OPENINGS_EXCEEDED; the job order status never changes by itself.
+        Bulk stage moves: `CHANGE_STATUS` with entity APPLICATIONS on `POST /bulk-actions` runs this
+        operation per record.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1563,6 +1598,95 @@ paths:
                 items: { $ref: '#/components/schemas/Application' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /applications/{id}/move:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Pipeline]
+      operationId: moveApplication
+      summary: Move the candidate from this job order to another one (since 1.5.0, ADR 0015)
+      description: |
+        One transaction. The person gets a **new application** on the target job order and the source
+        application is **kept** as history: an active source (not PLACED, not REJECTED) is closed to
+        REJECTED with `closeReason` MOVED_TO_OTHER_SEARCH and `rejectionReason` = `reason`, or the fixed
+        text `Moved to another search` when none is sent (no reason is required, story M2-02); its rank
+        gap is closed. A REJECTED source keeps its stage, reasons and close reason. Both rows link to
+        each other (`movedTo` on the source, `movedFrom` on the target).
+
+        "Add to another search" without closing the source stays `POST /job-orders/{id}/applications`.
+
+        Target rules, the same as adding by hand (409 unless stated):
+        - Target must differ from the source job order (400 `VALIDATION_FAILED`, field `targetJobOrderId`).
+        - Target open, not archived, account not CLOSED (`TRANSITION_GUARD_FAILED`; archived: `ARCHIVED`).
+        - The person must not be on the target yet, in any stage (`DUPLICATE` with `existingId`).
+        - Off-limits guard of `POST /job-orders/{id}/applications` against the target (`OFF_LIMITS`;
+          `offLimitsOverrideReason` with the same rule as there).
+        - Consent is not needed: the target stage is on the longlist (`stage` SOURCED, default, or SCREENED).
+          The sharing guard runs later, on the move into a client-facing stage.
+        Source rules: PLACED cannot be moved (`STATE_CONFLICT`); a source that was already moved
+        (`movedTo` set) cannot be moved again (`STATE_CONFLICT`); archived person `ARCHIVED`. The source
+        job order may be closed (moving people out of a FILLED or CANCELLED search is the main use).
+
+        What moves with the person: nothing is copied. The target starts with `outreachStatus` TO_CALL
+        (SCREENED when `stage` is SCREENED), no rating, no rationale, rank at the end of the longlist.
+        Evaluations, interview notes, files and activities belong to the person and stay visible on the
+        person page; those linked to the source job order keep that link.
+
+        Publishes one `CandidateMoved` (not `ApplicationStageChanged` plus `ApplicationCreated`); the
+        timeline shows one CANDIDATE_MOVED entry per account involved. Envers keeps both rows' history.
+        Response `target.warnings` as on add (PREVIOUSLY_PRESENTED_TO_ACCOUNT, ACTIVE_IN_OTHER_PROCESS; the
+        source does not count as another process).
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationMoveRequest' }
+      responses:
+        '201':
+          description: Moved; `Location` is the target application
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationMoveResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /application-moves:
+    post:
+      tags: [Pipeline]
+      operationId: moveApplications
+      summary: Move several candidates to one target job order, with a result per record (since 1.5.0)
+      description: |
+        Bulk form of `POST /applications/{id}/move`, in the style of `POST /bulk-actions` (ADR 0010):
+        synchronous, at most 500 ids, each id in its own transaction, partial success is normal (200 with
+        one result per id in request order; 400 only for an invalid request as a whole). Each record runs
+        exactly the single move. No override: a record blocked by off-limits is FAILED `OFF_LIMITS` (use the
+        single move to override). Codes: `NOT_FOUND`, `DUPLICATE` (person already on the target),
+        `OFF_LIMITS`, `ARCHIVED`, `STATE_CONFLICT` (PLACED or already moved), `TRANSITION_GUARD_FAILED`
+        (target closed or its account CLOSED), `VERSION_CONFLICT`, `INTERNAL_ERROR`. Records are appended
+        to the target longlist in request order. A separate path, not a `BulkActionType`, so that
+        the 1.4 bulk dispatcher stays valid (ADR 0015). Audit: each moved record has its Envers revisions,
+        a `CandidateMoved` event with the actor and timeline entries; no `bulk_action` row in 1.5.
+      x-roles: [CONSULTANT, MANAGER, ADMIN]
+      x-owner: pipeline / backend-pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationMoveBatchRequest' }
+      responses:
+        '200':
+          description: Processed; see the result of each record
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationMoveBatchResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /proposals:
     get:
       tags: [Proposals]
@@ -1737,7 +1861,18 @@ paths:
       tags: [Activities]
       operationId: logActivity
       summary: Quick add a call, visit, meeting, e-mail or note (UX-06)
-      description: At least one of `accountId` and `personId`. Updates the account's last activity and, except for NOTE, the last contact date of the person and (since 1.3.0) of every attendee. Since 1.3.0 a duplicate `externalMessageId` gives 409 `DUPLICATE` with `existingId`; `personId` filters on `GET /activities` also match attendees.
+      description: |
+        At least one of `accountId` and `personId`. Updates the account's last activity and, except for NOTE, the last contact date of the person and (since 1.3.0) of every attendee. Since 1.3.0 a duplicate `externalMessageId` gives 409 `DUPLICATE` with `existingId`; `personId` filters on `GET /activities` also match attendees.
+
+        Since 1.5.0 (ADR 0015) **CV push**: `cvPush: true` records that the person's CV was sent to the
+        client account without a job order (a speculative CV; ASSUMPTION on the meaning of "CV pushed",
+        meeting 02). Needs `personId` and `accountId`, no `jobOrderId`, `type` not NOTE (400
+        `VALIDATION_FAILED`, field `cvPush`). Runs the sharing guard (409 `CONSENT_REQUIRED`, no override)
+        and the off-limits check against the person's current company, ignoring the rules of `accountId`
+        itself (409 `OFF_LIMITS`, no override in 1.5). Writes one `candidate_exposure` row (channel CV_PUSH,
+        `activity_id` set, no job order), so later presentations to the account warn
+        PREVIOUSLY_PRESENTED_TO_ACCOUNT. `cvPush` cannot be changed later; deleting the activity deletes
+        its exposure row.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -1953,8 +2088,18 @@ paths:
         the seeded volume. Every list and count respects search confidentiality (R17): a CONFIDENTIAL job
         order, and everything anchored on it, only counts for its owner and team members. "My searches"
         are open, unarchived job orders the user owns or is a team member of (`job_order_team_member`).
+
+        Since 1.5.0 (ADR 0015) also `myNumbers`: the user's own counts over `period` (default
+        LAST_30_DAYS). They count what the user did, so R17 does not remove them (a CONFIDENTIAL search the
+        user worked on still counts for that user); other users' work is never counted. Same 300 ms budget:
+        four indexed counts (schema.md, "Home personal numbers").
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
+      parameters:
+        - name: period
+          in: query
+          description: Since 1.5.0. Period of `myNumbers`; default LAST_30_DAYS. Does not change the other blocks.
+          schema: { $ref: '#/components/schemas/HomePeriod' }
       responses:
         '200':
           description: My day
@@ -2635,9 +2780,16 @@ paths:
         - Records that already have the requested value (same owner, tag already there or missing, same
           status) are `SKIPPED` with `NO_CHANGE`; unknown ids are `FAILED` with `NOT_FOUND`.
 
-        Entities per action: `REASSIGN_OWNER`, `ADD_TAG`, `REMOVE_TAG` all; `CHANGE_STATUS` ACCOUNTS,
-        JOB_ORDERS, PROPOSALS (`params.status` must be a value of that entity's lifecycle);
+        Entities per action: `REASSIGN_OWNER`, `ADD_TAG`, `REMOVE_TAG` all except APPLICATIONS;
+        `CHANGE_STATUS` ACCOUNTS, JOB_ORDERS, PROPOSALS (`params.status` must be a value of that entity's
+        lifecycle) and since 1.5.0 APPLICATIONS (bulk stage move on the longlist, ADR 0015: `params.status`
+        a `PipelineStage` except PLACED, optional `params.closeReason` with REJECTED; each record runs
+        `PATCH /applications/{id}/stage` with all its guards and no override, so a record is FAILED with
+        `CONSENT_REQUIRED`, `OFF_LIMITS`, `ARCHIVED`, `TRANSITION_GUARD_FAILED` (e.g. shortlist entry
+        without rating and rationale, closed job order), `ILLEGAL_TRANSITION` or `REASON_REQUIRED`; same
+        stage is SKIPPED `NO_CHANGE`; list changes append in request order);
         `SET_NEXT_ACTION` PEOPLE, ACCOUNTS, JOB_ORDERS (one next action per record, linked to it);
+        moving candidates to another search is `POST /application-moves`;
         `REQUEST_CONSENT` PEOPLE only and MANAGER/ADMIN only, like the consent campaign (403 `FORBIDDEN`
         for consultants; ASSUMPTION).
       x-roles: [CONSULTANT, MANAGER, ADMIN]
@@ -4372,6 +4524,8 @@ paths:
         allowed; since R67 the agreement's `guaranteeStartBasis` picks `startDate` or `offerAcceptedOn`). Makes OFFER_ACCEPTED items DUE, publishes `PlacementCreated` (accounts adds a
         GUARANTEE_PERIOD off-limits rule on the client until `guaranteeEndOn`), timeline PLACEMENT.
         Moving to PLACED through the stage endpoint still works (1.2 clients) but creates no placement.
+        Since 1.5.0 the response may carry `warnings` ALL_OPENINGS_FILLED (this placement filled the last
+        opening; the UI offers the job order move to FILLED, nothing changes by itself) or OPENINGS_EXCEEDED.
       x-roles: [CONSULTANT, MANAGER, ADMIN]
       x-owner: pipeline / backend-pipeline
       requestBody:
@@ -5150,7 +5304,7 @@ components:
       enum: [VALIDATED, IMPORTING, COMPLETED, FAILED, DISCARDED, ROLLED_BACK]
     TimelineKind:
       type: string
-      enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE, ARCHIVE, MERGE, PLACEMENT]
+      enum: [ACCOUNT, ACCOUNT_STATUS, CONTACT, ACTIVITY, PROPOSAL, JOB_ORDER, CANDIDATE, ARCHIVE, MERGE, PLACEMENT, CANDIDATE_MOVED]
     EntityType:
       type: string
       enum: [ACCOUNT, PERSON, CONTACT, NETWORK_LINK, JOB_ORDER, APPLICATION, PROPOSAL, ACTIVITY, NEXT_ACTION, USER, CONSENT_RECORD, CONSENT_REQUEST, PRIVACY_NOTICE, DATA_SUBJECT_REQUEST, IMPORT_JOB, PERSON_FILE, CV_INTAKE_ITEM, OFF_LIMITS_RULE, TAG, EVALUATION, INTERVIEW_NOTE, CANDIDATE_REFERENCE, CLIENT_FEEDBACK, TARGET_COMPANY, AGREEMENT, FEE_SCHEDULE_ITEM, PLACEMENT, CONFLICT_CHECK, EXPORT_JOB, CLIENT_REPORT]
@@ -5842,6 +5996,32 @@ components:
         confidentialityLevel:
           $ref: '#/components/schemas/ConfidentialityLevel'
           description: Since 1.3.0. Stored and shown as a badge; list visibility rules follow in a later contract (ADR 0013).
+        contact:
+          oneOf: [{ $ref: '#/components/schemas/JobOrderContact' }, { type: 'null' }]
+          description: Since 1.5.0 (ADR 0015). The client contact the search is for; null when none was set or the contact's person was deleted.
+        filledOpenings:
+          type: integer
+          minimum: 0
+          description: |
+            Since 1.5.0 (ADR 0015). Openings filled: applications of this job order in stage PLACED whose
+            placement is missing or has status ACTIVE or GUARANTEE_ENDED. A placement that is CANCELLED,
+            LEFT_IN_GUARANTEE or REPLACED frees its opening again. ASSUMPTION (meeting 02 Q6).
+          examples: [1]
+        remainingOpenings:
+          type: integer
+          minimum: 0
+          description: Since 1.5.0. `max(openings - filledOpenings, 0)`. Reaching 0 does not change `status`; the move to FILLED stays a user action (guard unchanged).
+          examples: [2]
+    JobOrderContact:
+      type: object
+      description: Since 1.5.0 (ADR 0015). The contact row (`contact`) linking a person to the job order's account.
+      required: [contactId, personId, name, active]
+      properties:
+        contactId: { $ref: '#/components/schemas/Id' }
+        personId: { $ref: '#/components/schemas/Id' }
+        name: { type: string, description: 'Person name; `Anonymised person` after anonymisation.', examples: [Elif Yıldırım] }
+        role: { type: [string, 'null'], examples: [HR Director] }
+        active: { type: boolean, description: False once the contact was ended (`Contact.endedOn` set); the job order keeps it until changed. }
     JobOrderPage:
       type: object
       required: [content, page]
@@ -5862,6 +6042,9 @@ components:
         feeTerms: { type: [string, 'null'], maxLength: 2000 }
         openings: { type: integer, minimum: 1, default: 1 }
         openedOn: { type: string, format: date, description: Defaults to today. }
+        contactId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: Since 1.5.0. An active contact of `accountId` (400 `NOT_ACTIVE_CONTACT` otherwise); optional.
         ownerId:
           $ref: '#/components/schemas/Id'
           description: Defaults to the current user.
@@ -5877,10 +6060,13 @@ components:
         seniority: { type: [string, 'null'], maxLength: 100 }
         description: { type: [string, 'null'], maxLength: 10000 }
         feeTerms: { type: [string, 'null'], maxLength: 2000 }
-        openings: { type: integer, minimum: 1 }
+        openings: { type: integer, minimum: 1, description: Since 1.5.0 not below `filledOpenings` (400). }
         openedOn: { type: string, format: date }
         ownerId: { $ref: '#/components/schemas/Id' }
         version: { $ref: '#/components/schemas/Version' }
+        contactId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: Since 1.5.0. An active contact of the job order's account; `null` clears it.
     JobOrderStatusChangeRequest:
       type: object
       required: [status]
@@ -5930,6 +6116,89 @@ components:
         latestClientFeedback:
           oneOf: [{ $ref: '#/components/schemas/ClientFeedback' }, { type: 'null' }]
           description: Since 1.3.0. The newest feedback round, if any.
+        movedFrom:
+          oneOf: [{ $ref: '#/components/schemas/ApplicationMoveLink' }, { type: 'null' }]
+          description: Since 1.5.0 (ADR 0015). Set on an application created by a move; points at the source.
+        movedTo:
+          oneOf: [{ $ref: '#/components/schemas/ApplicationMoveLink' }, { type: 'null' }]
+          description: Since 1.5.0. Set on a source application once its person was moved on; points at the target. Such an application shows as "moved" in the longlist (stage REJECTED, `closeReason` MOVED_TO_OTHER_SEARCH, or an earlier rejection).
+    ApplicationMoveLink:
+      type: object
+      description: Since 1.5.0 (ADR 0015). The other side of a move.
+      required: [applicationId, jobOrder, account, movedAt, movedBy, sourceStageBefore]
+      properties:
+        applicationId: { $ref: '#/components/schemas/Id' }
+        jobOrder: { $ref: '#/components/schemas/JobOrderRef' }
+        account: { $ref: '#/components/schemas/AccountRef' }
+        movedAt: { type: string, format: date-time }
+        movedBy: { $ref: '#/components/schemas/UserRef' }
+        sourceStageBefore:
+          $ref: '#/components/schemas/PipelineStage'
+          description: Stage of the source application just before the move (its "last value", story M2-02).
+    ApplicationMoveRequest:
+      type: object
+      required: [targetJobOrderId]
+      properties:
+        targetJobOrderId: { $ref: '#/components/schemas/Id' }
+        stage:
+          type: string
+          enum: [SOURCED, SCREENED]
+          default: SOURCED
+          description: Starting stage on the target (a longlist stage). ASSUMPTION (meeting 02 Q3).
+        reason:
+          $ref: '#/components/schemas/Reason'
+          description: Optional; stored as the source's `rejectionReason` when the move closes it, and on the timeline.
+        version:
+          $ref: '#/components/schemas/Version'
+          description: Version of the source application (optimistic lock).
+        offLimitsOverrideReason:
+          $ref: '#/components/schemas/Reason'
+          description: Same semantics as on `ApplicationCreateRequest` (MANAGER/ADMIN only, unchanged rule).
+    ApplicationMoveResult:
+      type: object
+      required: [source, target]
+      properties:
+        source: { $ref: '#/components/schemas/Application' }
+        target: { $ref: '#/components/schemas/Application' }
+    ApplicationMoveBatchRequest:
+      type: object
+      required: [applicationIds, targetJobOrderId]
+      properties:
+        applicationIds:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Id' }
+        targetJobOrderId: { $ref: '#/components/schemas/Id' }
+        stage:
+          type: string
+          enum: [SOURCED, SCREENED]
+          default: SOURCED
+        reason:
+          $ref: '#/components/schemas/Reason'
+          description: Applied to every closed source like a single move.
+    ApplicationMoveBatchResult:
+      type: object
+      required: [targetJobOrderId, requested, ok, skipped, failed, results]
+      properties:
+        targetJobOrderId: { $ref: '#/components/schemas/Id' }
+        requested: { type: integer }
+        ok: { type: integer }
+        skipped: { type: integer, description: Always 0 in 1.5 (a move either happens or fails); kept for the bulk shape. }
+        failed: { type: integer }
+        results:
+          type: array
+          description: One entry per requested id, in request order.
+          items: { $ref: '#/components/schemas/ApplicationMoveRecordResult' }
+    ApplicationMoveRecordResult:
+      allOf:
+        - $ref: '#/components/schemas/BulkRecordResult'
+        - type: object
+          properties:
+            targetApplicationId:
+              oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+              description: The new application when OK; null otherwise.
     ApplicationCreateRequest:
       type: object
       required: [personId]
@@ -6048,6 +6317,7 @@ components:
           $ref: '#/components/schemas/ActivitySource'
           description: Since 1.3.0. MANUAL for 1.2 rows.
         externalMessageId: { type: [string, 'null'], description: 'Since 1.3.0. E-mail `Message-ID` when `source` is EMAIL.' }
+        cvPush: { type: boolean, description: 'Since 1.5.0 (ADR 0015). The person''s CV was sent to the account without a job order; default false.' }
     ActivityPage:
       type: object
       required: [content, page]
@@ -6086,6 +6356,10 @@ components:
           minLength: 1
           maxLength: 300
           description: Since 1.3.0. Only with `source` EMAIL (400 otherwise). Unique; a second activity with the same id gives 409 `DUPLICATE` with `existingId` (idempotent capture).
+        cvPush:
+          type: boolean
+          default: false
+          description: Since 1.5.0. CV push (see `POST /activities`); needs `personId` and `accountId`, no `jobOrderId`, not NOTE; consent and off-limits guarded.
     ActivityUpdateRequest:
       type: object
       description: Since 1.3.0 `attendeePersonIds` replaces the whole attendee list; `source` and `externalMessageId` cannot change.
@@ -6241,6 +6515,44 @@ components:
           maxItems: 30
           description: Since 1.4.0. MY LIVE SEARCHES health table, one row per open, unarchived job order the user owns or is a team member of; ordered by `flag` (declaration order), then `daysOpen` descending.
           items: { $ref: '#/components/schemas/MySearchHealth' }
+        myNumbers:
+          $ref: '#/components/schemas/MyNumbers'
+          description: Since 1.5.0 (ADR 0015). The user's own counts over the requested period.
+    HomePeriod:
+      type: string
+      description: '`contracts/enums/HomePeriod.java` (since 1.5.0). Calendar days in Europe/Istanbul, both ends inclusive, ISO weeks (Monday first). LAST_WEEK is the previous Monday to Sunday (ASSUMPTION for "last week"); LAST_30_DAYS is today and the 29 days before.'
+      enum: [TODAY, THIS_WEEK, LAST_WEEK, LAST_7_DAYS, LAST_30_DAYS, THIS_MONTH]
+    MyNumbers:
+      type: object
+      description: |
+        Since 1.5.0 (ADR 0015). Counts of what the signed-in user did between `from` and `to` (days in
+        Europe/Istanbul, inclusive). 0 when nothing happened, never null. Exact definitions in ADR 0015;
+        drill-down lists behind the tiles are not in 1.5 (ASSUMPTION).
+      required: [period, from, to, interviews, cvsScreened, cvsSent, cvsPushed]
+      properties:
+        period: { $ref: '#/components/schemas/HomePeriod' }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        interviews:
+          type: integer
+          minimum: 0
+          description: 'Interviews the user held: distinct (person, day) pairs over interview notes with the user as `interviewer` and `heldOn` in the period, plus evaluations with the user as `evaluator` and `evaluatedOn` in the period (one interview with a note and a scorecard counts once).'
+          examples: [6]
+        cvsScreened:
+          type: integer
+          minimum: 0
+          description: 'Distinct applications the user moved into stage SCREENED in the period (stage moves, single or bulk; a re-screen of the same application counts once).'
+          examples: [14]
+        cvsSent:
+          type: integer
+          minimum: 0
+          description: 'CVs sent to a client for a search: applications whose first move into a client-facing stage (the PIPELINE exposure) the user made in the period.'
+          examples: [4]
+        cvsPushed:
+          type: integer
+          minimum: 0
+          description: 'CVs pushed: CV_PUSH exposures the user recorded in the period (activities with `cvPush`, a CV sent to a client without a search). ASSUMPTION on the meaning (meeting 02).'
+          examples: [2]
     MyDayTodayItem:
       type: object
       description: Since 1.4.0 (ADR 0014). One TODAY row.
@@ -6304,8 +6616,8 @@ components:
         jobOrder: { $ref: '#/components/schemas/JobOrderRef', description: 'Id, title and status of the search.' }
         account: { $ref: '#/components/schemas/AccountRef' }
         confidentialityLevel: { $ref: '#/components/schemas/ConfidentialityLevel' }
-        longlist: { type: integer, minimum: 0, description: Active applications on the LONGLIST (SOURCED, SCREENED)., examples: [18] }
-        shortlist: { type: integer, minimum: 0, description: Active applications on the SHORTLIST (PRESENTED, CLIENT_INTERVIEW, OFFER; PLACED not counted)., examples: [4] }
+        longlist: { type: integer, minimum: 0, description: 'Active applications on the LONGLIST (SOURCED, SCREENED).', examples: [18] }
+        shortlist: { type: integer, minimum: 0, description: 'Active applications on the SHORTLIST (PRESENTED, CLIENT_INTERVIEW, OFFER; PLACED not counted).', examples: [4] }
         clientInterview: { type: integer, minimum: 0, description: Applications in CLIENT_INTERVIEW (also counted in `shortlist`)., examples: [2] }
         daysOpen: { type: integer, minimum: 0, description: Same as `JobOrder.daysOpen`., examples: [31] }
         lastActivityAt:
@@ -6685,8 +6997,8 @@ components:
     # ---------- saved views (1.1.0, ADR 0010) ----------
     ListEntity:
       type: string
-      description: The grid a saved view or a bulk action belongs to (`contracts/enums/ListEntity.java`).
-      enum: [PEOPLE, ACCOUNTS, JOB_ORDERS, PROPOSALS]
+      description: The grid a saved view or a bulk action belongs to (`contracts/enums/ListEntity.java`). APPLICATIONS (since 1.5.0) is accepted by `POST /bulk-actions` only; `/views` and `/exports` answer 400 for it.
+      enum: [PEOPLE, ACCOUNTS, JOB_ORDERS, PROPOSALS, APPLICATIONS]
     ViewVisibility:
       type: string
       description: PRIVATE is seen only by its owner; SHARED by every user (`contracts/enums/ViewVisibility.java`).
@@ -6808,7 +7120,7 @@ components:
     BulkResultCode:
       type: string
       description: Why a record was SKIPPED or FAILED (`contracts/enums/BulkResultCode.java`).
-      enum: [NO_CHANGE, NOT_FOUND, FORBIDDEN, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, REASON_REQUIRED, STATE_CONFLICT, VERSION_CONFLICT, NO_EMAIL, CONSENT_GIVEN, CONSENT_REFUSED, CONSENT_WITHDRAWN, REQUEST_PENDING, ANONYMISED, NO_CONSENT_BASIS, TOO_MANY_TAGS, INTERNAL_ERROR]
+      enum: [NO_CHANGE, NOT_FOUND, FORBIDDEN, ILLEGAL_TRANSITION, TRANSITION_GUARD_FAILED, REASON_REQUIRED, STATE_CONFLICT, VERSION_CONFLICT, NO_EMAIL, CONSENT_GIVEN, CONSENT_REFUSED, CONSENT_WITHDRAWN, REQUEST_PENDING, ANONYMISED, NO_CONSENT_BASIS, TOO_MANY_TAGS, DUPLICATE, OFF_LIMITS, CONSENT_REQUIRED, ARCHIVED, INTERNAL_ERROR]
     Tag:
       type: string
       description: Trimmed, stored lower-case, 1 to 50 characters; at most 20 tags per record. No personal data in tags.
@@ -6829,11 +7141,14 @@ components:
       properties:
         status:
           type: string
-          description: Target status from the entity's lifecycle (`AccountStatus`, `JobOrderStatus` or `ProposalStatus`); another value gives 400.
+          description: Target status from the entity's lifecycle (`AccountStatus`, `JobOrderStatus` or `ProposalStatus`; since 1.5.0 `PipelineStage` except PLACED for APPLICATIONS); another value gives 400.
           examples: [ON_HOLD]
         reason:
           $ref: '#/components/schemas/Reason'
           description: Stored on each record's status change (timeline, Envers) like a single move; never stored in the bulk audit row (1.1.1).
+        closeReason:
+          $ref: '#/components/schemas/CloseReason'
+          description: Since 1.5.0. APPLICATIONS with status REJECTED only (400 otherwise; MOVED_TO_OTHER_SEARCH not allowed); default OTHER. A code, so it is kept in the bulk audit params.
     TagParams:
       type: object
       additionalProperties: false
@@ -7012,14 +7327,14 @@ components:
       enum: [CONSENT_NOT_REQUESTED, CONSENT_PENDING, CONSENT_REFUSED, CONSENT_WITHDRAWN, ANONYMISED]
     ExposureChannel:
       type: string
-      description: PIPELINE now; REPORT and SHARE_LINK are reserved for Wave 2d.
-      enum: [PIPELINE, REPORT, SHARE_LINK]
+      description: PIPELINE now; REPORT and SHARE_LINK are reserved for Wave 2d; CV_PUSH since 1.5.0 (a CV sent to the account without a job order, from an activity with `cvPush`).
+      enum: [PIPELINE, REPORT, SHARE_LINK, CV_PUSH]
     OffLimitsReason:
       type: string
       enum: [CLIENT_AGREEMENT, GUARANTEE_PERIOD, CLIENT_REQUEST, OTHER]
     PipelineWarningCode:
       type: string
-      enum: [PREVIOUSLY_PRESENTED_TO_ACCOUNT, ACTIVE_IN_OTHER_PROCESS, SHORTLIST_LONG]
+      enum: [PREVIOUSLY_PRESENTED_TO_ACCOUNT, ACTIVE_IN_OTHER_PROCESS, SHORTLIST_LONG, ALL_OPENINGS_FILLED, OPENINGS_EXCEEDED]
     Compensation:
       type: object
       description: |
@@ -7236,7 +7551,12 @@ components:
       properties:
         id: { $ref: '#/components/schemas/Id' }
         account: { $ref: '#/components/schemas/AccountRef' }
-        jobOrder: { $ref: '#/components/schemas/JobOrderRef' }
+        jobOrder:
+          oneOf: [{ $ref: '#/components/schemas/JobOrderRef' }, { type: 'null' }]
+          description: Null only for channel CV_PUSH (since 1.5.0).
+        activityId:
+          oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }]
+          description: Since 1.5.0. The CV-push activity (channel CV_PUSH); null otherwise.
         applicationId: { oneOf: [{ $ref: '#/components/schemas/Id' }, { type: 'null' }] }
         channel: { $ref: '#/components/schemas/ExposureChannel' }
         presentedAt: { type: string, format: date-time }
@@ -7514,7 +7834,7 @@ components:
     CloseReason:
       type: string
       description: '`contracts/enums/CloseReason.java` (R65). Coded reason on every move to REJECTED; internal only.'
-      enum: [CLIENT_DECLINED, CANDIDATE_WITHDREW, NOT_INTERESTED, NOT_QUALIFIED, COMPENSATION_MISMATCH, OFF_LIMITS, NO_RESPONSE, HIRED_ELSEWHERE, SEARCH_CLOSED, OTHER]
+      enum: [CLIENT_DECLINED, CANDIDATE_WITHDREW, NOT_INTERESTED, NOT_QUALIFIED, COMPENSATION_MISMATCH, OFF_LIMITS, NO_RESPONSE, HIRED_ELSEWHERE, SEARCH_CLOSED, MOVED_TO_OTHER_SEARCH, OTHER]
     ActivityOutcome:
       type: string
       description: '`contracts/enums/ActivityOutcome.java` (R70).'
@@ -8176,6 +8496,10 @@ components:
         statusReason: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
         version: { $ref: '#/components/schemas/Version' }
+        warnings:
+          type: array
+          description: Since 1.5.0. Only in the response of `POST /applications/{id}/placement`; ALL_OPENINGS_FILLED or OPENINGS_EXCEEDED (non-blocking).
+          items: { $ref: '#/components/schemas/PipelineWarning' }
     PlacementPage:
       type: object
       required: [content, page]

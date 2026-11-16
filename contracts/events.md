@@ -44,6 +44,7 @@ Owner: architect. Java records: `contracts/events/*.java`, package `com.recruiti
 | `TagChanged` (1.3.0) | accounts | change (`TagChangeKind`), tag, newTag? | pipeline: rewrite `job_order.tags` and `proposal.tags` set-based (`array_replace`/`array_remove`, de-duplicated, `version + 1`); idempotent. Tags are not personal data (the `Tag` rule), so rule 9 holds |
 | `TargetCompanyAdded` (1.3.0, R63) | pipeline | targetCompanyId, jobOrderId, accountId | accounts: set `account.is_target = true` (role TARGET); idempotent, never cleared by events |
 | `PlacementCreated` (1.3.0) | pipeline | placementId, applicationId, jobOrderId, accountId, personId, startDate, guaranteeEndOn | accounts: off-limits rule GUARANTEE_PERIOD on `accountId` until `guaranteeEndOn` unless an active rule covers it (idempotent on `placementId`, kept in the rule's `note` as `placement:<id>`); pipeline: timeline `PLACEMENT`. No pay or fee in the payload |
+| `CandidateMoved` (1.5.0, ADR 0015) | pipeline | personId, sourceApplicationId, sourceJobOrderId, sourceAccountId, sourceStageBefore, sourceClosed, targetApplicationId, targetJobOrderId, targetAccountId, targetStage, reason? | pipeline: timeline `CANDIDATE_MOVED` on the target account, and on the source account when it differs (one entry each; `entity_type` APPLICATION, `entity_id` the target application, `job_order_id` the target, `from_status` = sourceStageBefore, `to_status` = targetStage, `reason`). Published **instead of** `ApplicationStageChanged` (source) and `ApplicationCreated` (target) for a move |
 | `CandidateShortlisted` | ai (Phase 2) | jobOrderId, personId, score | pipeline: add application in SOURCED unless present (human decision already made, NFR-06) |
 
 Not events on purpose: user management (security has no listeners in Phase 1), next action changes and network links (no other module needs them), consent requests and notices (internal to privacy). Since 1.2.0 also: text extraction, CV intake, duplicate detection and off-limits rules (internal to accounts), exposures (written by pipeline itself in the stage-move transaction). The sharing guard is a synchronous SPI call (`pipeline.ShareGuard`, implemented by privacy), not an event, because it must block. Since 1.3.0 also not events: ranking, client feedback, evaluations, interview notes, references, briefs, target companies, agreements, fee schedule items and their triggers, conflict checks and client reports (all inside pipeline), exports (inside security). The account merge and list exports use synchronous SPIs (`AccountMergeParticipant`, `ExportSource`) because they must run in one transaction or stream one file.
@@ -56,6 +57,18 @@ Not events on purpose: user management (security has no listeners in Phase 1), n
 UI PATCH /applications/{id}/stage
   └─ pipeline: IllegalTransitionException.check(from, to, reason); guards; save; publish ApplicationStageChanged
        └─ (after commit) pipeline timeline listener → timeline_entry(kind=CANDIDATE, from, to, reason)
+```
+
+**Candidate moved to another search (1.5.0, ADR 0015)**
+
+```
+UI POST /applications/{id}/move {targetJobOrderId, stage?, reason?}   (or POST /application-moves, one transaction per id)
+  └─ pipeline: lock source + target job orders; source not PLACED, not already moved; target open, not archived,
+       account not CLOSED, person not on it (DUPLICATE); off-limits guard against the target
+       source active → REJECTED, close_reason MOVED_TO_OTHER_SEARCH, rank gap closed
+       target application (SOURCED|SCREENED, moved_from_*), appended to the longlist; warnings
+       publish CandidateMoved (no ApplicationStageChanged / ApplicationCreated)
+       └─ (after commit) pipeline timeline listener → CANDIDATE_MOVED entry per distinct account
 ```
 
 **Account closed (A-02)**

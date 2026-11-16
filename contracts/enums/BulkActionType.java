@@ -7,7 +7,11 @@ package com.recruiting.platform.contracts;
 public enum BulkActionType {
     /** Set {@code owner_id}; all entities. */
     REASSIGN_OWNER,
-    /** Move through the entity's lifecycle (never around it); ACCOUNTS, JOB_ORDERS, PROPOSALS. */
+    /**
+     * Move through the entity's lifecycle (never around it); ACCOUNTS, JOB_ORDERS, PROPOSALS, and
+     * since 1.5.0 APPLICATIONS (status = a {@link PipelineStage}, same guards as
+     * {@code PATCH /applications/{id}/stage}; PLACED not allowed in bulk).
+     */
     CHANGE_STATUS,
     /** Add a tag; all entities. */
     ADD_TAG,

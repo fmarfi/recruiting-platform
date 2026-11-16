@@ -18,6 +18,8 @@ PostgreSQL 16+ with pgvector (vectors only in Phase 2). One schema, `public`.
 
 **Enum CHECKs added in 1.3.0 (MigrationIT `ENUM_COLUMNS`, one `EnumColumn(table, column, Enum.class)` each):** `account`: `archive_reason` ArchiveReason, `einvoice_status` EInvoiceStatus, `employee_band` EmployeeBand, `confidentiality_level` ConfidentialityLevel, `preferred_language` Language · `person`: `archive_reason`, `function_area` JobFunction, `seniority` Seniority · `job_order`: `archive_reason`, `confidentiality_level` · `tag_definition.colour` TagColour · `application.outreach_status` OutreachStatus (SCREENED added in the review round) · `application.close_reason` CloseReason · `activity`: `outcome` ActivityOutcome, `direction` ActivityDirection, `source` ActivitySource · `client_feedback`: `outcome` ClientFeedbackOutcome, `decline_reason` DeclineReason · `candidate_evaluation`: `interview_type` InterviewType, `recommendation` Recommendation · `interview_note.interview_type` · `candidate_reference.status` ReferenceStatus · `search_brief`: `seniority_level`, `function_area` (no `comp_period` CHECK: the band is encrypted, R73) · `search_criterion.kind` CriterionKind · `job_order_team_member.role` SearchTeamRole · `target_company`: `tier` TargetTier, `status` TargetCompanyStatus · `agreement`: `kind` AgreementKind, `status` AgreementStatus, `language`, `exclusivity` Exclusivity, `fee_model` FeeModel, `guarantee_start_basis` GuaranteeStartBasis · `fee_schedule_item`: `trigger` FeeTrigger, `invoice_state` InvoiceState · `placement.status` PlacementStatus · `conflict_check.decision` ConflictDecision · `export_job`: `entity` ListEntity, `status` ExportStatus · `client_report`: `kind` ReportKind, `language` · `import_job_record.entity_type` EntityType. Array CHECKs (`arrayCheckConstraintsMatchTheContractEnums`): `candidate_evaluation.motivation_tags` MotivationTag, `candidate_evaluation.report_blocks` EvaluationBlock, `agreement.fee_basis` FeeBasisComponent. **Re-created** CHECKs (new values): `access_log.entity_type` and `timeline_entry.entity_type` (EntityType), `timeline_entry.kind` (TimelineKind: ARCHIVE, MERGE, PLACEMENT), `import_job.status` (ImportStatus: ROLLED_BACK). New audited tables for the `_aud` existence check: `activity_attendee`, `tag_definition`, `client_feedback`, `candidate_evaluation`, `interview_note`, `candidate_reference`, `search_brief`, `search_criterion`, `job_order_team_member`, `target_company`, `agreement`, `fee_schedule_item`, `placement`.
 
+**Contract 1.5.0 (ADR 0015), one migration set for the db-engineer:** new columns `job_order.contact_id`; `application.moved_from_application_id`, `moved_from_stage`, `moved_at`, `moved_by`; `activity.cv_push`; `candidate_exposure.activity_id` and `job_order_id` nullable. **Re-created** enum CHECKs (new values): `application.close_reason` (CloseReason: MOVED_TO_OTHER_SEARCH), `candidate_exposure.channel` (ExposureChannel: CV_PUSH), `timeline_entry.kind` (TimelineKind: CANDIDATE_MOVED), every `ListEntity` column (`saved_view.entity`, `bulk_action.entity`, `export_job.entity`: APPLICATIONS; views and exports reject it in the service), `bulk_action_item.code` if it has a CHECK (BulkResultCode: DUPLICATE, OFF_LIMITS, CONSENT_REQUIRED, ARCHIVED). New enum CHECK: `application.moved_from_stage` PipelineStage (add to MigrationIT `ENUM_COLUMNS`). New indexes: see "Home personal numbers" under pipeline.
+
 ## Ownership by module
 
 | Module | Tables |
@@ -56,6 +58,9 @@ job_order 1─0..1 search_brief; job_order 1─* search_criterion, job_order_tea
 account  1─* agreement 1─* fee_schedule_item; job_order 0..1─* agreement (engagement)               (1.3.0)
 application 1─0..1 placement *─1 person, job_order, account, agreement?                           (1.3.0)
 account  0..1─* conflict_check; import_job 1─* import_job_record; app_user 1─* export_job          (1.3.0)
+contact  0..1─* job_order.contact_id (the client contact a search is for)                      (1.5.0)
+application 0..1─0..1 application.moved_from_application_id (move between searches)            (1.5.0)
+activity 1─0..1 candidate_exposure.activity_id (CV push)                                        (1.5.0)
 ```
 
 Since 1.2.0 (ADR 0011) the non-AI candidate profile lives **on `person` in `accounts`** (columns plus `person_education` and `person_file`), not in a separate `candidate_profile` table. Phase 2 (`ai`) adds only AI data: parsed structure, `cv_embedding vector(n)` keyed by `person_file.id`, an AI score on `application`. Retention and consent already work on `person`, so nothing moves (ADR 0008).
@@ -380,9 +385,10 @@ Users are deactivated, never deleted, so `owner_id` stays valid. Filters hold id
 | tags | varchar(50)[] | not null default `'{}'`; lower-case, at most 20 (`CHECK (cardinality(tags) <= 20)`); GIN index; written by `ADD_TAG`/`REMOVE_TAG` bulk actions (ADR 0010) |
 | archived_at, archived_by, archive_reason, archive_note | | archive columns (1.3.0) |
 | confidentiality_level | varchar(40) | `ConfidentialityLevel`, not null default `NORMAL` (1.3.0) |
+| contact_id | uuid FK contact | null (1.5.0, ADR 0015); index; `on delete set null` (indirect person FK, ADR 0009 rule: the contact row cascades with its person, the job order stays). The service checks on create and on every change of the value that the contact is active (`ended_on is null`) and belongs to `account_id` (through the accounts API, 400 `NOT_ACTIVE_CONTACT`); an ended contact stays referenced (`JobOrder.contact.active` = false). No backfill (null = no contact, as in 1.4) |
 | audit columns | | |
 
-`stageCounts`, `activeCandidates` and `daysOpen` are computed by query (`group by stage`), not stored.
+`stageCounts`, `activeCandidates` and `daysOpen` are computed by query (`group by stage`), not stored. Since 1.5.0 also `filledOpenings` = `count(*)` of applications of the job order with `stage = 'PLACED'` and no placement or a placement with status ACTIVE or GUARANTEE_ENDED (`left join placement on application_id`); `remainingOpenings = greatest(openings - filledOpenings, 0)`. Lowering `openings` below `filledOpenings` is refused by the service (400). The status never changes because of these numbers.
 
 **search_brief** — audited (1.3.0, SX-001); one row per job order, created on the first `PUT .../brief`
 
@@ -439,7 +445,11 @@ The band is the client's budget, but it reveals what the client pays (and, after
 | rating | smallint | null (1.3.0); `CHECK (rating BETWEEN 1 AND 5)` |
 | rationale | text | null (1.3.0); at most 2000 characters (service); personal data, scrubbed like `rejection_reason` |
 | outreach_status | varchar(40) | `OutreachStatus`, not null default `TO_CALL` (1.3.0); set to `SCREENED` by the service on a move to stage SCREENED |
-| close_reason | varchar(40) | null (1.3.0, R65); `CloseReason`; `CHECK ((stage = 'REJECTED') = (close_reason IS NOT NULL))`; index `(job_order_id, close_reason)` (funnel report). Set with every move to REJECTED (`OTHER` when the request has none; `CLIENT_DECLINED` from client feedback), cleared with `rejection_reason` on reinstatement. Backfill: `OTHER` for every REJECTED row, before the CHECK is added. Not personal data (a code) |
+| close_reason | varchar(40) | null (1.3.0, R65); `CloseReason`; `CHECK ((stage = 'REJECTED') = (close_reason IS NOT NULL))`; index `(job_order_id, close_reason)` (funnel report). Set with every move to REJECTED (`OTHER` when the request has none; `CLIENT_DECLINED` from client feedback; since 1.5.0 `MOVED_TO_OTHER_SEARCH` from a move), cleared with `rejection_reason` on reinstatement. Backfill: `OTHER` for every REJECTED row, before the CHECK is added. Not personal data (a code) |
+| moved_from_application_id | uuid FK application | null (1.5.0, ADR 0015); set on the **target** of a move; `on delete set null`; **partial unique index `where moved_from_application_id is not null`** (a source is moved at most once; `movedTo` of the source is this reverse lookup); `CHECK (moved_from_application_id <> id)` |
+| moved_from_stage | varchar(40) | null (1.5.0); `PipelineStage`; the source's stage just before the move (`ApplicationMoveLink.sourceStageBefore`) |
+| moved_at | timestamptz | null (1.5.0) |
+| moved_by | uuid FK app_user | null (1.5.0). `CHECK ((moved_from_application_id IS NULL) = (moved_at IS NULL) AND (moved_at IS NULL) = (moved_from_stage IS NULL))` (`moved_by` stays null-able: set null never happens, users are not deleted, but the move itself always sets it) |
 | audit columns | | unique `(job_order_id, person_id)`; index `(job_order_id, stage)` |
 
 Rank backfill (1.3.0 migration): for each job order and list, number the active applications by `stage_changed_at, created_at` (1..n); REJECTED and PLACED stay null.
@@ -456,7 +466,8 @@ Rank backfill (1.3.0 migration): for each job order and list, number the active 
 | channel | varchar(40) | `ExposureChannel` |
 | presented_at | timestamptz | not null |
 | presented_by | uuid FK app_user | null for system |
-| | | unique `(application_id, channel) where channel = 'PIPELINE'` (first move into a client-facing stage only; idempotent) |
+| activity_id | uuid FK activity | null (1.5.0, ADR 0015); `on delete cascade` (deleting the CV-push activity deletes its exposure); partial unique `where activity_id is not null`; `CHECK ((channel = 'CV_PUSH') = (activity_id IS NOT NULL))` |
+| | | unique `(application_id, channel) where channel = 'PIPELINE'` (first move into a client-facing stage only; idempotent). Since 1.5.0 `job_order_id` is **null-able**: `CHECK ((channel = 'CV_PUSH') = (job_order_id IS NULL))` (a CV push has no job order). Index `(presented_by, presented_at)` (Home `cvsSent`, `cvsPushed`) |
 
 Written by `pipeline` in the transaction of the first move into a client-facing stage (PRESENTED, CLIENT_INTERVIEW, OFFER or PLACED, `PipelineStage.sharedWithClient()`; forward moves may skip PRESENTED). Holds ids and dates only, so it is kept on anonymisation and cascades on delete. Backfill migration: one PIPELINE row per application whose current stage is PRESENTED, CLIENT_INTERVIEW, OFFER or PLACED, or that reached PRESENTED in `application_aud` (`presented_at` = the earliest such revision time, else `stage_changed_at`).
 
@@ -679,6 +690,7 @@ Indexes added in 1.4.0 for the Home aggregate (ADR 0014; no new columns): `activ
 | direction | varchar(40) | null (1.3.0); `ActivityDirection`; `CHECK (type <> 'NOTE' OR direction IS NULL)` |
 | duration_min | smallint | null (1.3.0); `CHECK (duration_min BETWEEN 0 AND 1440)` |
 | source | varchar(40) | `ActivitySource`, not null default `MANUAL` (1.3.0) |
+| cv_push | boolean | not null default false (1.5.0, ADR 0015); `CHECK (NOT cv_push OR (person_id IS NOT NULL AND account_id IS NOT NULL AND job_order_id IS NULL AND type <> 'NOTE'))`; immutable after insert (service). Writes a `candidate_exposure` row (channel CV_PUSH) in the same transaction |
 | external_message_id | varchar(300) | null (1.3.0); RFC 5322 `Message-ID` of a captured e-mail; **unique partial index `where external_message_id is not null`** (capture is idempotent); `CHECK (external_message_id IS NULL OR source = 'EMAIL')`. Not personal data on its own (an opaque id), but it is nulled with `note` on anonymisation because some providers embed the address |
 | audit columns | | `CHECK (account_id IS NOT NULL OR person_id IS NOT NULL)` |
 
@@ -715,6 +727,17 @@ Indexes added in 1.4.0 for the Home aggregate (ADR 0014; no new columns): `activ
 | job_order_id | uuid | null |
 | actor_id | uuid FK app_user | null for system |
 | source_event_id | uuid | unique (listener idempotency) |
+
+**Home personal numbers (1.5.0, ADR 0015).** `MyDay.myNumbers` for user `u` and the period's days `[from, to]` in Europe/Istanbul (instants `[from 00:00, to + 1 day 00:00)`), four counts in the Home read transaction:
+
+| Number | Query | Index (new in 1.5.0) |
+| --- | --- | --- |
+| interviews | `count(distinct (person_id, day))` over `interview_note` (`interviewer_id = u`, `held_on` in range, day = `held_on`) union all `candidate_evaluation` (`evaluator_id = u`, `evaluated_on` in range) | `interview_note (interviewer_id, held_on)`, `candidate_evaluation (evaluator_id, evaluated_on)` |
+| cvsScreened | `count(distinct entity_id)` from `timeline_entry` where `kind = 'CANDIDATE'`, `to_status = 'SCREENED'`, `actor_id = u`, `occurred_at` in range | partial `timeline_entry (actor_id, occurred_at) where kind = 'CANDIDATE' and to_status = 'SCREENED'` |
+| cvsSent | `count(*)` from `candidate_exposure` where `channel = 'PIPELINE'`, `presented_by = u`, `presented_at` in range | `candidate_exposure (presented_by, presented_at)` |
+| cvsPushed | same with `channel = 'CV_PUSH'` | same index |
+
+All four are index range scans over one user's rows, well inside the 300 ms budget at pilot volume; no projection table is needed. `timeline_entry` is written after commit, so `cvsScreened` may lag a stage move by the listener delay (seconds). Interview notes and evaluations are deleted on anonymisation, so a past period's `interviews` can drop afterwards (accepted).
 
 **bulk_action** — append-only, not audited (audit evidence of one mass action, ADR 0010)
 
