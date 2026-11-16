@@ -24,6 +24,7 @@ import { ContactsTab } from './ContactsTab';
 import { DashboardStrip } from './DashboardStrip';
 import { JobsTab } from './JobsTab';
 import { ProposalsTab } from './ProposalsTab';
+import { AgreementsPanel, useAgreements } from '../../pipeline/agreements/AgreementsPanel';
 import { RelationshipsTab } from './RelationshipsTab';
 import { TimelinePanel } from './TimelinePanel';
 import { useAccountPage } from './useAccountPage';
@@ -43,6 +44,7 @@ export function AccountPage() {
   const page = useAccountPage(id);
   const [dialog, setDialog] = useState<null | 'edit' | 'log' | 'action' | 'contact' | 'job' | 'proposal'>(null);
   const [tab, setTab] = useState('overview');
+  const agreements = useAgreements({ accountId: id });
   const a = page.account.data;
 
   if (page.account.status === 404)
@@ -94,6 +96,9 @@ export function AccountPage() {
       <Tabs.Tab value="proposals" style={tabStyle} rightSection={<Count n={proposals.length} />}>
         {t('accounts.tab.proposals')}
       </Tabs.Tab>
+      <Tabs.Tab value="agreements" style={tabStyle} rightSection={<Count n={agreements.data?.content.length ?? 0} />}>
+        {t('agr.title')}
+      </Tabs.Tab>
       <Tabs.Tab value="history" style={tabStyle}>
         {t('accounts.tab.history')}
       </Tabs.Tab>
@@ -144,8 +149,19 @@ export function AccountPage() {
             <Tabs.Panel value="proposals">
               {panel(t('accounts.tab.proposals'), <ProposalsTab proposals={proposals} onChanged={page.reloadAll} onAdd={() => setDialog('proposal')} />, {
                 count: proposals.length,
+                padding: 'none',
                 action: proposals.length > 0 ? <AddButton label={t('accounts.newProposal')} onClick={() => setDialog('proposal')} /> : undefined,
               })}
+            </Tabs.Panel>
+            <Tabs.Panel value="agreements">
+              <AgreementsPanel
+                rows={agreements.data?.content}
+                loading={agreements.loading}
+                error={!!agreements.error}
+                reload={agreements.reload}
+                showPosition
+                preset={{ account: { id: a.id, name: a.name }, jobs: jobs.map((j) => ({ id: j.id, title: j.title })) }}
+              />
             </Tabs.Panel>
             <Tabs.Panel value="history">{panel(t('accounts.tab.history'), <HistoryPanel entityType="ACCOUNT" entityId={a.id} />)}</Tabs.Panel>
           </>

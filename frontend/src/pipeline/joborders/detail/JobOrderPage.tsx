@@ -22,6 +22,7 @@ import { SkeletonRows } from '../../../shell/components/SkeletonRows';
 import { ICON_SIZE, ICON_STROKE, SearchIcon } from '../../../shell/components/objectIcons';
 import { HistoryPanel } from '../../../shell/edit';
 import { AddCandidateDialog } from './AddCandidateDialog';
+import { AgreementsPanel, useAgreements } from '../../agreements/AgreementsPanel';
 import { JobOrderEditDrawer } from './JobOrderEditDrawer';
 import { JobStatusMenu } from './JobStatusMenu';
 import { useJobOrder } from './useJobOrder';
@@ -41,6 +42,7 @@ export function JobOrderPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [logCtx, setLogCtx] = useState<QuickAddContext>();
   const [statusAsk, setStatusAsk] = useState<string>();
+  const agreements = useAgreements({ jobOrderId: id });
 
   const j = job.data;
   const readOnly = !!j && (j.status === 'FILLED' || j.status === 'CANCELLED');
@@ -250,6 +252,14 @@ export function JobOrderPage() {
               />
             </Panel>
           </SimpleGrid>
+
+          <AgreementsPanel
+            rows={agreements.data?.content}
+            loading={agreements.loading}
+            error={!!agreements.error}
+            reload={agreements.reload}
+            preset={{ account: { id: j.account.id, name: j.account.name }, fixedJob: { id: j.id, title: j.title } }}
+          />
 
           <SectionToggle title={t('pipeline.edit.history')} open={historyOpen} onToggle={() => setHistoryOpen((o) => !o)} testId="job-history">
             {historyOpen && (

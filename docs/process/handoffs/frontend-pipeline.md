@@ -1,81 +1,31 @@
-# Hand-off: frontend-pipeline · M2-UI1 table-first search page · 2026-11-16
+# Hand-off: frontend-pipeline · M2-UI2 agreements and proposals UI · 2026-11-16
 
-**Branch:** `m2-longlist` (frontend only, no contract or backend change)
+(The M2-UI1 note for branch `m2-longlist` is in that branch's history of this file.)
 
-**What changed**
-- Search page: the board and the Board/Longlist toggle are gone. One DataGrid (`candidates/CandidateTable.tsx`): name, role/company, stage (select in the row), list, rating (inline select, PATCH /applications/{id}), consent, last activity (`person.lastContactAt`), log-activity button. Stage chips with counts plus a name/company filter, client-side sort, CSV export, phone cards.
-- Stage change (`candidates/useStageControl.tsx`): reuses `useBoardMoves` (optimistic move, undo toast, 409 consent/off-limits dialog), `ReasonDialog` for reject, and `ShortlistDialog` for longlist to shortlist (`shortlistApp` extracted from `useLonglist`).
-- Person page, tab "Clients and searches": table of the person's applications (search, client, stage select, date) with the same stage control and toast. "Add to search" (open searches, existing endpoint) was already there and is kept.
-- i18n: `pipeline.cand.*` in en.json and tr.json (English text in both).
-
-**Files:** `frontend/src/pipeline/candidates/*` (new, incl. `candidates.test.tsx`), `pipeline/joborders/detail/JobOrderPage.tsx`, `pipeline/longlist/useLonglist.ts`, `network/person/{JobsTab,PersonPage}.tsx`, `pipeline/i18n/{en,tr}.json`.
-Board components, `LonglistPanel` and `SectionToggle` are untouched, unused by the page, and compile.
-
-- Review fixes: shortlist dialog for any client-facing target from a longlist row (stage passed through); remove-from-search row action (Sourced only, undo toast); dialog confirm has a busy state, shows network errors and exposure warnings; stage select disabled while its move is in flight; person-page stage control read-only on FILLED/CANCELLED searches. 280 vitest tests.
-
-**Left out**
-- Bulk stage move: the contract says `PATCH /applications/{id}/stage` is the only stage mutation and bulk `CHANGE_STATUS` excludes applications. Needs a new endpoint.
-- Move a candidate between searches: no endpoint. Today: add to the other search, remove from this one.
-- Longlist-only call status, rank reordering and rationale editing (LonglistPanel) are not in the new table; rationale is set via the shortlist dialog.
-- "Last activity" is the person's last contact, not per search (no such field on Application).
-
-**Check by hand:** open a search: one table, no board. Change a stage in a row (reject asks a reason; Sourced to Presented asks rating and rationale). Open the person, tab "Clients and searches": change the stage there; both show in the account timeline.
-**Verified:** `npx tsc --noEmit` clean; `npx vitest run` 43 files, 280 tests passed.
-
-# Hand-off: frontend-pipeline · Wave 2b (candidate pool, CV files, duplicates, guards) · 2026-10-26
-
-**Branch / commits:** `worktree-wave2b-frontend-pipeline` · 5 commits on 1a6461f
+**Branch / commits:** `m2-agreements-ui` from ede80cd (frontend only, no contract or backend change) · 1 commit
 
 **Done**
-- /network pool filters: tag (TagsInput), source channel chips, CV full-text, shareable chip. URL params `tag`, `sourceChannel` (alias `channel` read), `cv`, `shareable=true`; saved via the existing local ViewStore (pool = tag + saved view). Columns tags, channel, shareable, CV match excerpt (rendered as text + mark, never HTML).
-- Person page: candidate profile block (compensation only when not `compensationRestricted`, LinkedIn plain link), CV files tab (drag/drop + button, versions, download, extraction status), exposure tab, one-click consent send in the header only for NOT_SENT/SENT; REFUSED/WITHDRAWN (do not contact) only via the privacy-tab dialog, same rule in the 409 CONSENT_REQUIRED dialog.
-- New person: /duplicates/check before create, "possible duplicate" prompt (use existing / create anyway); a failed check never blocks. /network/duplicates queue and merge dialog (MANAGER/ADMIN, sends survivor version, 409 reloads it).
-- /network/cv-intake: bulk drop zone (50 files, 10 MB), review list with attach to duplicate match, create person (prefilled suggestions), discard, 14-day expiry, polling while text extraction runs.
-- Pipeline: 409 CONSENT_REQUIRED dialog (resend consent, not overridable), 409 OFF_LIMITS dialog (rules; manager/admin reason 3-500 chars retries with offLimitsOverrideReason); exposure warnings shown in the move toast.
-- TR/EN for every label; 119 vitest tests (filters to URL, duplicate decision, 409 handling, compensation visibility, file and expiry rules).
+- Client page `/accounts/:id`: Proposals tab is now a DataGrid (title, status badge menu with reason dialog, fee, sent, decided, owner, History). New Agreements tab beside it, its own table (agreement, position, status, fee, signed on, valid until, signed PDF, History) with empty state and "New agreement".
+- Search page `/job-orders/:id`: Agreements panel for that position (`GET /agreements?jobOrderId`), "New agreement" preset to the position and client (kind engagement letter).
+- Drawer `pipeline/agreements/AgreementDrawer.tsx`: kind, position, status, title, dates, fee model with only its fields (`feeModel.ts`: percent, basis, flat fee, estimated fee, min/cap, schedule), currency, payment terms, guarantee, signatory (active contacts), notes. Thirds get a 33.34/33.33/33.33 default. Update sends `version`; 409 opens the shared compare dialog (`useRecordSave`). Schedule is locked once an instalment is no longer NOT_DUE.
+- Signed copy (`SignedCopy.tsx`): upload or replace PDF, client check PDF and 20 MB (`fileCheck.ts`), shows name, size, who, when, download link.
+- History dialog (`parts.tsx`) for proposals (PROPOSAL) and agreements (AGREEMENT) via the shared HistoryPanel, newest first.
+- i18n: `agr.*` in `pipeline/i18n/{en,tr}.json` (TR mostly English text, not polished).
+- Tests: `feeModel.test.ts` (fee fields, validation, file check), `AgreementDrawer.test.tsx` (hidden fields, create body, 409 compare).
 
 **Not done / left**
-- Adding a candidate (POST /job-orders/{id}/applications): OFF_LIMITS shows the rules and says only a manager/admin can override on the board; TODO override field (offLimitsOverrideReason on ApplicationCreateRequest) and warnings toast there.
-- Saved views still localStorage (`useViewStore` not merged); no shared talent-pool view UI yet.
-- Not run against Prism or a browser; multipart bodies (FormData) untested against a real server.
-- No file delete button on the files tab.
+- Proposal edit (title, terms, fee) still only via create; no edit drawer was asked for.
+- Not clicked through against Prism or the real backend (backend agreements branch not merged); verified by tests and build only.
+
+**Others must know**
+- This worktree directory was shared with a backend agent (uncommitted Java, seed and contracts/enums changes). I committed only frontend paths and the hand-off note.
+- `frontend/src/shell/home/StatsStrip.tsx` is not valid UTF-8 (cp1252 byte) in commit ede80cd; `npm run build` fails on it (Vite). I verified the build with a temporary iconv fix and reverted it.
 
 **Change requests**
-- frontend-shell · routes.tsx: I added /network/cv-intake and /network/duplicates (please keep on merge).
-- frontend-shell · nav: optional links to CV intake and duplicates; reuse `network.intake.nav` / `network.dup.nav`.
+- architect · `/reference-data` lifecycles · add an `agreement` lifecycle (labels, tones) so the badge can use the shared StatusBadge; the tone map is local in `AgreementsPanel.tsx` for now.
+- architect · `Agreement.signatory` is a PersonRef but `signatoryContactId` is a contact id; the drawer preselects by `signatory.id` and assumes it is the contact id. Confirm, or expose `signatoryContactId` on `Agreement`.
+- frontend-shell · `shell/home/StatsStrip.tsx` · re-save as UTF-8 (build blocker).
 
 **Verified with**
-- `npx tsc --noEmit` clean; `npx vitest run` 119 passed; `npx vite build` ok (in frontend/).
-
-## Slice S6: edit everywhere (client, candidate, search)
-
-**Done** (frontend only, no contract change; uses F0 EditDrawer, InlineEditField, TagInput, useUndoToast, HistoryPanel)
-- Client page: inline name edit with undo, status menu now shows an undo toast, `AccountEditDrawer` with all `AccountUpdateRequest` fields, History tab.
-- Person page: `PersonEditDrawer` with all `PersonUpdateRequest` fields (career, languages, education row editors), tags via TagInput, compensation section hidden when `compensationRestricted`; History tab; Edit disabled when anonymised.
-- Search page: `JobOrderEditDrawer` (description, fee terms, openings, opened on, owner), description in the header card, History accordion. New `NewJobForm` keeps description and fee terms; used by the Searches list and the client page "New job" (the "New search" button already existed).
-- Shared in `accounts/detail/editSupport.tsx`: draft state, inline field errors from `ProblemDetail.errors`, undo, VERSION_CONFLICT compare dialog.
-- Tests: one file per drawer (save, undo, validation error; compensation guard). tsc clean, vitest 243 passed, vite build ok.
-
-**Notes**
-- Tags have no PATCH field: saved through `POST /bulk-actions` ADD_TAG / REMOVE_TAG (one id); undo reverts them with the fields.
-- Compensation write permission is enforced by the server (403 shows as the drawer error); the UI only hides the section when restricted.
-
-**Change requests**
-- frontend-shell: `UndoToastProvider` is not mounted anywhere in the app; I wrapped the three pages in it. Mount it once in the layout, then the page wrappers can go.
-- `NewRecordDialog` kind="job" (accounts/components) is now unused for jobs.
-
-## 2026-11-04 - S5 longlist UI (R65)
-Branch s5-longlist-ui, base cf78ca8. Files: frontend/src/pipeline/longlist/ (LonglistPanel, BulkAddDialog, ShortlistDialog, useLonglist, longlist.test.tsx), JobOrderPage.tsx (Board/Longlist switch, Bulk add in empty state), pipeline i18n pipeline.ll.* (en and tr, English text).
-- Longlist panel: ranked table (rank with up/down, name, role/company, call status select, rating select, rationale on blur, To shortlist). Uses PUT /job-orders/{id}/ranking, PATCH /applications/{id}, PATCH /applications/{id}/stage (PRESENTED with rating and rationale; contract errors[].message shown inline in the dialog).
-- Bulk add: GET /people (q, city, functionArea), checkboxes plus select all, one POST /job-orders/{id}/applications per person in parallel; failures listed inline. People already on the search are hidden.
-- Tests: 3 new (reorder, bulk add of 2, shortlist validation message). tsc clean, vitest 261/261.
-
-**Contract gaps**
-- No bulk-add endpoint: N single POSTs (fine for 10; a bulk endpoint would suit 100).
-- Pool filter is GET /people (city, functionArea, tag); there is no location param, city is used.
-- Drag reorder not built (up/down buttons only).
-- package-lock.json is out of sync with package.json (@tabler/icons-react missing), so npm ci fails; used npm install --no-package-lock.
-
-### Review fixes (same day)
-- Bulk add: sequential POSTs in try/finally, added/failed summary, failed people stay selected, onAdded when at least one added; pool GET debounced 300 ms; failed GET shows an error Alert.
-- Longlist: every successful write calls the page reload(); arrows and inline edits disabled while a write is pending (single-flight); 409 reloads and shows an inline message. Page passes a memoised existing-ids Set. Tests now 263.
+- `npm run typecheck` → clean; `npm test` → 45 files, 298 tests pass; `npm run build` → passes with the StatsStrip encoding fixed locally (fails on the base commit without it).
+- Click path: `/accounts/<id>` tabs Proposals and Agreements; `/job-orders/<id>` Agreements panel; row click opens the drawer.

@@ -267,5 +267,146 @@
     "tomorrow": "Tomorrow",
     "nextWeek": "Next week",
     "pickDate": "Pick date"
+  },
+  "agr": {
+    "title": "Agreements",
+    "new": "New agreement",
+    "create": "Create agreement",
+    "saved": "Agreement saved",
+    "history": "History",
+    "historyOf": "History: {{name}}",
+    "client": "Client",
+    "position": "Position",
+    "wholeClient": "Whole client (terms of business)",
+    "fixFields": "Fix the marked fields and save again.",
+    "emptyTitle": "No agreements yet",
+    "emptyClient": "Record terms of business for this client or an engagement letter for a search. Proposals are listed separately.",
+    "emptyJob": "Record the engagement letter for this search.",
+    "section": {
+      "main": "Agreement",
+      "fee": "Fee",
+      "terms": "Terms",
+      "file": "Signed copy"
+    },
+    "col": {
+      "agreement": "Agreement",
+      "fee": "Fee",
+      "file": "Signed copy",
+      "hasFile": "PDF",
+      "updated": "Updated",
+      "sentOn": "Sent on",
+      "decidedOn": "Decided on"
+    },
+    "f": {
+      "kind": "Kind",
+      "status": "Status",
+      "title": "Title",
+      "signedOn": "Signed on",
+      "validFrom": "Valid from",
+      "validUntil": "Valid until",
+      "feeModel": "Fee model",
+      "feePercent": "Fee percent",
+      "feeBasis": "Fee basis",
+      "flatFeeAmount": "Flat fee",
+      "estimatedFee": "Estimated fee",
+      "feeMinimum": "Minimum fee",
+      "feeCap": "Fee cap",
+      "currency": "Currency",
+      "paymentTermsDays": "Payment terms (days)",
+      "guaranteeMonths": "Guarantee (months)",
+      "signatoryContactId": "Signatory",
+      "notes": "Notes",
+      "scheduleItems": "Fee schedule"
+    },
+    "help": {
+      "estimatedFee": "Basis for percent instalments before a placement exists.",
+      "feeBasis": "Cash components the percent is computed on.",
+      "signatory": "Active contacts of this client."
+    },
+    "kind": {
+      "TERMS_OF_BUSINESS": "Terms of business",
+      "ENGAGEMENT_LETTER": "Engagement letter",
+      "AMENDMENT": "Amendment"
+    },
+    "status": {
+      "DRAFT": "Draft",
+      "SENT": "Sent",
+      "SIGNED": "Signed",
+      "EXPIRED": "Expired",
+      "TERMINATED": "Terminated"
+    },
+    "model": {
+      "RETAINED_THIRDS": "Retained in thirds",
+      "RETAINED_CUSTOM": "Retained, custom instalments",
+      "PERCENT_FIRST_YEAR_CASH": "Percent of first-year cash",
+      "FLAT_FEE": "Flat fee",
+      "HYBRID": "Hybrid (retainer plus success)"
+    },
+    "modelHelp": {
+      "RETAINED_THIRDS": "Three instalments; the percents add up to 100.",
+      "RETAINED_CUSTOM": "Instalments you define below.",
+      "PERCENT_FIRST_YEAR_CASH": "Success fee, invoiced on placement.",
+      "FLAT_FEE": "One agreed amount.",
+      "HYBRID": "Retainer instalments plus a success percent."
+    },
+    "basis": {
+      "BASE": "Base salary",
+      "TARGET_BONUS": "Target bonus",
+      "PAID_BONUS": "Paid bonus",
+      "ALLOWANCES": "Allowances",
+      "SIGN_ON": "Sign-on",
+      "CAR": "Car",
+      "OTHER_CASH": "Other cash"
+    },
+    "trigger": {
+      "SIGNING": "On signing",
+      "DATE_OFFSET": "Days after signing",
+      "SHORTLIST_DELIVERED": "Shortlist delivered",
+      "OFFER_ACCEPTED": "Offer accepted",
+      "START_DATE": "Start date",
+      "EXPENSES": "Expenses",
+      "ABORT": "Search cancelled"
+    },
+    "schedule": {
+      "title": "Fee schedule",
+      "empty": "No instalments.",
+      "add": "Add instalment",
+      "label": "Instalment",
+      "trigger": "Due when",
+      "offsetDays": "Days after signing",
+      "dueDays": "Payment term (days)",
+      "percent": "Percent",
+      "amount": "Amount",
+      "remove": "Remove instalment {{label}}",
+      "locked": "Instalments can no longer be edited because one is already due or invoiced."
+    },
+    "file": {
+      "upload": "Upload PDF",
+      "replace": "Replace PDF",
+      "none": "No signed copy uploaded.",
+      "meta": "{{size}}, uploaded by {{who}} on {{when}}",
+      "notPdf": "Choose a PDF file.",
+      "tooLarge": "The file is larger than 20 MB.",
+      "empty": "The file is empty.",
+      "conflict": "The agreement was changed by someone else. Reload and upload again.",
+      "failed": "Could not upload the file."
+    },
+    "err": {
+      "required": "Required.",
+      "money": "Use digits with up to two decimals.",
+      "percent": "Use a number such as 25 or 33.33.",
+      "percentRange": "Percent must be between 0 and 100.",
+      "basis": "Select at least one component.",
+      "minCap": "Minimum must not exceed the cap.",
+      "signedOn": "Enter the signing date for a signed agreement.",
+      "oneOfPercentAmount": "Each instalment needs either a percent or an amount.",
+      "offsetDays": "Enter the days after signing (0 to 730).",
+      "sum100": "The instalment percents must add up to 100.",
+      "label": "Each instalment needs a name.",
+      "range": "Value out of range.",
+      "job": "Select the position this letter is for.",
+      "currency": "Use a three-letter code such as TRY.",
+      "datesOrder": "Valid until is before valid from."
+    }
   }
 }
