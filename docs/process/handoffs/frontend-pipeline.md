@@ -1,3 +1,25 @@
+# Hand-off: frontend-pipeline · M2-UI1 table-first search page · 2026-11-16
+
+**Branch:** `m2-longlist` (frontend only, no contract or backend change)
+
+**What changed**
+- Search page: the board and the Board/Longlist toggle are gone. One DataGrid (`candidates/CandidateTable.tsx`): name, role/company, stage (select in the row), list, rating (inline select, PATCH /applications/{id}), consent, last activity (`person.lastContactAt`), log-activity button. Stage chips with counts plus a name/company filter, client-side sort, CSV export, phone cards.
+- Stage change (`candidates/useStageControl.tsx`): reuses `useBoardMoves` (optimistic move, undo toast, 409 consent/off-limits dialog), `ReasonDialog` for reject, and `ShortlistDialog` for longlist to shortlist (`shortlistApp` extracted from `useLonglist`).
+- Person page, tab "Clients and searches": table of the person's applications (search, client, stage select, date) with the same stage control and toast. "Add to search" (open searches, existing endpoint) was already there and is kept.
+- i18n: `pipeline.cand.*` in en.json and tr.json (English text in both).
+
+**Files:** `frontend/src/pipeline/candidates/*` (new, incl. `candidates.test.tsx`), `pipeline/joborders/detail/JobOrderPage.tsx`, `pipeline/longlist/useLonglist.ts`, `network/person/{JobsTab,PersonPage}.tsx`, `pipeline/i18n/{en,tr}.json`.
+Board components, `LonglistPanel` and `SectionToggle` are untouched, unused by the page, and compile.
+
+**Left out**
+- Bulk stage move: the contract says `PATCH /applications/{id}/stage` is the only stage mutation and bulk `CHANGE_STATUS` excludes applications. Needs a new endpoint.
+- Move a candidate between searches: no endpoint. Today: add to the other search, remove from this one.
+- Longlist-only call status, rank reordering and rationale editing (LonglistPanel) are not in the new table; rationale is set via the shortlist dialog.
+- "Last activity" is the person's last contact, not per search (no such field on Application).
+
+**Check by hand:** open a search: one table, no board. Change a stage in a row (reject asks a reason; Sourced to Presented asks rating and rationale). Open the person, tab "Clients and searches": change the stage there; both show in the account timeline.
+**Verified:** `npx tsc --noEmit` clean; `npx vitest run` 43 files, 275 tests passed.
+
 # Hand-off: frontend-pipeline · Wave 2b (candidate pool, CV files, duplicates, guards) · 2026-10-26
 
 **Branch / commits:** `worktree-wave2b-frontend-pipeline` · 5 commits on 1a6461f
