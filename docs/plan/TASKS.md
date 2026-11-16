@@ -153,7 +153,7 @@ Source: `docs/product/meetings/2026-11-15-meeting-02.md` (first real user input;
 | M2-R | Desk research, 9 topics, into `docs/product/research/meeting-02-research.md` | research agent (Sonnet) | done (file kept local, not in git) | – |
 | M2-UI1 | Search page longlist only: board hidden, table with stage column and stage change; candidate-driven actions on the person page (add to a search, change stage) | frontend-pipeline (Sonnet) | done (reviewed, blockers fixed, merged; bulk move and move between searches need M2-C15) | – |
 | M2-SHOTS | Screenshot pack of candidate, client and position screens with field lists for the client | orchestrator | todo | app running |
-| M2-C15 | Contract 1.5: move candidate between searches; contact on job order; openings and remaining openings; home personal numbers with period | architect (Opus) | review fixes in progress (branch `contract-1-5`, 85b0e48 reviewed: 2 blockers, 7 should-fix; follow-on tasks C15-* in `contracts/README.md`) | M2-R |
+| M2-C15 | Contract 1.5: move candidate between searches; contact on job order; openings and remaining openings; home personal numbers with period | architect (Opus) | frozen 7731b04 (reviewed, 13 items fixed; merges together with C15-DB; follow-on tasks C15-* in `contracts/README.md`) | M2-R |
 | M2-ST | Rewrite stories from the meeting report; mark the 28 old ones keep / change / drop | product-analyst | done (merged 94b55c2; `docs/product/stories/meeting-02-stories.md`: keep 19, change 8, drop 1; old story files and `must-stories.md` test plan not yet updated; 9th story, sales campaign history, is an open question) | M2-R |
 | M2-AG | `/agreements` backend per contract 1.4 (list, create, get, update, signed file), revisions for agreement and proposal history, IT, seed rows | backend-pipeline (Sonnet) | done (reviewed, 3 blockers fixed, merged 1c169b5; signed PDF limit 50 MB by user decision; adds `AccountApi.billingFacts`/`findContacts` and migration V202611160001, db-engineer to adopt) | – |
 | M2-UI2 | Agreements UI separate from proposals, each with history | frontend-pipeline (Sonnet) | done (reviewed, blocker fixed, merged 9e5e81a; instalment history and reference-data status tones wait for contract 1.5; browser check against the real backend open) | M2-UI1 |
@@ -189,3 +189,19 @@ Decisions (2026-11-16, from the client): no kanban board, longlist only (board c
 | V3-GATE | Orchestrator browser check of every screen against spec section 8 at 1440 and 375 | orchestrator | todo | V3-S1..S5 |
 
 Agent cost note: general-purpose subagents start near 70k tokens (all connector tools). Use the lean ui-slice agent (.claude/agents/ui-slice.md: 6 tools, Haiku, frontend-design preloaded); it loads only in a session started from the capital-D path C:\Users\SID-DRW\Desktop\New folder\recruiting-platform, which also fixes automatic worktrees.
+
+## Workbench pass: practical, table-first interface (plan approved by the user 2026-11-16)
+
+Plan: `~/.claude/plans/lazy-soaring-hummingbird.md`. Customisation stays light and per user (columns, order, density, saved views, Home tiles) on top of role defaults; no custom fields, layout builder or paste from Excel until the client returns the marked-up screenshots and an Excel sample.
+
+| ID | Slice | Owner | Status | Blocked by |
+| --- | --- | --- | --- | --- |
+| C15-DB | Migrations, entities, tests for contract 1.5 (DB1 to DB5), adopts V202611160001 | db-engineer (Sonnet) | review (branch `c15-db`, 3ab80da; committed by the orchestrator after plan mode paused the agent; seed double-load check open) | – |
+| C15-P | C15-P1 to P7: move, bulk move, bulk stage change, job order contact, openings, CV push, Home numbers | backend-pipeline | todo | C15-DB |
+| C15-A1 | Contact lookup for pipeline; `/views` and `/exports` reject APPLICATIONS | backend-accounts | todo | C15-DB |
+| WB-1 | Shared grid: keyboard movement, Excel export, 14 px table text, full-width tables, sticky name column, peek hook | frontend-shell (Sonnet) | in progress (branch `wb-grid-peek`) | – |
+| WB-2 | Peek drawer for candidate, client, search from any table row | frontend-shell (Sonnet) | in progress (branch `wb-grid-peek`) | WB-1 |
+| WB-3 | Longlist as a worksheet: selection and bulk bar (stage, move, remove, log), saved views, next step and last note columns, move dialogs (C15-F1) | frontend-pipeline (Sonnet) | todo | WB-1, C15-P |
+| WB-4 | Home v2 "what do I do now" (replaces UI-B3): tasks first, my numbers with period, my searches, quick log bar; presets researcher / consultant / sales; tiles can be hidden | frontend-shell (Sonnet) | todo | C15-P |
+| WB-5 | Consistency sweep: remaining plain tables to the shared grid; contact picker and openings in the search header (C15-F2) | ui-slice (Haiku) | todo | WB-1 |
+| WB-M | Click counts for five everyday tasks before and after; screenshot pack (M2-SHOTS); 15-minute pilot test script (UX-10) | orchestrator | todo | WB-3, WB-4 |
