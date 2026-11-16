@@ -126,7 +126,9 @@ class StageGuardApiIT extends AbstractPersistenceIT {
 
     private ResultActions move(String app, String stage, UUID who, String role, String extra) throws Exception {
         return call(patch("/api/v1/applications/" + app + "/stage"), who, role,
-                "{\"stage\":\"" + stage + "\"" + (extra == null ? "" : "," + extra) + "}");
+                // rating and rationale ride along: shortlist entry needs them since contract 1.3 (R65)
+                "{\"stage\":\"" + stage + "\",\"rating\":4,\"rationale\":\"Strong fit on scope and sector.\""
+                        + (extra == null ? "" : "," + extra) + "}");
     }
 
     @Test

@@ -189,7 +189,9 @@ class PipelineApiIT extends AbstractPersistenceIT {
     }
 
     private void stage(String app, String to, String reason, int expected, String code) throws Exception {
-        String body = "{\"stage\":\"" + to + "\"" + (reason == null ? "" : ",\"reason\":\"" + reason + "\"") + "}";
+        // rating and rationale ride along: shortlist entry needs them since contract 1.3 (R65)
+        String body = "{\"stage\":\"" + to + "\",\"rating\":4,\"rationale\":\"Strong fit on scope and sector.\""
+                + (reason == null ? "" : ",\"reason\":\"" + reason + "\"") + "}";
         ResultActions r = call(patch("/api/v1/applications/" + app + "/stage"), consultant, "CONSULTANT", body)
                 .andExpect(status().is(expected));
         if (code != null) {
