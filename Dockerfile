@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Multi-stage image for platform-app. Build: docker build -t recruiting-platform .
 
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /workspace
 COPY pom.xml ./
 COPY contracts/pom.xml contracts/pom.xml
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q -B -pl platform-app -am package -
     && cp platform-app/target/platform-app-*.jar app.jar \
     && java -Djarmode=tools -jar app.jar extract --layers --destination /workspace/extracted
 
-FROM eclipse-temurin:21-jre AS runtime
+FROM eclipse-temurin:25-jre AS runtime
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app
 WORKDIR /app
 COPY --from=build --chown=app:app /workspace/extracted/dependencies/ ./

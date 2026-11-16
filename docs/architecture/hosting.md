@@ -32,7 +32,7 @@ Background (as understood, **[unverified]** against the current text of Law No. 
 ## Technical requirements for any host
 
 - PostgreSQL 17 with the `vector` extension (pgvector 0.8); or a VM where we run the `pgvector/pgvector` image.
-- Java 21 runtime, about 1 to 2 GB RAM for the app, TLS in front, an SMTP relay for the KVKK e-mails.
+- Java 25 runtime, about 1 to 2 GB RAM for the app, TLS in front, an SMTP relay for the KVKK e-mails.
 - Encrypted disks and encrypted backups; backups kept in the same jurisdiction as the primary.
 - Secrets only in the host's secret store or environment (see `.env.example`); pilot profile has no defaults for them.
 

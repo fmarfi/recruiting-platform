@@ -24,7 +24,7 @@ Recruitment platform for a Turkish executive search / staffing consultancy, so c
 - No LinkedIn scraping; LinkedIn data only via candidate-provided files or official integrations.
 
 ## Stack
-Java 21+ on Spring Boot 4.1, Spring Modulith, PostgreSQL + pgvector, Flyway, Hibernate Envers, Spring Security, Spring Mail. Spring AI 2.0 in Phase 2. Tests: JUnit 5, Testcontainers, Playwright.
+Java 25 on Spring Boot 4.1, Spring Modulith, PostgreSQL + pgvector, Flyway, Hibernate Envers, Spring Security, Spring Mail. Spring AI 2.0 in Phase 2. Tests: JUnit 5, Testcontainers, Playwright.
 
 ## Module layout
 Maven multi-module, base package `com.recruiting.platform`: `contracts`, `crm-accounts`, `crm-pipeline`, `security`, `privacy`, `ai`, `platform-app`. Ownership of each path: the table "Ownership map" in docs/archive/build-plan.md (`grep -n -A 14 "Ownership map" docs/archive/build-plan.md`).
