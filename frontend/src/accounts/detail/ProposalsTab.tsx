@@ -1,10 +1,11 @@
 // Proposals of a client as a table (separate from agreements, M2-UI2): status change stays in the badge menu, History per row.
-import { Button, Group, Text } from '@mantine/core';
+import { Button, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconHistory } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../../api';
+import { EmptyState } from '../../shell/components/EmptyState';
 import { ICON_SIZE, ICON_STROKE } from '../../shell/components/objectIcons';
 import { StatusMenu } from '../../shell/components/StatusMenu';
 import { DataGrid, type ColumnDef } from '../../shell/grid';
@@ -86,12 +87,7 @@ export function ProposalsTab({ proposals, onChanged, onAdd }: { proposals: Propo
         rowId={(p) => p.id}
         phone={!!phone}
         exportName="proposals"
-        empty={
-          <Group justify="center" py="lg" data-testid="empty-state">
-            <Text c="dimmed">{t('accounts.emptyProposals')}</Text>
-            <AddButton label={t('accounts.newProposal')} onClick={onAdd} />
-          </Group>
-        }
+        empty={<EmptyState title={t('accounts.emptyProposals')} actions={<AddButton label={t('accounts.newProposal')} onClick={onAdd} />} />}
       />
       <HistoryDialog target={history && { type: 'PROPOSAL', id: history.id, name: history.title }} onClose={() => setHistory(undefined)} />
     </>

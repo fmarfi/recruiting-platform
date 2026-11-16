@@ -96,7 +96,7 @@ export function AccountPage() {
       <Tabs.Tab value="proposals" style={tabStyle} rightSection={<Count n={proposals.length} />}>
         {t('accounts.tab.proposals')}
       </Tabs.Tab>
-      <Tabs.Tab value="agreements" style={tabStyle} rightSection={<Count n={agreements.data?.content.length ?? 0} />}>
+      <Tabs.Tab value="agreements" style={tabStyle}>
         {t('agr.title')}
       </Tabs.Tab>
       <Tabs.Tab value="history" style={tabStyle}>

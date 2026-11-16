@@ -13,19 +13,19 @@
 - i18n: `agr.*` in `pipeline/i18n/{en,tr}.json` (TR mostly English text, not polished).
 - Tests: `feeModel.test.ts` (fee fields, validation, file check), `AgreementDrawer.test.tsx` (hidden fields, create body, 409 compare).
 
+**Review fixes (round 2)**
+- Signatory uses `signatoryContactId` (fallback: active contact of `signatory.id`); thirds with no instalments rejected; `vatApplies` kept per instalment; undo skips `scheduleItems` (`noUndoKeys` in `accounts/detail/editSupport.tsx`); failed upload reloads the agreement and always clears busy; `dueDays` shown for every trigger; Proposals empty state uses shared EmptyState; Agreements tab count removed; seed rename undone; StatsStrip fix merged from `feature/network-customer-tools`.
+
 **Not done / left**
-- Proposal edit (title, terms, fee) still only via create; no edit drawer was asked for.
-- Not clicked through against Prism or the real backend (backend agreements branch not merged); verified by tests and build only.
+- Proposal edit drawer was not asked for. Not clicked through against Prism or the backend.
 
 **Others must know**
-- This worktree directory was shared with a backend agent (uncommitted Java, seed and contracts/enums changes). I committed only frontend paths and the hand-off note.
-- `frontend/src/shell/home/StatsStrip.tsx` is not valid UTF-8 (cp1252 byte) in commit ede80cd; `npm run build` fails on it (Vite). I verified the build with a temporary iconv fix and reverted it.
+- Branch touches only `frontend/` and this note.
 
 **Change requests**
-- architect · `/reference-data` lifecycles · add an `agreement` lifecycle (labels, tones) so the badge can use the shared StatusBadge; the tone map is local in `AgreementsPanel.tsx` for now.
-- architect · `Agreement.signatory` is a PersonRef but `signatoryContactId` is a contact id; the drawer preselects by `signatory.id` and assumes it is the contact id. Confirm, or expose `signatoryContactId` on `Agreement`.
-- frontend-shell · `shell/home/StatsStrip.tsx` · re-save as UTF-8 (build blocker).
+- architect · `/reference-data` lifecycles · add an `agreement` lifecycle so the shared StatusBadge can be used; tone map is local in `AgreementsPanel.tsx`.
+- architect · `/audit/revisions` · instalment changes are audited as FEE_SCHEDULE_ITEM and the endpoint takes one entityId, so they cannot be shown in an agreement's History. Add a `parentType/parentId` filter or write them under AGREEMENT.
 
 **Verified with**
-- `npm run typecheck` → clean; `npm test` → 45 files, 298 tests pass; `npm run build` → passes with the StatsStrip encoding fixed locally (fails on the base commit without it).
+- `npm run typecheck` clean; `npm test` 45 files, 302 tests pass; `npm run build` passes.
 - Click path: `/accounts/<id>` tabs Proposals and Agreements; `/job-orders/<id>` Agreements panel; row click opens the drawer.

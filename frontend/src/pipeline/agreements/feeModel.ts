@@ -52,6 +52,8 @@ export interface ScheduleRow {
   percent: string;
   amount: string;
   dueDays: string;
+  /** Kept from the server so a schedule replace does not reset it. */
+  vatApplies?: boolean;
 }
 
 export const emptyRow = (label = ''): ScheduleRow => ({ label, trigger: 'SIGNING', offsetDays: '', percent: '', amount: '', dueDays: '30' });
@@ -135,7 +137,7 @@ export function validateAgreement(v: FormValues, needsJob = false, hasJob = true
       if (r.trigger === 'DATE_OFFSET' && !int(r.offsetDays, 0, 730)) return { ...e, scheduleItems: 'offsetDays' };
       if (!int(r.dueDays, 0, 180)) return { ...e, scheduleItems: 'range' };
     }
-    if (v.feeModel === 'RETAINED_THIRDS' && rows.length > 0) {
+    if (v.feeModel === 'RETAINED_THIRDS') {
       const sum = Math.round(rows.reduce((s, r) => s + Number(r.percent || 0), 0) * 100);
       if (sum !== 10000 || rows.some((r) => !r.percent)) e.scheduleItems = 'sum100';
     }
@@ -153,5 +155,6 @@ export function scheduleBody(json: string) {
     percent: r.percent || null,
     amount: r.amount || null,
     dueDays: Number(r.dueDays),
+    ...(r.vatApplies === undefined ? {} : { vatApplies: r.vatApplies }),
   }));
 }

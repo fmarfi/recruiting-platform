@@ -59,4 +59,34 @@ describe('AgreementDrawer', () => {
     expect(PATCH.mock.calls[0]![1].body).toEqual({ title: 'Mine', version: 4 });
     expect(await screen.findByText('Theirs')).toBeInTheDocument();
   });
+
+  const contacts = [
+    { id: 'c1', person: { id: 'p1', name: 'Ayse Demir' }, role: 'CFO' },
+    { id: 'c2', person: { id: 'p2', name: 'Can Yilmaz' }, role: 'HR' },
+  ];
+  const withContacts = () => GET.mockImplementation((url: string) => Promise.resolve(url === '/accounts/{id}/contacts' ? { data: contacts } : { data: [] }));
+
+  it('preselects the signatory by contact id and lists them once', async () => {
+    withContacts();
+    const a = { ...(agreement as object), signatoryContactId: 'c2', signatory: { id: 'p2', name: 'Can Yilmaz' } } as never;
+    renderShell(<AgreementDrawer opened onClose={vi.fn()} onSaved={vi.fn()} agreement={a} preset={preset} />);
+    const select = (await screen.findByLabelText('Signatory')) as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(3));
+    expect(select.value).toBe('c2');
+  });
+
+  it('falls back to the contact of the signatory person and never sends a person id', async () => {
+    withContacts();
+    PATCH.mockResolvedValue({ data: {} });
+    const a = { ...(agreement as object), signatory: { id: 'p2', name: 'Can Yilmaz' } } as never;
+    renderShell(<AgreementDrawer opened onClose={vi.fn()} onSaved={vi.fn()} agreement={a} preset={preset} />);
+    const select = (await screen.findByLabelText('Signatory')) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe('c2'));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Other' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Save/ }));
+    });
+    await waitFor(() => expect(PATCH).toHaveBeenCalled());
+    expect(PATCH.mock.calls[0]![1].body).toEqual({ title: 'Other', version: 4 });
+  });
 });

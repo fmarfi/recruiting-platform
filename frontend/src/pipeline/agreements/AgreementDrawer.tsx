@@ -1,5 +1,6 @@
 // Agreement create and edit drawer. Fields follow the chosen fee model (feeModel.ts). Edit sends `version` and uses the shared 409 compare dialog.
 import { Checkbox, NativeSelect, SimpleGrid, Text, Textarea, TextInput } from '@mantine/core';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, type components } from '../../api';
 import { fieldErrors, orNull, useDraft, useRecordSave } from '../../accounts/detail/editSupport';
@@ -22,13 +23,17 @@ export interface AgForm extends Record<string, string> {
 }
 
 const rowsOf = (a: Agreement): ScheduleRow[] =>
-  a.scheduleItems.map((i) => ({ id: i.id, label: i.label ?? '', trigger: i.trigger ?? 'SIGNING', offsetDays: i.offsetDays?.toString() ?? '', percent: i.percent ?? '', amount: i.amount ?? '', dueDays: String(i.dueDays) }));
+  a.scheduleItems.map((i) => ({ id: i.id, label: i.label ?? '', trigger: i.trigger ?? 'SIGNING', offsetDays: i.offsetDays?.toString() ?? '', percent: i.percent ?? '', amount: i.amount ?? '', dueDays: String(i.dueDays), vatApplies: i.vatApplies }));
 
-export const agForm = (a?: Agreement): AgForm => ({
+/** Contact id of the signatory: the field the API returns, else the active contact of the same person. */
+export const signatoryId = (a: Agreement | undefined, contacts: { id: string; person: { id: string } }[]): string =>
+  a?.signatoryContactId ?? (a?.signatory ? contacts.find((c) => c.person.id === a.signatory!.id)?.id : undefined) ?? '';
+
+export const agForm = (a?: Agreement, contacts: { id: string; person: { id: string } }[] = []): AgForm => ({
   status: a?.status ?? 'DRAFT', title: a?.title ?? '', signedOn: a?.signedOn ?? '', validFrom: a?.validFrom ?? '', validUntil: a?.validUntil ?? '',
   feeModel: a?.feeModel ?? 'PERCENT_FIRST_YEAR_CASH', feePercent: a?.feePercent ?? '', feeBasis: (a?.feeBasis ?? ['BASE']).join(','), flatFeeAmount: a?.flatFeeAmount ?? '',
   estimatedFee: a?.estimatedFee ?? '', feeMinimum: a?.feeMinimum ?? '', feeCap: a?.feeCap ?? '', currency: a?.currency ?? 'TRY',
-  paymentTermsDays: String(a?.paymentTermsDays ?? 30), guaranteeMonths: String(a?.guaranteeMonths ?? 6), signatoryContactId: a?.signatory?.id ?? '', notes: a?.notes ?? '',
+  paymentTermsDays: String(a?.paymentTermsDays ?? 30), guaranteeMonths: String(a?.guaranteeMonths ?? 6), signatoryContactId: signatoryId(a, contacts), notes: a?.notes ?? '',
   scheduleItems: JSON.stringify(a ? rowsOf(a) : []),
 });
 
@@ -65,11 +70,17 @@ interface Props {
 
 export function AgreementDrawer({ opened, onClose, onSaved, agreement: a, preset, onHistory }: Props) {
   const { t } = useTranslation();
-  const initial = agForm(a);
+  const contacts = useAsync(() => api.GET('/accounts/{id}/contacts', { params: { path: { id: preset.account.id }, query: { active: true } } }), [preset.account.id]);
+  const people = contacts.data ?? [];
+  const initial = agForm(a, people);
   const { values, set, errors, setErrors, dirty } = useDraft(initial, opened);
   const [kind, setKind] = useCreateState<Kind>(opened, preset.fixedJob ? 'ENGAGEMENT_LETTER' : 'TERMS_OF_BUSINESS');
   const [jobId, setJobId] = useCreateState<string>(opened, preset.fixedJob?.id ?? '');
-  const contacts = useAsync(() => api.GET('/accounts/{id}/contacts', { params: { path: { id: preset.account.id }, query: { active: true } } }), [preset.account.id]);
+  // Contacts may arrive after the draft was seeded: fill the signatory resolved from the person, so the draft is not dirty.
+  useEffect(() => {
+    if (opened && values.signatoryContactId === '' && initial.signatoryContactId) set('signatoryContactId', initial.signatoryContactId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, initial.signatoryContactId]);
   const model = values.feeModel as FeeModel;
   const f = feeFields(model);
   const locked = !!a && a.scheduleItems.some((i) => i.invoiceState !== 'NOT_DUE');
@@ -86,7 +97,8 @@ export function AgreementDrawer({ opened, onClose, onSaved, agreement: a, preset
     toBody: agBody,
     patch: (body, version) => api.PATCH('/agreements/{id}', { ...path, body: { ...body, version } }),
     fetchLatest: () => api.GET('/agreements/{id}', path),
-    toForm: agForm,
+    toForm: (r) => agForm(r, people),
+    noUndoKeys: ['scheduleItems'],
     labels: Object.fromEntries(Object.keys(initial).map((k) => [k, t(`agr.f.${k}`)])) as Record<keyof AgForm & string, string>,
     message: t('agr.saved'),
     onSaved,
@@ -128,11 +140,10 @@ export function AgreementDrawer({ opened, onClose, onSaved, agreement: a, preset
     if (nf.schedule && !locked && parseRows(values.scheduleItems).length === 0) set('scheduleItems', JSON.stringify(defaultSchedule(m)));
   };
 
-  const people = contacts.data ?? [];
   const sigOptions = [
     { value: '', label: '-' },
     ...people.map((c) => ({ value: c.id, label: [c.person.name, c.role].filter(Boolean).join(', ') })),
-    ...(a?.signatory && !people.some((c) => c.id === a.signatory!.id) ? [{ value: a.signatory.id, label: a.signatory.name }] : []),
+    ...(a?.signatory && values.signatoryContactId && !people.some((c) => c.id === values.signatoryContactId) ? [{ value: values.signatoryContactId, label: a.signatory.name }] : []),
   ];
   const kindOptions = (preset.fixedJob ? KINDS.filter((k) => k !== 'TERMS_OF_BUSINESS') : KINDS).map((k) => ({ value: k, label: t(`agr.kind.${k}`) }));
 

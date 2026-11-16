@@ -50,6 +50,8 @@ interface SaveConfig<R extends { version: number }, F extends Record<string, str
   message: string;
   onSaved: () => void;
   /** Changes outside the PATCH body (for example tags), applied after the fields and reverted by undo. */
+  /** Keys left out of undo (for example a replaced list whose ids no longer exist). */
+  noUndoKeys?: string[];
   extra?: { changed: boolean; apply: () => Promise<void>; revert: () => Promise<void> };
 }
 
@@ -73,7 +75,8 @@ export function useRecordSave<R extends { version: number }, F extends Record<st
     }
   };
 
-  const done = (keys: (keyof F & string)[], previous: F, savedValues: F, extra: SaveConfig<R, F>['extra']) => {
+  const done = (allKeys: (keyof F & string)[], previous: F, savedValues: F, extra: SaveConfig<R, F>['extra']) => {
+    const keys = allKeys.filter((k) => !c.noUndoKeys?.includes(k));
     c.onSaved();
     showUndo({
       message: c.message,

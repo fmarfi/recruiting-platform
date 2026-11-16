@@ -19,7 +19,7 @@ export function ScheduleEditor({ value, onChange, error, max = 20 }: { value: st
       )}
       {rows.map((r, i) => (
         <Group key={r.id ?? i} align="flex-end" gap="xs" wrap="nowrap" style={{ borderTop: i === 0 ? 0 : '1px solid var(--color-border)', paddingTop: i === 0 ? 0 : 'var(--space-2)' }}>
-          <SimpleGrid cols={{ base: 2, sm: 6 }} spacing="xs" style={{ flex: 1 }}>
+          <SimpleGrid cols={{ base: 2, sm: 7 }} spacing="xs" style={{ flex: 1 }}>
             <TextInput label={t('agr.schedule.label')} value={r.label} maxLength={200} onChange={(e) => patch(i, { label: e.currentTarget.value })} style={{ gridColumn: 'span 2' }} />
             <NativeSelect
               label={t('agr.schedule.trigger')}
@@ -27,11 +27,10 @@ export function ScheduleEditor({ value, onChange, error, max = 20 }: { value: st
               data={FEE_TRIGGERS.map((x) => ({ value: x, label: t(`agr.trigger.${x}`) }))}
               onChange={(e) => patch(i, { trigger: e.currentTarget.value as ScheduleRow['trigger'] })}
             />
-            {r.trigger === 'DATE_OFFSET' ? (
+            {r.trigger === 'DATE_OFFSET' && (
               <TextInput label={t('agr.schedule.offsetDays')} inputMode="numeric" value={r.offsetDays} onChange={(e) => patch(i, { offsetDays: e.currentTarget.value })} />
-            ) : (
-              <TextInput label={t('agr.schedule.dueDays')} inputMode="numeric" value={r.dueDays} onChange={(e) => patch(i, { dueDays: e.currentTarget.value })} />
             )}
+            <TextInput label={t('agr.schedule.dueDays')} inputMode="numeric" value={r.dueDays} onChange={(e) => patch(i, { dueDays: e.currentTarget.value })} />
             <TextInput label={t('agr.schedule.percent')} inputMode="decimal" value={r.percent} onChange={(e) => patch(i, { percent: e.currentTarget.value, amount: e.currentTarget.value ? '' : r.amount })} />
             <TextInput label={t('agr.schedule.amount')} inputMode="decimal" value={r.amount} onChange={(e) => patch(i, { amount: e.currentTarget.value, percent: e.currentTarget.value ? '' : r.percent })} />
           </SimpleGrid>

@@ -23,20 +23,27 @@ export function SignedCopy({ agreement: a, onUploaded }: { agreement: Agreement;
     if (check !== 'ok') return setError(t(`agr.file.${check}`));
     setBusy(true);
     setError(null);
-    const r = await api.PUT('/agreements/{id}/signed-file', {
-      params: { path: { id: a.id } },
-      body: { file: file as unknown as string, version: a.version },
-      bodySerializer: (b) => {
-        const fd = new FormData();
-        fd.append('file', file);
-        if (b?.version !== undefined) fd.append('version', String(b.version));
-        return fd;
-      },
-    });
-    setBusy(false);
-    if (r.error) {
-      const status = r.response?.status;
-      return setError(status === 409 ? t('agr.file.conflict') : problemText(r.error, t('agr.file.failed')));
+    try {
+      const r = await api.PUT('/agreements/{id}/signed-file', {
+        params: { path: { id: a.id } },
+        body: { file: file as unknown as string, version: a.version },
+        bodySerializer: (b) => {
+          const fd = new FormData();
+          fd.append('file', file);
+          if (b?.version !== undefined) fd.append('version', String(b.version));
+          return fd;
+        },
+      });
+      if (r.error) {
+        setError(r.response?.status === 409 ? t('agr.file.conflict') : problemText(r.error, t('agr.file.failed')));
+        onUploaded(); // reload so the next try carries the current version
+        return;
+      }
+    } catch {
+      setError(t('agr.file.failed'));
+      return;
+    } finally {
+      setBusy(false);
     }
     onUploaded();
   };

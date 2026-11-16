@@ -46,6 +46,14 @@ describe('agreement validation', () => {
     const t = { ...base, feeModel: 'RETAINED_THIRDS', scheduleItems: JSON.stringify([{ ...row, percent: '50' }, { ...row, percent: '40' }]) };
     expect(validateAgreement(t).scheduleItems).toBe('sum100');
   });
+  it('rejects thirds without instalments', () => {
+    expect(validateAgreement({ ...base, feeModel: 'RETAINED_THIRDS', scheduleItems: '[]' }).scheduleItems).toBe('sum100');
+  });
+  it('keeps vatApplies per instalment and omits it when unknown', () => {
+    const body = scheduleBody(JSON.stringify([{ ...row, percent: '50', vatApplies: false, id: 'i1' }, { ...row, percent: '50' }]));
+    expect(body[0]).toMatchObject({ id: 'i1', vatApplies: false });
+    expect(body[1]).not.toHaveProperty('vatApplies');
+  });
   it('maps instalments to the request shape', () => {
     const body = scheduleBody(JSON.stringify([{ ...row, label: ' A ', offsetDays: '5', percent: '50' }]));
     expect(body).toEqual([{ label: 'A', trigger: 'SIGNING', offsetDays: null, percent: '50', amount: null, dueDays: 30 }]);
