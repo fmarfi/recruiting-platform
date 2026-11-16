@@ -8,6 +8,7 @@ import { api } from '../../api';
 import { HistoryPanel } from '../../shell/edit';
 import { QuickLog } from '../../shell/quicklog';
 import { QuickAdd } from '../../pipeline/quickadd/QuickAdd';
+import { useStageControl } from '../../pipeline/candidates/useStageControl';
 import { problemText, type Schemas } from '../../pipeline/shared';
 import { Panel } from '../../shell/components/Panel';
 import { RecordLayout } from '../../shell/components/RecordLayout';
@@ -43,6 +44,7 @@ export function PersonPage() {
   const d = usePerson(id);
   const [dialog, setDialog] = useState<'edit' | 'log' | 'action' | 'connection' | 'job' | 'consent'>();
   const close = () => setDialog(undefined);
+  const stageCtl = useStageControl(d.applications.data, d.applications.reload);
   const [tab, setTab] = useState('overview');
   const [resending, setResending] = useState(false);
   const [notice, setNotice] = useState<{ color: string; text: string }>();
@@ -139,6 +141,7 @@ export function PersonPage() {
           {notice.text}
         </Alert>
       )}
+      {stageCtl.toast && <div style={{ margin: 'var(--space-4)' }}>{stageCtl.toast}</div>}
       <RecordLayout
         header={<PersonHeader person={p} onLog={() => setDialog('log')} onAction={() => setDialog('action')} onResend={() => void resend(p)} onEdit={() => setDialog('edit')} resending={resending} searchCount={apps.length} tabs={tabs} />}
         banner={banner}
@@ -152,7 +155,7 @@ export function PersonPage() {
             </Tabs.Panel>
             <Tabs.Panel value="map">{panel(t('network.tabs.map'), <RelationshipMap center={p} links={links} />)}</Tabs.Panel>
             <Tabs.Panel value="connections">{panel(t('network.tabs.connections'), <ConnectionsTab links={links} onAdd={() => setDialog('connection')} />)}</Tabs.Panel>
-            <Tabs.Panel value="jobs">{panel(t('network.tabs.jobs'), <JobsTab applications={apps} roles={d.roles.data ?? []} canAdd={!blocked} onAdd={() => setDialog('job')} />)}</Tabs.Panel>
+            <Tabs.Panel value="jobs">{panel(t('network.tabs.jobs'), <JobsTab applications={stageCtl.apps} roles={d.roles.data ?? []} canAdd={!blocked} onAdd={() => setDialog('job')} onStage={stageCtl.change} />)}</Tabs.Panel>
             <Tabs.Panel value="activity">{panel(t('network.tabs.activity'), <ActivityTab activities={activities} onLog={() => setDialog('log')} />)}</Tabs.Panel>
             <Tabs.Panel value="files">{panel(t('network.tabs.files'), <FilesTab personId={id} anonymised={p.anonymised} onUploaded={d.reloadAll} />)}</Tabs.Panel>
             <Tabs.Panel value="exposure">{panel(t('network.tabs.exposure'), <ExposureTab personId={id} />)}</Tabs.Panel>
@@ -172,6 +175,7 @@ export function PersonPage() {
       <QuickLog opened={dialog === 'log'} onClose={close} personId={id} onDone={d.reloadAll} />
       <QuickAdd opened={dialog === 'action'} initialMode="action" onClose={close} context={{ person: p }} onSaved={d.reloadAll} />
       <AddConnectionDialog personId={id} opened={dialog === 'connection'} onClose={close} onSaved={d.links.reload} />
+      {stageCtl.dialogs}
       <AddToJobDialog personId={id} exclude={apps.map((a) => a.jobOrder.id)} opened={dialog === 'job'} onClose={close} onSaved={d.applications.reload} />
       <SendConsentDialog person={p} opened={dialog === 'consent'} onClose={close} onSent={d.reloadAll} />
     </Tabs>

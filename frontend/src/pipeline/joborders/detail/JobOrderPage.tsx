@@ -1,20 +1,18 @@
-// Search (job order) page with the pipeline board (A-06, A-07, UX-03, UX-04). Record band with facts, full-width pipeline,
+// Search (job order) page with one candidate table, stage as a column (A-06, A-07, UX-03, UX-04). Record band with facts, full-width table,
 // brief and details side by side, history last (visual system v3, section 5; reference: network/person).
-import { Alert, Anchor, Box, Button, Container, Group, Menu, SegmentedControl, Skeleton, SimpleGrid, Stack, Text } from '@mantine/core';
+import { Alert, Anchor, Box, Button, Container, Group, Menu, Skeleton, SimpleGrid, Stack, Text } from '@mantine/core';
 import { BulkAddDialog } from '../../longlist/BulkAddDialog';
-import { LonglistPanel } from '../../longlist/LonglistPanel';
 import { IconDots, IconPlus } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../../api';
-import { Board } from '../../board/Board';
+import { CandidateTable } from '../../candidates/CandidateTable';
+import { useStageControl } from '../../candidates/useStageControl';
 import { ReasonDialog } from '../../board/ReasonDialog';
-import { useBoardMoves } from '../../board/useBoardMoves';
 import { QuickAdd, type QuickAddContext } from '../../quickadd/QuickAdd';
 import { StatusBadge, problemText, useCurrentUser, useFormat, useLabel, type Schemas } from '../../shared';
 import { SectionToggle } from '../../shared/SectionToggle';
-import { StageGuardDialog } from '../../board/StageGuardDialog';
 import { DetailList } from '../../../shell/components/DetailList';
 import { EmptyState } from '../../../shell/components/EmptyState';
 import { ErrorBanner } from '../../../shell/components/ErrorBanner';
@@ -26,21 +24,19 @@ import { HistoryPanel } from '../../../shell/edit';
 import { AddCandidateDialog } from './AddCandidateDialog';
 import { JobOrderEditDrawer } from './JobOrderEditDrawer';
 import { JobStatusMenu } from './JobStatusMenu';
-import { MoveToast } from './MoveToast';
 import { useJobOrder } from './useJobOrder';
 
 export function JobOrderPage() {
   const { id = '' } = useParams();
   const { t } = useTranslation();
   const fmt = useFormat();
-  const { ref, def } = useLabel();
+  const { def } = useLabel();
   const me = useCurrentUser();
   const { job, apps: appsRes } = useJobOrder(id);
-  const moves = useBoardMoves(appsRes.data, job.reload, appsRes.reload);
+  const moves = useStageControl(appsRes.data, job.reload, appsRes.reload);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const existingIds = useMemo(() => new Set(moves.apps.map((a) => a.person.id)), [moves.apps]);
-  const [view, setView] = useState('board');
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [logCtx, setLogCtx] = useState<QuickAddContext>();
@@ -61,6 +57,12 @@ export function JobOrderPage() {
       moves.setSuggestFilled(false);
       job.reload();
     }
+  };
+
+  const rate = async (app: Schemas['Application'], rating: number | null) => {
+    const r = await api.PATCH('/applications/{id}', { params: { path: { id: app.id } }, body: { rating, version: app.version } });
+    if (r.error) moves.show({ kind: 'error', text: problemText(r.error, t('pipeline.ll.writeFailed')) });
+    appsRes.reload();
   };
 
   if (job.loading) {
@@ -173,7 +175,7 @@ export function JobOrderPage() {
                 </Group>
               </Alert>
             )}
-            {moves.toast && <MoveToast toast={moves.toast} onClose={() => moves.setToast(undefined)} onRefresh={appsRes.reload} />}
+            {moves.toast}
           </Stack>
         </div>
       )}
@@ -193,40 +195,20 @@ export function JobOrderPage() {
               </div>
             </Panel>
           ) : (
-            <>
-              <SegmentedControl
-                size="xs"
-                w="fit-content"
-                value={view}
-                onChange={setView}
-                data={[
-                  { value: 'board', label: t('pipeline.ll.viewBoard') },
-                  { value: 'longlist', label: t('pipeline.ll.viewLonglist') },
-                ]}
-              />
-              {view === 'longlist' ? (
-                <LonglistPanel
-                  jobId={id}
-                  apps={moves.apps}
-                  readOnly={readOnly}
-                  reload={() => {
-                    appsRes.reload();
-                    job.reload();
-                  }}
-                  onBulkAdd={() => setBulkOpen(true)}
-                />
-              ) : (
-            // Board renders the "Pipeline" panel and the "Rejected" panel (one drag context for both).
-            <Board
-              apps={moves.apps}
-              ref={ref}
-              readOnly={readOnly}
-              onMove={(a, to, reason) => void moves.move(a, to, reason)}
-              onRemove={(a) => void moves.remove(a)}
-              onLogActivity={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })}
-            />
-              )}
-            </>
+            <Panel
+              title={t('pipeline.cand.title')}
+              count={moves.apps.length}
+              testId="candidates"
+              actions={
+                !readOnly && (
+                  <Button variant="default" size="compact-md" onClick={() => setBulkOpen(true)}>
+                    {t('pipeline.ll.bulkAdd')}
+                  </Button>
+                )
+              }
+            >
+              <CandidateTable apps={moves.apps} readOnly={readOnly} onStage={moves.change} onRate={(a, r) => void rate(a, r)} onLog={(a) => setLogCtx({ account: j.account, person: a.person, jobOrder: j })} />
+            </Panel>
           )}
 
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
@@ -299,15 +281,7 @@ export function JobOrderPage() {
           job.reload();
         }}
       />
-      <StageGuardDialog
-        guard={moves.guard}
-        role={me?.role}
-        onClose={moves.clearGuard}
-        onOverride={(g, reason) => {
-          moves.clearGuard();
-          void moves.move(g.app, g.to, g.reason, false, reason);
-        }}
-      />
+      {moves.dialogs}
       <QuickAdd opened={!!logCtx} onClose={() => setLogCtx(undefined)} context={logCtx} />
       <ReasonDialog
         opened={!!statusAsk}
