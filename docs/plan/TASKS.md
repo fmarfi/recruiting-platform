@@ -132,7 +132,57 @@ Source: `docs/plan/Mihenk — Plan, Design and Agent-Crew Strategy.md`. Decision
 | S6 | Edit everywhere for client, candidate, search with F0 primitives | frontend-pipeline | done | – |
 | C13-F | Fix review blockers (role gating deferred post-pilot) + add R63 organisation, R65 longlist_status, R70 activity fields | architect | done (frozen 20f309d) | C13-R |
 | C13-DB | Migrations, entities, Envers, classification IT for contract 1.3 | db-engineer | done | C13-F |
-| S4 | Quick log composer (R70) | – | todo | C13-DB |
-| S5 | Longlist table, bulk add, pool filters (R65) | – | todo | C13-DB |
+| S4 | Quick log composer (R70) | backend-pipeline | done (merged cd0d437) | C13-DB |
+| S5 | Longlist table, bulk add, pool filters (R65): backend | backend-pipeline | done (merged 4be7baa) | C13-DB |
+| S5-UI | Longlist table, bulk add, pool filters (R65): UI | frontend-pipeline | done (merged ca4f055) | contract 1.3 |
+| V3-TABLE | Superseded by M2-UI1 (client meeting 02: no board, longlist only) | frontend-pipeline | superseded | – |
+| UI-A | Polish: day plurals, one date format, client activity without inner scroll, rule 'no record counts' | ui-slice (Haiku) | done (merged 104ddb6) | – |
+| UI-B1 | Contract 1.4 Home aggregate: today, needsYou, searches health, generatedAt + ADR thresholds | architect (Opus) | done (merged d8c7e8a) | – |
+| UI-B2 | Home aggregate backend, < 300 ms, R17 filtering, IT per needsYou type | backend-pipeline | on hold: home gains personal numbers and a period in contract 1.5 | M2-C15 |
+| UI-B3 | Home v2 UI (consultant preset): Today, Needs you, live-search health, quick log bar | frontend-shell | on hold | M2-C15 |
+| UI-C | Search health on searches list, search header, cards; activity panel on search page; records without count tiles | frontend-pipeline | todo | UI-B2, V3-TABLE |
 | S2 | Organisation identity + import (synthetic file) (R63) | – | todo | C13-DB |
 | S1 | Dev-login guard only (TOTP, roles, hosting/DPA parked: post-pilot) | – | todo | – |
+
+## Client meeting 02 follow-up (2026-11-16)
+
+Source: `docs/product/meetings/2026-11-15-meeting-02.md` (first real user input; earlier stories were assumptions).
+
+| ID | Slice | Owner | Status | Blocked by |
+| --- | --- | --- | --- | --- |
+| M2-R | Desk research, 9 topics, into `docs/product/research/meeting-02-research.md` | research agent (Sonnet) | in progress | – |
+| M2-UI1 | Search page longlist only: board hidden, table with stage column and stage change; candidate-driven actions on the person page (add to a search, change stage) | frontend-pipeline (Sonnet) | in progress (.worktrees/m2-longlist, branch m2-longlist) | – |
+| M2-SHOTS | Screenshot pack of candidate, client and position screens with field lists for the client | orchestrator | todo | app running |
+| M2-C15 | Contract 1.5: move candidate between searches; contact on job order; openings and remaining openings; home personal numbers with period | architect (Opus) | todo | M2-R |
+| M2-ST | Rewrite stories from the meeting report; mark the 28 old ones keep / change / drop | product-analyst | todo | M2-R |
+| M2-UI2 | Agreements UI separate from proposals, each with history | frontend-pipeline | todo | M2-UI1 |
+| M2-UI3 | Network map on the client page | frontend-shell | todo | M2-C15 |
+
+Decisions (2026-11-16, from the client): no kanban board, longlist only (board code kept, hidden); 3 to 5 users; real roles are researcher, consultant, sales (recorded, gating still deferred until after the pilot); work is table-first because the team works in Excel today.
+
+## UI/UX polish pass (2026-11-03, Haiku slice agents, orchestrator reviews in the browser on seeded data)
+
+| ID | Slice | Owner | Status | Blocked by |
+| --- | --- | --- | --- | --- |
+| UX-FIX | Account form: sector optional since contract 1.3 (tsc broke after gen:api) | orchestrator | done (354c34f) | – |
+| UXS-1 | App shell: phone nav in drawer, token spacing, sentence-case nav | slice agent | done (merged) | – |
+| UXS-3 | Clients list: name affordance, dimmed activity, empty state | slice agent | done (merged) | – |
+| UXP-1 | Board: column headers, card hierarchy, drag feedback, own scroll | slice agent | done (merged) | – |
+| UXP-4 | Candidates list: filter row, name/role hierarchy, dimmed secondary | slice agent | done (merged) | – |
+| UXP-4b | Candidates filters collapsed to one row + Filters panel | slice agent | done (merged) | – |
+| UXP-1b | Board fits laptop width, labelled consent badge, stale-days tone | slice agent | done (merged) | – |
+| UXS-4 | Client record page: header facts, timeline by day, empty states | slice agent | done (merged) | – |
+| UXP-5 | Person page: header facts, tabs, activity by day, empty states | slice agent | done (merged) | – |
+| UX-Q1 | Open question: phone bottom tab bar removed in UXS-1 (nav only in drawer); revisit after phone check | orchestrator | todo | – |
+| V3-SPEC | docs/product/ux/visual-system-v3.md (binding visual rules: no cards-in-cards, no pills, Tabler icons, one header/table/toolbar/badge) + @tabler/icons-react 3.31.0 | orchestrator | done (4c7e29c) | - |
+| V3-F | Foundation: objectIcons, theme radii/sizes, badges, PageHeader, EmptyState, header/nav, DataGrid | general-purpose (Sonnet) in .worktrees/ux-foundation | done (merged) | - |
+| V3-S1 | Home: KPIs per spec (time/progress), de-card sections | ui-slice | done (merged) | V3-F |
+| V3-S2 | Clients list + client page: de-card, toolbar, icons | ui-slice | done (merged) | V3-F |
+| V3-S3 | Candidates list + person page: de-card, square filter chips, consent banner | ui-slice | done (merged) | V3-F |
+| V3-S4 | Search page + board: de-card header, consent icon+words on cards | ui-slice | done (merged) | V3-F |
+| V3-S5 | Searches list, settings, dialogs/drawers: de-card, icons | ui-slice | done (merged) | V3-F |
+| V3-FORMS | New menu flows per spec 6b: quick add, new/edit candidate, new/edit client | ui-slice x3 | done (merged) | - |
+| V3-LAYOUT | Panel/DetailList/RecordLayout; person, client, search pages and home on record layout | ui-slice + orchestrator | done (d363ce8, eccdf7f, eaa5cad, 405fb74) | V3-S1..S5 |
+| V3-GATE | Orchestrator browser check of every screen against spec section 8 at 1440 and 375 | orchestrator | todo | V3-S1..S5 |
+
+Agent cost note: general-purpose subagents start near 70k tokens (all connector tools). Use the lean ui-slice agent (.claude/agents/ui-slice.md: 6 tools, Haiku, frontend-design preloaded); it loads only in a session started from the capital-D path C:\Users\SID-DRW\Desktop\New folder\recruiting-platform, which also fixes automatic worktrees.

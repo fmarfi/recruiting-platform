@@ -24,3 +24,12 @@ CLAUDE.md
 # graphify (local code graph)
 graphify-out/
 .graphifyignore
+
+# skeletree (local code outline)
+.skeletree-cache.json
+skeletree.md
+
+# raw client material (real names and data: never commit)
+client-private/
+
+.docs/
