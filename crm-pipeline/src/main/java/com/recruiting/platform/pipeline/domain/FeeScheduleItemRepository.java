@@ -9,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 /** Spring Data repository for {@link FeeScheduleItem}. */
 public interface FeeScheduleItemRepository extends JpaRepository<FeeScheduleItem, UUID>, JpaSpecificationExecutor<FeeScheduleItem> {
     List<FeeScheduleItem> findByAgreementIdOrderBySeqAsc(UUID agreementId);
+
+    List<FeeScheduleItem> findByAgreementIdInOrderBySeqAsc(java.util.Collection<UUID> agreementIds);
 }

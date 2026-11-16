@@ -29,10 +29,12 @@ Password for all three: `Demo-Password-2026` (stored as `{bcrypt}`).
 | `06_activities_actions.sql` | 75 activities, 24 next actions (6 overdue, 6 today, 8 upcoming, 4 done) |
 | `07_timeline.sql` | 334 timeline entries derived from the rows above (placed candidates get an OFFER step first) |
 | `08_privacy.sql` | notices, per-person privacy rows, consent requests/records, 4 data-subject requests, retention |
+| `09_agreements.sql` | 15 fee agreements (terms of business per account, engagement letters per job order, mixed statuses) with fee schedules |
+| `10_envers.sql` | Envers baseline revision for every seeded row |
 
 ## Fixed ids
 `uid(kind, n)` = `01930000-<kind as 4 digits>-7000-8000-<n as 12 digits>`, e.g. admin = `01930000-0001-7000-8000-000000000001`.
-Kinds: 20 candidate exposure, 21 off-limits rule. 1 user, 2 account, 3 person, 4 contact, 5 job order, 6 application, 7 proposal, 8 activity, 9 next action, 11 network link, 12 employment, 13 privacy notice, 14 consent request, 15 consent record, 16 data-subject request, 17 retention run, 19 timeline entry, 18 timeline source event.
+Kinds: 30 agreement, 31 fee schedule item, 20 candidate exposure, 21 off-limits rule. 1 user, 2 account, 3 person, 4 contact, 5 job order, 6 application, 7 proposal, 8 activity, 9 next action, 11 network link, 12 employment, 13 privacy notice, 14 consent request, 15 consent record, 16 data-subject request, 17 retention run, 19 timeline entry, 18 timeline source event.
 Numbers: accounts 1-25 (11-19 are ACTIVE), persons 1-30 client contacts (person n is the primary contact of account n), 31-64 candidates, 65-74 executives, 75-79 referrers, 80 anonymised, 81 candidate (surname Öztürk). Job orders 1-10 (1 OPEN ... 8 OFFER, 9 FILLED, 10 CANCELLED).
 
 ## Editing

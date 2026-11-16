@@ -15,6 +15,8 @@ DELETE FROM timeline_entry;
 DELETE FROM next_action;
 DELETE FROM activity;
 DELETE FROM application;
+DELETE FROM fee_schedule_item;
+DELETE FROM agreement;
 DELETE FROM proposal;
 DELETE FROM job_order;
 DELETE FROM account_open_job;
