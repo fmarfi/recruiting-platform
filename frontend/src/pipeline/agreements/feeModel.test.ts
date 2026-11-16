@@ -61,10 +61,10 @@ describe('agreement validation', () => {
 });
 
 describe('signed copy check', () => {
-  it('accepts a PDF within 20 MB', () => expect(checkSignedFile({ name: 'a.pdf', type: 'application/pdf', size: 1000 })).toBe('ok'));
+  it('accepts a PDF within 50 MB', () => expect(checkSignedFile({ name: 'a.pdf', type: 'application/pdf', size: 1000 })).toBe('ok'));
   it('accepts a PDF whose type the browser left empty', () => expect(checkSignedFile({ name: 'A.PDF', type: '', size: 10 })).toBe('ok'));
   it('rejects other types', () => expect(checkSignedFile({ name: 'a.docx', type: 'application/msword', size: 10 })).toBe('notPdf'));
-  it('rejects files over 20 MB and empty files', () => {
+  it('rejects files over 50 MB and empty files', () => {
     expect(checkSignedFile({ name: 'a.pdf', type: 'application/pdf', size: MAX_SIGNED_BYTES + 1 })).toBe('tooLarge');
     expect(checkSignedFile({ name: 'a.pdf', type: 'application/pdf', size: 0 })).toBe('empty');
     expect(checkSignedFile({ name: 'a.pdf', type: 'application/pdf', size: MAX_SIGNED_BYTES })).toBe('ok');

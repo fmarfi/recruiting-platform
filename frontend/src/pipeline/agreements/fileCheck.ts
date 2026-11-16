@@ -1,5 +1,5 @@
-/** Client-side check of the signed copy before upload (the server re-checks the bytes): PDF only, at most 20 MB. */
-export const MAX_SIGNED_BYTES = 20 * 1024 * 1024;
+/** Client-side check of the signed copy before upload (the server re-checks the bytes): PDF only, at most 50 MB. */
+export const MAX_SIGNED_BYTES = 50 * 1024 * 1024;
 
 export type FileCheck = 'ok' | 'notPdf' | 'tooLarge' | 'empty';
 

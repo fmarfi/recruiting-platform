@@ -386,7 +386,7 @@
       "none": "No signed copy uploaded.",
       "meta": "{{size}}, uploaded by {{who}} on {{when}}",
       "notPdf": "Choose a PDF file.",
-      "tooLarge": "The file is larger than 20 MB.",
+      "tooLarge": "The file is larger than 50 MB.",
       "empty": "The file is empty.",
       "conflict": "The agreement was changed by someone else. Reload and upload again.",
       "failed": "Could not upload the file."
