@@ -196,11 +196,11 @@ Plan: `~/.claude/plans/lazy-soaring-hummingbird.md`. Customisation stays light a
 
 | ID | Slice | Owner | Status | Blocked by |
 | --- | --- | --- | --- | --- |
-| C15-DB | Migrations, entities, tests for contract 1.5 (DB1 to DB5), adopts V202611160001 | db-engineer (Sonnet) | review (branch `c15-db`, 3ab80da; committed by the orchestrator after plan mode paused the agent; seed double-load check open) | – |
+| C15-DB | Migrations, entities, tests for contract 1.5 (DB1 to DB5), adopts V202611160001 | db-engineer (Sonnet) | review passed 2026-11-17, verdict merge, no blockers (branch `c15-db`, 3ab80da, pushed). Before merge: run `mvn -B verify -Pintegration` (reviewer only read the code), then merge `contract-1-5` and `c15-db` together. Should fix: MigrationIT.java:224 assert DB5 index names and the 52428800 CHECK; Contract15RepositoryIT.java:185 add ACTIVE (counted) and CANCELLED (not counted) placements. Nits: README.md:12 says revinfo is kept, 00_clear.sql:65 deletes it; no test for activity `cv_push` with `job_order_id`. Earlier gap: seed/00_clear.sql never clears search_brief, candidate_evaluation, target_company and the 1.3 `_aud` tables | – |
 | C15-P | C15-P1 to P7: move, bulk move, bulk stage change, job order contact, openings, CV push, Home numbers | backend-pipeline | todo | C15-DB |
 | C15-A1 | Contact lookup for pipeline; `/views` and `/exports` reject APPLICATIONS | backend-accounts | todo | C15-DB |
-| WB-1 | Shared grid: keyboard movement, Excel export, 14 px table text, full-width tables, sticky name column, peek hook | frontend-shell (Sonnet) | in progress (branch `wb-grid-peek`) | – |
-| WB-2 | Peek drawer for candidate, client, search from any table row | frontend-shell (Sonnet) | in progress (branch `wb-grid-peek`) | WB-1 |
+| WB-1 | Shared grid: keyboard movement, Excel export, 14 px table text, full-width tables, sticky name column, peek hook | frontend-shell (Sonnet) | todo, nothing built (branch `wb-grid-peek` at 81ca299). Two launches stopped because the agent runs in its own isolated worktree and is not allowed into the prepared one. Next time, let the agent build in its own worktree once it is at the integration head | – |
+| WB-2 | Peek drawer for candidate, client, search from any table row | frontend-shell (Sonnet) | todo, with WB-1 | WB-1 |
 | WB-3 | Longlist as a worksheet: selection and bulk bar (stage, move, remove, log), saved views, next step and last note columns, move dialogs (C15-F1) | frontend-pipeline (Sonnet) | todo | WB-1, C15-P |
 | WB-4 | Home v2 "what do I do now" (replaces UI-B3): tasks first, my numbers with period, my searches, quick log bar; presets researcher / consultant / sales; tiles can be hidden | frontend-shell (Sonnet) | todo | C15-P |
 | WB-5 | Consistency sweep: remaining plain tables to the shared grid; contact picker and openings in the search header (C15-F2) | ui-slice (Haiku) | todo | WB-1 |
